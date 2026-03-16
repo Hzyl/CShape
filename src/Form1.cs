@@ -51,7 +51,6 @@ namespace WeatherApp
         {
             if (e.KeyCode == Keys.Return)
             {
-                e.SuppressKeyUp = true;
                 await SearchWeather();
             }
         }

@@ -9,7 +9,6 @@ namespace WeatherApp
         static void Main()
         {
             Application.EnableVisualStyles();
-            Application.DefaultFont = new System.Drawing.Font("Arial", 9F);
             Application.Run(new Form1());
         }
     }

@@ -21,6 +21,7 @@ namespace WeatherApp
         }
 
         /// <summary>
+        ///
         /// Tải lịch sử từ file
         /// </summary>
         public void LoadHistory()

@@ -11,7 +11,7 @@ namespace WeatherApp
     public class ApiService
     {
         private const string API_BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
-        private const string API_KEY = "85a4e3c55f351fda9950632b67b39dea"; // API key OpenWeather miễn phí
+        private const string API_KEY = "865c114bcf48a81c5ac9b784b2150e29"; // API key OpenWeather miễn phí
         private static readonly HttpClient client = new HttpClient();
 
         /// <summary>
