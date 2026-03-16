@@ -1,0 +1,369 @@
+================================================================================
+  CẤU TRÚC DỰ ÁN - WEATHER APP (C# WINFORMS)
+================================================================================
+
+📦 WeatherApp/
+│
+├─ 📄 SOURCE CODE - File mã nguồn C#
+│  ├─ ⭐ Program.cs (16 dòng)
+│  │  └─ Entry point - Khởi động Windows Forms Application
+│  │
+│  ├─ ⭐ Form1.cs (178 dòng)
+│  │  └─ Form chính - Logic xử lý sự kiện
+│  │     ├─ Form1_Load() - Tải form
+│  │     ├─ SearchWeather() - Tìm kiếm thời tiết
+│  │     ├─ DisplayWeather() - Hiển thị kết quả
+│  │     ├─ LoadHistory() - Tải lịch sử
+│  │     ├─ ClearWeatherDisplay() - Xóa hiển thị
+│  │     └─ Event handlers (Click, KeyDown, SelectedIndexChanged)
+│  │
+│  ├─ ⭐ Form1.Designer.cs (203 dòng)
+│  │  └─ Thiết kế UI tự động
+│  │     ├─ Labels (lblTitle, lblTemperature, lblHumidity, v.v.)
+│  │     ├─ TextBox (txtCity)
+│  │     ├─ Buttons (btnSearch, btnClearHistory)
+│  │     ├─ PictureBox (picWeather)
+│  │     ├─ ListBox (lstHistory)
+│  │     └─ InitializeComponent() - Khởi tạo controls
+│  │
+│  ├─ ⭐ WeatherModel.cs (57 dòng)
+│  │  └─ Classes định nghĩa cấu trúc dữ liệu
+│  │     ├─ WeatherData
+│  │     │  ├─ City (string)
+│  │     │  ├─ Temperature (double)
+│  │     │  ├─ Humidity (int)
+│  │     │  ├─ WindSpeed (double)
+│  │     │  ├─ Description (string)
+│  │     │  ├─ Icon (string)
+│  │     │  └─ LastUpdated (DateTime)
+│  │     ├─ OpenWeatherResponse (Parse từ API)
+│  │     ├─ Main (Chứa Temp, Humidity)
+│  │     ├─ Weather (Chứa Main, Description, Icon)
+│  │     └─ Wind (Chứa Speed)
+│  │
+│  ├─ ⭐ ApiService.cs (81 dòng)
+│  │  └─ Tương tác với OpenWeather API
+│  │     ├─ API_BASE_URL (const)
+│  │     ├─ API_KEY (const) - "85a4e3c55f351fda9950632b67b39dea"
+│  │     ├─ GetWeatherByCityAsync(string) - Gọi API
+│  │     │  ├─ Xây dựng URL request
+│  │     │  ├─ Gửi HTTP GET request
+│  │     │  ├─ Parse JSON response
+│  │     │  └─ Convert sang WeatherData
+│  │     └─ GetWeatherIconUrl(string) - Lấy URL icon
+│  │
+│  └─ ⭐ HistoryService.cs (124 dòng)
+│     └─ Quản lý lịch sử tìm kiếm
+│        ├─ history (List<string>)
+│        ├─ historyFilePath (string) = "history.txt"
+│        ├─ LoadHistory() - Tải từ file
+│        ├─ AddCity(string) - Thêm thành phố
+│        ├─ SaveHistory() - Lưu vào file
+│        ├─ ClearHistory() - Xóa toàn bộ
+│        └─ GetHistory() - Lấy danh sách
+│
+├─ 🔧 CONFIGURATION & BUILD
+│  ├─ ⚙️ WeatherApp.csproj (17 dòng)
+│  │  └─ Cấu hình project .NET
+│  │     ├─ OutputType: WinExe
+│  │     ├─ TargetFramework: net6.0-windows
+│  │     ├─ Dependencies: Newtonsoft.Json 13.0.3
+│  │     └─ Language version: latest
+│  │
+│  ├─ 🚫 .gitignore
+│  │  └─ Loại bỏ file không cần thiết từ Git
+│  │     ├─ /bin, /obj
+│  │     ├─ .vs, .vscode
+│  │     ├─ *.suo, *.user
+│  │     └─ history.txt
+│  │
+│  └─ 📝 history.txt (auto-generated)
+│     └─ File lưu lịch sử tìm kiếm
+│        └─ Format: Một thành phố per dòng
+│
+├─ 📚 DOCUMENTATION - Tài liệu hướng dẫn
+│  ├─ 📑 INDEX.md
+│  │  └─ Danh sách tất cả file và hướng dẫn sử dụng
+│  │
+│  ├─ 📋 SUMMARY.md (362 dòng)
+│  │  └─ Tổng kết toàn bộ dự án
+│  │     ├─ Tên dự án, phiên bản, trạng thái
+│  │     ├─ Cấu trúc project
+│  │     ├─ Các tính năng hoàn thành
+│  │     ├─ Công nghệ sử dụng
+│  │     ├─ Luồng hoạt động
+│  │     ├─ Thống kê dự án
+│  │     └─ Kết quả học tập
+│  │
+│  ├─ 📖 INSTALL.md (169 dòng)
+│  │  └─ Hướng dẫn cài đặt chi tiết
+│  │     ├─ Yêu cầu tiên quyết
+│  │     ├─ Cài đặt .NET 6.0 SDK
+│  │     ├─ Tải source code
+│  │     ├─ Build project (dotnet build)
+│  │     ├─ Chạy ứng dụng (dotnet run)
+│  │     ├─ Cấu hình API
+│  │     ├─ Cấu hình tùy chỉnh
+│  │     └─ Khắc phục sự cố cài đặt
+│  │
+│  ├─ 🎮 USAGE.md (235 dòng)
+│  │  └─ Hướng dẫn sử dụng ứng dụng
+│  │     ├─ Giao diện ứng dụng
+│  │     ├─ Các bước sử dụng cơ bản
+│  │     ├─ Mẹo sử dụng hiệu quả
+│  │     ├─ Xử lý lỗi cơ bản
+│  │     ├─ Hiểu biết về thời tiết
+│  │     ├─ FAQ (Câu hỏi thường gặp)
+│  │     └─ Các thành phố phổ biến
+│  │
+│  ├─ ⚙️ CONFIG.md (229 dòng)
+│  │  └─ Hướng dẫn cấu hình và tùy chỉnh
+│  │     ├─ API Configuration
+│  │     │  ├─ Thay đổi API key
+│  │     │  ├─ Thay đổi ngôn ngữ
+│  │     │  ├─ Thay đổi đơn vị (Celsius/Fahrenheit)
+│  │     │  └─ Timeout settings
+│  │     ├─ History Configuration
+│  │     │  ├─ Đường dẫn file lịch sử
+│  │     │  └─ Giới hạn số lượng
+│  │     ├─ UI Configuration
+│  │     │  ├─ Kích thước form
+│  │     │  ├─ Font chữ
+│  │     │  ├─ Màu sắc
+│  │     │  └─ Vị trí controls
+│  │     ├─ Ví dụ tùy chỉnh
+│  │     └─ Cài đặt nâng cao (Retry, Caching)
+│  │
+│  ├─ 🔧 TROUBLESHOOTING.md (438 dòng)
+│  │  └─ Khắc phục sự cố
+│  │     ├─ 10 lỗi phổ biến
+│  │     │  ├─ dotnet: command not found
+│  │     │  ├─ Cannot find project file
+│  │     │  ├─ API Connection Failed
+│  │     │  ├─ City not found
+│  │     │  ├─ Exception in JSON Parsing
+│  │     │  ├─ Weather icon không hiển thị
+│  │     │  ├─ File history.txt bị lỗi
+│  │     │  ├─ System.Net.Http.HttpRequestException
+│  │     │  ├─ Form1 không hiển thị
+│  │     │  └─ NullReferenceException
+│  │     ├─ Debug tips
+│  │     ├─ Checklist debug
+│  │     ├─ Performance issues
+│  │     ├─ Network issues
+│  │     ├─ Storage issues
+│  │     ├─ Emergency reset
+│  │     └─ Cách report bug
+│  │
+│  ├─ 📋 README_VI.md (144 dòng)
+│  │  └─ Giới thiệu ứng dụng (tiếng Việt)
+│  │     ├─ Yêu cầu
+│  │     ├─ Cài đặt
+│  │     ├─ Chức năng chính
+│  │     ├─ Cấu trúc project
+│  │     ├─ Công nghệ
+│  │     └─ Ghi chú quan trọng
+│  │
+│  ├─ 📋 README.md
+│  │  └─ Giới thiệu ứng dụng (tiếng Anh)
+│  │
+│  ├─ 📋 WeatherApp_Specification.txt (165 dòng)
+│  │  └─ Đề tài chi tiết yêu cầu dự án
+│  │     ├─ Mục tiêu
+│  │     ├─ Công nghệ sử dụng
+│  │     ├─ Chức năng chính (6 chức năng)
+│  │     ├─ Thiết kế giao diện
+│  │     ├─ Luồng hoạt động
+│  │     ├─ Cấu trúc project gợi ý
+│  │     └─ Mở rộng tùy chọn
+│  │
+│  └─ 📄 PROJECT_STRUCTURE.txt (file này)
+│     └─ Cấu trúc dự án dạng tree
+│
+└─ 📊 THỐNG KÊ DÒNG CODE
+   ├─ Source Code: ~659 dòng
+   ├─ Tài liệu: ~1759 dòng
+   └─ Tổng cộng: ~2418 dòng
+
+================================================================================
+HƯỚNG DẪN ĐIỀU HƯỚNG
+================================================================================
+
+📌 NHANH CHÓNG:
+1. Muốn cài đặt?        → Đọc INSTALL.md
+2. Muốn sử dụng?        → Đọc USAGE.md
+3. Muốn tùy chỉnh?      → Đọc CONFIG.md
+4. Gặp lỗi?             → Đọc TROUBLESHOOTING.md
+5. Muốn hiểu tổng quát? → Đọc SUMMARY.md
+
+================================================================================
+QUY TRÌNH HOẠT ĐỘNG CHƯƠNG TRÌNH
+================================================================================
+
+NGƯỜI DÙNG
+    │
+    ▼
+┌─────────────────────────────────────┐
+│ Form1 (Giao diện)                   │
+│ - Nhập tên thành phố (txtCity)      │
+│ - Nhấn nút Search (btnSearch)       │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│ Form1.cs (Logic)                    │
+│ - SearchWeather()                   │
+│ - Validate input                    │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│ ApiService.cs (Gọi API)             │
+│ - GetWeatherByCityAsync()           │
+│ - URL: api.openweathermap.org       │
+│ - Method: GET                       │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+    OPENWEATHER SERVER
+               │
+               ▼ (JSON Response)
+┌─────────────────────────────────────┐
+│ ApiService.cs (Parse JSON)          │
+│ - JsonConvert.DeserializeObject()   │
+│ - Map sang WeatherModel             │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│ Form1.cs (Display)                  │
+│ - DisplayWeather()                  │
+│ - Update Labels                     │
+│ - Load Icon Image                   │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│ HistoryService.cs                   │
+│ - AddCity()                         │
+│ - SaveHistory()                     │
+│ - Ghi vào history.txt               │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│ history.txt                         │
+│ - Hanoi                             │
+│ - Tokyo                             │
+│ - Paris                             │
+└─────────────────────────────────────┘
+
+================================================================================
+DATABASE CƠ SỬ
+================================================================================
+
+Chỉ sử dụng một file đơn giản:
+
+FILE: history.txt
+FORMAT:
+    Hanoi
+    Tokyo
+    Paris
+    London
+
+GIỚI HẠN:
+- Tối đa 20 thành phố (có thể cấu hình)
+- Thành phố mới được thêm vào đầu
+- Xóa được từ "Clear History" button
+
+================================================================================
+DEPENDENCIES (PHỤ THUỘC)
+================================================================================
+
+.NET 6.0 WinForms
+├─ System.Windows.Forms (UI)
+├─ System.Net.Http (API/HTTP)
+├─ Newtonsoft.Json 13.0.3 (JSON parsing)
+├─ System.IO (File operations)
+└─ System.Collections.Generic (Data structures)
+
+================================================================================
+CÁCH CHẠY LỆNH
+================================================================================
+
+1. CÀI ĐẶT DEPENDENCIES:
+   $ dotnet restore
+
+2. BUILD PROJECT:
+   $ dotnet build
+
+3. CHẠY ỨNG DỤNG:
+   $ dotnet run
+
+4. PUBLISH (RELEASE):
+   $ dotnet publish -c Release -o ./publish
+
+   Sau đó chạy:
+   ./publish/WeatherApp.exe
+
+================================================================================
+MỤC CÓ THỂ MỞ RỘNG (FUTURE ENHANCEMENTS)
+================================================================================
+
+[ ] 5-day forecast (Dự báo 5 ngày)
+[ ] AutoComplete (Gợi ý thành phố)
+[ ] Dark mode (Chế độ tối)
+[ ] Database (SQL Server, SQLite)
+[ ] Charts (Biểu đồ nhiệt độ)
+[ ] Favorites (Thành phố yêu thích)
+[ ] Alerts (Cảnh báo thời tiết cực đoan)
+[ ] GPS Location (Vị trí hiện tại)
+[ ] PDF Export (Xuất PDF)
+[ ] Multi-language (Hỗ trợ nhiều ngôn ngữ)
+
+================================================================================
+THÔNG TIN DỰ ÁN
+================================================================================
+
+Tên:        ỨNG DỤNG TRA CỨU THỜI TIẾT (Weather App)
+Phiên bản:  1.0.0
+Ngôn ngữ:   C# 11+
+Framework:  .NET 6.0 WinForms
+API:        OpenWeatherMap (https://openweathermap.org/api)
+Status:     ✅ Hoàn thành
+Ngày:       2024
+
+================================================================================
+KIẾN THỨC HỌC ĐƯỢC
+================================================================================
+
+Qua dự án này, bạn sẽ hiểu:
+
+1. C# WinForms: Tạo giao diện desktop
+2. OOP: Classes, inheritance, polymorphism
+3. Async/Await: Lập trình không đồng bộ
+4. HTTP API: Gọi API từ .NET
+5. JSON Parsing: Xử lý dữ liệu JSON
+6. File I/O: Đọc ghi file
+7. Event Handling: Xử lý sự kiện
+8. Error Handling: Xử lý ngoại lệ
+9. SOLID Principles: Thiết kế code tốt
+10. Best Practices: Cách làm việc chuyên nghiệp
+
+================================================================================
+LIÊN HỆ & HỖ TRỢ
+================================================================================
+
+Gặp vấn đề?  → Xem TROUBLESHOOTING.md
+Sai cách?    → Xem USAGE.md
+Cần cập nhật? → Xem CONFIG.md
+Hỏi tổng quát? → Xem SUMMARY.md
+
+================================================================================
+
+Tạo bởi: Claude AI
+Phiên bản: 1.0.0
+Cập nhật lần cuối: 2024
+Trạng thái: ✓ Hoàn thành 100%
+
+================================================================================
