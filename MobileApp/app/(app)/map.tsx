@@ -246,6 +246,14 @@ export default function MapScreen() {
           <Text style={styles.actionBtnLabel}>QR</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => router.push('/(app)/tour')}
+        >
+          <Text style={styles.actionBtnText}>🗺️</Text>
+          <Text style={styles.actionBtnLabel}>Tours</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.actionBtn} onPress={loadPOIs}>
           <Text style={styles.actionBtnText}>🔄</Text>
           <Text style={styles.actionBtnLabel}>Refresh</Text>
