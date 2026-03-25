@@ -168,9 +168,17 @@ export default function MapScreen() {
             {userLat && userLng ? '📍 Tracking' : '📍 Location Off'}
           </Text>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => router.push('/(app)/settings')}
+          >
+            <Text style={styles.headerBtnText}>⚙️</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Location Permission Warning */}
@@ -341,6 +349,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  headerBtnText: {
+    fontSize: 16,
   },
 
   // Warning Banner
