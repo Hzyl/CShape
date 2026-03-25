@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useTheme } from '../../src/stores/themeStore';
 import { useAnalyticsStore } from '../../src/stores/analyticsStore';
+import { mmkvStorage } from '../../src/utils/mmkvStorage';
 
 /**
  * Settings Screen (Phase 8)
@@ -46,8 +47,13 @@ export default function SettingsScreen() {
         {
           text: 'Clear Cache',
           onPress: async () => {
-            // TODO: Integrate with cache store to clear
-            Alert.alert('Success', 'Cache cleared successfully');
+            try {
+              await mmkvStorage.clear();
+              Alert.alert('Success', 'Cache cleared successfully');
+            } catch (err) {
+              console.error('Error clearing cache:', err);
+              Alert.alert('Error', 'Failed to clear cache');
+            }
           },
           style: 'destructive',
         },

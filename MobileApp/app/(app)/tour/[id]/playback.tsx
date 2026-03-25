@@ -37,8 +37,8 @@ export default function TourPlaybackScreen() {
   const [error, setError] = useState<string | null>(null);
   const [poiLoading, setPoiLoading] = useState(false);
 
-  const sessionIdRef = useRef(sessionId as string);
-  const playbackStartRef = useRef<number>(0);
+  const sessionIdRef = useRef<string>(typeof sessionId === 'string' ? sessionId : '');
+  const playbackStartRef = useRef<number>(Date.now());
 
   // Load tour and initial POI
   useEffect(() => {
@@ -82,9 +82,10 @@ export default function TourPlaybackScreen() {
   const loadPOIForStop = async (stop: any) => {
     try {
       setPoiLoading(true);
-      const poiRes = await poiService.getPOIById(stop.poi_id);
+      // poiService.getPOIById already returns POI, not wrapped in response
+      const poi = await poiService.getPOIById(stop.poi_id);
       const newPois = new Map(pois);
-      newPois.set(stop.poi_id, poiRes.data);
+      newPois.set(stop.poi_id, poi);
       setPOIs(newPois);
     } catch (err) {
       console.error('Error loading POI:', err);
@@ -120,11 +121,12 @@ export default function TourPlaybackScreen() {
     }
   };
 
-  const handlePreviousStop = () => {
+  const handlePreviousStop = async () => {
     if (currentStopIndex > 0) {
-      setCurrentStopIndex(currentStopIndex - 1);
+      const prevIndex = currentStopIndex - 1;
+      setCurrentStopIndex(prevIndex);
       if (tour?.stops) {
-        loadPOIForStop(tour.stops[currentStopIndex - 1]);
+        await loadPOIForStop(tour.stops[prevIndex]);
       }
     }
   };
@@ -191,7 +193,7 @@ export default function TourPlaybackScreen() {
 
   const currentStop = tour.stops[currentStopIndex];
   const currentPOI = pois.get(currentStop.poi_id);
-  const audioUrl = currentPOI ? `${currentPOI.audio_base_url}/${language}.mp3` : undefined;
+  const audioUrl = currentPOI?.audioUrl;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -238,10 +240,10 @@ export default function TourPlaybackScreen() {
               {/* Description */}
               <Text style={styles.description}>
                 {language === 'vi'
-                  ? currentPOI.descriptionVi || currentPOI.description
+                  ? currentPOI.descriptionVi
                   : language === 'en'
-                  ? currentPOI.descriptionEn || currentPOI.descriptionVi || currentPOI.description
-                  : currentPOI.descriptionVi || currentPOI.description}
+                  ? currentPOI.descriptionEn || currentPOI.descriptionVi
+                  : currentPOI.descriptionJp || currentPOI.descriptionVi}
               </Text>
             </View>
 

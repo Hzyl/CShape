@@ -77,7 +77,10 @@ export const useGeofence = (pois: POI[]) => {
         );
 
         const isInside = distance <= (poi.triggerRadius || 100);
-        const checkState = checkStateRef.current.get(poi.id)!;
+        const checkState = checkStateRef.current.get(poi.id);
+
+        // Skip if check state hasn't been initialized yet
+        if (!checkState) return;
 
         if (isInside) {
           checkState.insideCount++;

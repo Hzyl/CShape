@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { mmkvStorage } from '../utils/mmkvStorage';
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+
 export interface AnalyticsEvent {
   event_type: 'poi_view' | 'audio_play' | 'tour_start' | 'tour_complete' | 'qr_scan' | 'geofence_enter';
   poi_id?: string;
@@ -85,9 +87,10 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
     const state = get();
     if (state.eventQueue.length === 0) return;
 
+    const eventCount = state.eventQueue.length; // Capture before clearing
     try {
       // POST /api/v1/analytics/events with batch
-      const response = await fetch('http://localhost:5000/api/v1/analytics/events', {
+      const response = await fetch(`${API_URL}/analytics/events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,7 +106,7 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
         // Clear queue after successful sync
         set({ eventQueue: [] });
         await mmkvStorage.save('analytics_queue', []);
-        console.log(`[Analytics] Synced ${state.eventQueue.length} events`);
+        console.log(`[Analytics] Synced ${eventCount} events`);
       }
     } catch (err) {
       console.error('[Analytics] Failed to flush events:', err);

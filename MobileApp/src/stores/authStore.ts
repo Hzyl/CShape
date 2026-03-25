@@ -5,8 +5,13 @@ import { create } from 'zustand';
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 const TOKEN_STORAGE_KEY = 'admin_token';
 
+export interface User {
+  email: string;
+  role: string;
+}
+
 export interface AuthState {
-  user: { email: string; role: string } | null;
+  user: User | null;
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -14,7 +19,7 @@ export interface AuthState {
   isLocked: number; // timestamp when locked, 0 if not locked
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  setUser: (user: any) => void;
+  setUser: (user: User) => void;
   checkTokenValidity: () => boolean;
   initializeAuth: () => Promise<void>; // Load token from storage on app startup
 }
@@ -79,7 +84,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       set({
         token: responseData.accessToken,
-        user: { email: responseData.email, role: responseData.role },
+        user: {
+          email: responseData.email,
+          role: responseData.role,
+        } as User,
         isAuthenticated: true,
         failedLoginAttempts: 0,
         isLocked: 0,
@@ -116,7 +124,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
-  setUser: (user: any) => {
+  setUser: (user: User) => {
     set({ user });
   },
 

@@ -12,6 +12,13 @@ import { useAnalyticsStore, AnalyticsEvent } from '../stores/analyticsStore';
 export const useAnalytics = () => {
   const { trackEvent, flushEvents, setOnlineStatus, getSummary, eventQueue } = useAnalyticsStore();
 
+  const handleAppStateChange = (state: string) => {
+    if (state === 'background') {
+      // Flush events before app goes to background
+      flushEvents();
+    }
+  };
+
   // Monitor network status
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -25,7 +32,7 @@ export const useAnalytics = () => {
     });
 
     return unsubscribe;
-  }, []);
+  }, [flushEvents, setOnlineStatus]);
 
   // Sync events periodically (every 30 seconds) and on app background
   useEffect(() => {
@@ -42,14 +49,7 @@ export const useAnalytics = () => {
       subscription.remove();
       clearInterval(interval);
     };
-  }, [eventQueue]);
-
-  const handleAppStateChange = (state: string) => {
-    if (state === 'background') {
-      // Flush events before app goes to background
-      flushEvents();
-    }
-  };
+  }, [eventQueue, flushEvents]);
 
   /**
    * Track POI view event

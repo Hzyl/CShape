@@ -161,17 +161,14 @@ export const useAudioPlayer = (audioUrl: string | undefined) => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      const cleanup = async () => {
-        if (soundRef.current) {
-          try {
-            await soundRef.current.pauseAsync();
-            await soundRef.current.unloadAsync();
-          } catch (err) {
-            // Ignore cleanup errors
-          }
-        }
-      };
-      cleanup();
+      // Fire-and-forget async cleanup - sound will be cleaned up when component unmounts
+      if (soundRef.current) {
+        soundRef.current.pauseAsync().catch(() => {});
+        soundRef.current.unloadAsync().catch(() => {});
+      }
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
     };
   }, []);
 

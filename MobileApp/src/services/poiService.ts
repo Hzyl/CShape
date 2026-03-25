@@ -72,7 +72,12 @@ export const poiService = {
   async getPOIById(id: string): Promise<POI> {
     try {
       const response = await apiGet(`/poi/${id}`);
-      return response.data?.data || response.data;
+      // Handle both { data: POI } and { data: { data: POI } } response structures
+      const data = response.data?.data || response.data;
+      if (!data) {
+        throw new Error('Invalid response structure');
+      }
+      return data as POI;
     } catch (error: any) {
       console.error(`Error fetching POI ${id}:`, error);
       throw error;
@@ -86,7 +91,12 @@ export const poiService = {
   async getPOIByQRHash(hash: string): Promise<POI> {
     try {
       const response = await apiGet(`/poi/qr/${hash}`);
-      return response.data?.data || response.data;
+      // Handle both { data: POI } and { data: { data: POI } } response structures
+      const data = response.data?.data || response.data;
+      if (!data) {
+        throw new Error('Invalid response structure');
+      }
+      return data as POI;
     } catch (error: any) {
       console.error(`Error fetching POI by QR hash ${hash}:`, error);
       throw error;
@@ -110,7 +120,9 @@ export const poiService = {
       });
 
       const response = await apiGet(`/poi/nearby?${params}`);
-      return response.data?.data || response.data || [];
+      // Handle both array and { data: array } response structures
+      const data = response.data?.data || response.data || [];
+      return Array.isArray(data) ? data : [];
     } catch (error: any) {
       console.error('Error fetching nearby POIs:', error);
       throw error;
