@@ -1,8 +1,8 @@
-// MOCK API Service - Replace endpoints when real backend is ready
-// API Base URL: /api/v1
+import axios, { AxiosInstance } from 'axios';
+import { useAuthStore } from '@/stores/authStore';
 
 export interface POI {
-  poi_id: string;
+  id: string;
   name: string;
   type: 'major' | 'minor';
   category?: string;
@@ -15,162 +15,169 @@ export interface POI {
   description_jp?: string;
   image_urls?: string[];
   audio_status: 'pending' | 'processing' | 'completed' | 'failed';
+  audio_url?: string;
   qr_code_hash: string;
   created_at?: string;
   updated_at?: string;
 }
 
-// Mock data
-const mockPOIs: POI[] = [
-  {
-    poi_id: 'poi-001',
-    name: 'Quán Ốc Oanh',
-    type: 'major',
-    latitude: 10.7769,
-    longitude: 106.6956,
-    trigger_radius: 40,
-    priority: 1,
-    description_vi: 'Quán ốc nổi tiếng trên phố Vĩnh Khánh. Ốc buộc tươi ngon, giá tốt.',
-    description_en: 'Famous snail restaurant at Vinh Khanh Street.',
-    description_jp: 'ベトナム料理の有名なレストラン。',
-    image_urls: [],
-    audio_status: 'completed',
-    qr_code_hash: 'qr-001-abc123',
-  },
-  {
-    poi_id: 'poi-002',
-    name: 'Bún Bò Huế Quốc Tuấn',
-    type: 'major',
-    latitude: 10.7775,
-    longitude: 106.6965,
-    trigger_radius: 35,
-    priority: 2,
-    description_vi: 'Bún bò Huế nổi tiếng với nước dùng đặc biệt.',
-    description_en: 'Huế beef noodle soup with special broth.',
-    audio_status: 'processing',
-    qr_code_hash: 'qr-002-def456',
-  },
-  {
-    poi_id: 'poi-003',
-    name: 'Trạm xe buýt Xóm Chiếu',
-    type: 'minor',
-    category: 'ben_thuyen',
-    latitude: 10.7760,
-    longitude: 106.6940,
-    trigger_radius: 30,
-    priority: 5,
-    description_vi: 'Trạm xe buýt Xóm Chiếu. Có biển QR code để quét.',
-    audio_status: 'completed',
-    qr_code_hash: 'qr-003-ghi789',
-  },
-];
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
+// Create axios instance with JWT interceptor
+const createApiClient = (): AxiosInstance => {
+  const client = axios.create({
+    baseURL: API_URL,
+    timeout: 10000,
+  });
+
+  // Add JWT token to all requests
+  client.interceptors.request.use((config) => {
+    const token = useAuthStore.getState().token;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+
+  // Handle responses
+  client.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        // Token expired or invalid
+        useAuthStore.getState().logout();
+        window.location.href = '/login';
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  return client;
+};
+
+const apiClient = createApiClient();
 
 export const poiService = {
   async getPOIs(page = 1, limit = 20, filters?: any) {
-    // GET /api/v1/poi/load-all
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    try {
+      const response = await apiClient.get('/poi/load-all', {
+        params: {
+          page,
+          limit,
+          search: filters?.search,
+          type: filters?.type && filters.type !== 'all' ? filters.type : undefined,
+        },
+      });
 
-    let filtered = [...mockPOIs];
-
-    // Apply filters
-    if (filters?.search) {
-      filtered = filtered.filter((poi) =>
-        poi.name.toLowerCase().includes(filters.search.toLowerCase())
-      );
+      const { data } = response.data;
+      return {
+        data: (data?.data || []).map((poi: any) => ({
+          poi_id: poi.id,
+          ...poi,
+        })),
+        total: data?.total || 0,
+      };
+    } catch (error) {
+      console.error('Error fetching POIs:', error);
+      throw error;
     }
-    if (filters?.type) {
-      filtered = filtered.filter((poi) => poi.type === filters.type);
-    }
-
-    // Paginate
-    const start = (page - 1) * limit;
-    const end = start + limit;
-    const data = filtered.slice(start, end);
-
-    return { data, total: filtered.length };
   },
 
   async getPOIById(id: string) {
-    // GET /api/v1/poi/:id
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    const poi = mockPOIs.find((p) => p.poi_id === id);
-    if (!poi) throw new Error('POI not found');
-    return { data: poi };
+    try {
+      const response = await apiClient.get(`/poi/${id}`);
+      const poi = response.data.data;
+      return { data: { poi_id: poi.id, ...poi } };
+    } catch (error) {
+      console.error('Error fetching POI:', error);
+      throw error;
+    }
   },
 
-  async createPOI(poi: Omit<POI, 'poi_id' | 'qr_code_hash' | 'audio_status'>) {
-    // POST /api/v1/poi
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+  async createPOI(poi: Omit<POI, 'id' | 'qr_code_hash' | 'audio_status'>) {
+    try {
+      const response = await apiClient.post('/poi', {
+        name: poi.name,
+        type: poi.type,
+        category: poi.category,
+        latitude: poi.latitude,
+        longitude: poi.longitude,
+        triggerRadius: poi.trigger_radius,
+        priority: poi.priority,
+        descriptionVi: poi.description_vi,
+        descriptionEn: poi.description_en,
+        descriptionJp: poi.description_jp,
+        imageUrls: poi.image_urls,
+      });
 
-    const newPOI: POI = {
-      ...poi,
-      poi_id: 'poi-' + Date.now(),
-      qr_code_hash: 'qr-' + Math.random().toString(36).substr(2, 9),
-      audio_status: 'pending',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    mockPOIs.push(newPOI);
-    // Simulate background task: generate audio
-    setTimeout(() => {
-      const idx = mockPOIs.findIndex((p) => p.poi_id === newPOI.poi_id);
-      if (idx !== -1) {
-        mockPOIs[idx].audio_status = 'completed';
-      }
-    }, 2000);
-
-    return { data: newPOI };
+      const newPoi = response.data.data;
+      return { data: { poi_id: newPoi.id, ...newPoi } };
+    } catch (error) {
+      console.error('Error creating POI:', error);
+      throw error;
+    }
   },
 
-  async updatePOI(id: string, updates: Partial<POI>) {
-    // PUT /api/v1/poi/:id
-    await new Promise((resolve) => setTimeout(resolve, 400));
+  async updatePOI(id: string, poi: Partial<POI>) {
+    try {
+      const response = await apiClient.put(`/poi/${id}`, {
+        name: poi.name,
+        type: poi.type,
+        category: poi.category,
+        latitude: poi.latitude,
+        longitude: poi.longitude,
+        triggerRadius: poi.trigger_radius,
+        priority: poi.priority,
+        descriptionVi: poi.description_vi,
+        descriptionEn: poi.description_en,
+        descriptionJp: poi.description_jp,
+        imageUrls: poi.image_urls,
+      });
 
-    const idx = mockPOIs.findIndex((p) => p.poi_id === id);
-    if (idx === -1) throw new Error('POI not found');
-
-    mockPOIs[idx] = {
-      ...mockPOIs[idx],
-      ...updates,
-      updated_at: new Date().toISOString(),
-    };
-
-    return { data: mockPOIs[idx] };
+      const updated = response.data.data;
+      return { data: { poi_id: updated.id, ...updated } };
+    } catch (error) {
+      console.error('Error updating POI:', error);
+      throw error;
+    }
   },
 
   async deletePOI(id: string) {
-    // DELETE /api/v1/poi/:id
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    const idx = mockPOIs.findIndex((p) => p.poi_id === id);
-    if (idx === -1) throw new Error('POI not found');
-
-    const poi = mockPOIs[idx];
-    mockPOIs.splice(idx, 1);
-
-    return { data: { success: true, deleted: poi } };
+    try {
+      const response = await apiClient.delete(`/poi/${id}`);
+      return { data: { success: response.data.success } };
+    } catch (error) {
+      console.error('Error deleting POI:', error);
+      throw error;
+    }
   },
 
-  async getNearby(lat: number, lng: number, radius: number = 1000, lang: string = 'vi') {
-    // GET /api/v1/poi/nearby
-    // Simple distance calculation
-    const nearby = mockPOIs.filter((poi) => {
-      const dx = poi.latitude - lat;
-      const dy = poi.longitude - lng;
-      const distance = Math.sqrt(dx * dx + dy * dy) * 111000; // rough km to meter conversion
-      return distance <= radius;
-    });
+  async getNearby(lat: number, lng: number, radius: number = 1000) {
+    try {
+      const response = await apiClient.get('/poi/nearby', {
+        params: { latitude: lat, longitude: lng, radius },
+      });
 
-    return { data: nearby };
+      const pois = response.data.data || [];
+      return {
+        data: pois.map((poi: any) => ({
+          poi_id: poi.id,
+          ...poi,
+        })),
+      };
+    } catch (error) {
+      console.error('Error fetching nearby POIs:', error);
+      throw error;
+    }
   },
 
   async getByQR(hash: string) {
-    // GET /api/v1/poi/by-qr
-    const poi = mockPOIs.find((p) => p.qr_code_hash === hash);
-    if (!poi) throw new Error('QR code not found');
-    return { data: poi };
+    try {
+      // Note: Backend doesn't have this endpoint yet, implement if needed
+      throw new Error('Not implemented');
+    } catch (error) {
+      console.error('Error fetching POI by QR:', error);
+      throw error;
+    }
   },
 };
