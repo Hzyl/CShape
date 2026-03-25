@@ -14,6 +14,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { poiService, POI } from '../../../src/services/poiService';
 import { AudioPlayer } from '../../../src/components/AudioPlayer';
 import { useAudioStore } from '../../../src/stores/audioStore';
+import { useAnalytics } from '../../../src/hooks/useAnalytics';
 
 /**
  * POI Detail Screen - Display POI information and audio player
@@ -31,6 +32,7 @@ export default function POIDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { language, setCurrentPOI } = useAudioStore();
+  const { trackPOIView } = useAnalytics();
   const [poi, setPOI] = useState<POI | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +52,9 @@ export default function POIDetailScreen() {
         const poiData = await poiService.getPOIById(id);
         setPOI(poiData);
         setCurrentPOI(id);
+
+        // Track POI view for analytics
+        await trackPOIView(id, poiData.latitude, poiData.longitude);
       } catch (err: any) {
         console.error('Error loading POI:', err);
         const errorMsg = err.message || 'Failed to load POI. Please try again.';
