@@ -8,28 +8,39 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  ListRenderItem,
+  FlatList,
+  Modal,
 } from 'react-native';
 import MapView from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useLocation } from '../../src/hooks/useLocation';
+import { useGeofence } from '../../src/hooks/useGeofence';
 import { Map } from '../../src/components/Map';
 import { poiService, POI } from '../../src/services/poiService';
 
 /**
- * Map Screen - Main discovery screen (Phase 2 Implementation)
+ * Map Screen - Main discovery screen (Phase 2-5 Implementation)
  * Displays:
  * - Interactive Google Map with POI markers
- * - User's current location
+ * - User's current location (blue dot)
  * - Nearby POIs with different priority colors
  * - Search/filter functionality
- * - Quick navigation to other screens
+ * - Geofencing integration (Phase 5) - auto-plays when near POI
  *
  * Navigation:
  * - Tap POI marker → navigate to POI detail screen
  * - Tap QR button → open QR scanner
  * - Tap Tours → browse tours
  * - Tap Logout → exit app
+ *
+ * Geofencing (Phase 5):
+ * - Continuously polls GPS location
+ * - Calculates distance to all POIs
+ * - Auto-triggers audio when entering zone (within triggerRadius)
+ * - Prevents re-triggers with 5-minute cooldown
+ * - Shows badge for POIs currently in zone
  */
 export default function MapScreen() {
   const router = useRouter();
@@ -44,6 +55,10 @@ export default function MapScreen() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredPois, setFilteredPois] = useState<POI[]>([]);
+  const [nearbyListVisible, setNearbyListVisible] = useState(false);
+
+  // Geofencing (Phase 5)
+  const { enteredPOIIds, nearbyPOIs } = useGeofence(pois);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -122,6 +137,27 @@ export default function MapScreen() {
     }
   };
 
+  const renderNearbyItem: ListRenderItem<POI> = ({ item }) => {
+    const isNow = enteredPOIIds.includes(item.id || '');
+    return (
+      <TouchableOpacity
+        style={[styles.nearbyListItem, isNow && styles.nearbyListItemActive]}
+        onPress={() => {
+          setNearbyListVisible(false);
+          handlePOIPress(item);
+        }}
+      >
+        <View style={styles.nearbyListItemContent}>
+          <Text style={styles.nearbyListItemName}>
+            {isNow ? '🎵' : '📍'} {item.name}
+          </Text>
+          <Text style={styles.nearbyListItemType}>{item.type}</Text>
+        </View>
+        {isNow && <Text style={styles.nearbyBadge}>NOW PLAYING</Text>}
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -194,18 +230,20 @@ export default function MapScreen() {
 
         <TouchableOpacity
           style={styles.actionBtn}
-          onPress={() => router.push('/(app)/qr-scanner')}
+          onPress={() => setNearbyListVisible(true)}
         >
-          <Text style={styles.actionBtnText}>📱</Text>
-          <Text style={styles.actionBtnLabel}>QR</Text>
+          <Text style={styles.actionBtnText}>🎵</Text>
+          <Text style={styles.actionBtnLabel}>
+            Nearby ({nearbyPOIs.length})
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.actionBtn}
-          onPress={() => router.push('/(app)/tours')}
+          onPress={() => router.push('/(app)/qr-scanner')}
         >
-          <Text style={styles.actionBtnText}>🎯</Text>
-          <Text style={styles.actionBtnLabel}>Tours</Text>
+          <Text style={styles.actionBtnText}>📱</Text>
+          <Text style={styles.actionBtnLabel}>QR</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionBtn} onPress={loadPOIs}>
@@ -213,6 +251,46 @@ export default function MapScreen() {
           <Text style={styles.actionBtnLabel}>Refresh</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Nearby POIs Modal */}
+      <Modal
+        visible={nearbyListVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setNearbyListVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {enteredPOIIds.length > 0
+                  ? `🎵 Playing (${enteredPOIIds.length})`
+                  : '📍 Nearby POIs'}
+              </Text>
+              <TouchableOpacity onPress={() => setNearbyListVisible(false)}>
+                <Text style={styles.modalCloseBtn}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Nearby POI List */}
+            {nearbyPOIs.length > 0 ? (
+              <FlatList
+                data={nearbyPOIs}
+                renderItem={renderNearbyItem}
+                keyExtractor={(item) => item.id || item.name}
+                style={styles.nearbyList}
+              />
+            ) : (
+              <View style={styles.emptyNearby}>
+                <Text style={styles.emptyNearbyText}>
+                  No nearby POIs within 1km
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -354,5 +432,94 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#2980b9',
     fontWeight: '600',
+  },
+
+  // Modal Overlay & Content
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '80%',
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+  },
+  modalCloseBtn: {
+    fontSize: 24,
+    color: '#999',
+    fontWeight: '300',
+  },
+
+  // Nearby POI List
+  nearbyList: {
+    padding: 0,
+  },
+  nearbyListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  nearbyListItemActive: {
+    backgroundColor: '#f0f7ff',
+  },
+  nearbyListItemContent: {
+    flex: 1,
+  },
+  nearbyListItemName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  nearbyListItemType: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  nearbyBadge: {
+    backgroundColor: '#2980b9',
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+
+  // Empty Nearby State
+  emptyNearby: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+  },
+  emptyNearbyText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
