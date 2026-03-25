@@ -7,7 +7,7 @@
 |Tên dự án|Ứng dụng Thuyết minh Đa ngôn ngữ Phố Ẩm thực Vĩnh Khánh|
 |Phiên bản|1\.0 — MVP|
 |Trạng thái|Draft — Chờ review kỹ thuật|
-|Phạm vi hệ thống|Mobile App (React Native/Expo) + Web CMS (Admin) + Backend API (FastAPI + Node.js)|
+|Phạm vi hệ thống|Mobile App (React Native/Expo) + Web CMS (Admin) + Backend API (C# ASP.NET Core 8 + MongoDB)|
 |Địa bàn|Phố Vĩnh Khánh, Quận 4, TP.HCM|
 |Ngôn ngữ hỗ trợ|Tiếng Việt (vi), Tiếng Anh (en), Tiếng Nhật (jp) — mở rộng được|
 |Mục tiêu học thuật|Đồ án môn học / Tài liệu lưu trữ dự án|
@@ -140,9 +140,8 @@ Hệ thống gồm ba thành phần chính: (1) Ứng dụng di động (Mobile 
 | :- | :- | :- | :- |
 |Client — Mobile|React Native / Expo App|React Native, Expo SDK, MapLibre GL / Google Maps|iOS & Android. Geofencing, QR, Audio Player, Offline|
 |Client — Web|Admin CMS Dashboard|React / Vite (hoặc Next.js), Google Maps JS SDK|Desktop browser. CRUD POI, Tour, Analytics|
-|API Gateway|REST API (chính)|FastAPI (Python) — prefix /api/v1|Module: content, audio, admin, ai, analytics, localization|
-|API — Node layer|Webhook / helper tasks|Node.js / Express|Optional: xử lý file upload, QR generation|
-|Database|Document store|MongoDB (Motor async driver)|Collections: pois, audio\_content, tours, admin\_users, analytics\_logs|
+|API Gateway|REST API (chính)|C# ASP.NET Core 8 — prefix /api/v1|Module: content, audio, admin, ai, analytics, localization. Swagger/OpenAPI docs|
+|Database|Document store|MongoDB (C# Driver async)|Collections: pois, audio_content, tours, admin_users, analytics_logs|
 |File Storage|Audio MP3, ảnh POI|Local disk / S3-compatible|Cache key: MD5(text:lang)|
 |TTS Engine|Text-to-Speech|Edge-TTS (Microsoft — free) + SpeechSynthesis fallback|5 ngôn ngữ, offline fallback|
 |Translation|Dịch tự động|deep-translator (Google Translate free wrapper)|Dịch trước khi TTS|
@@ -759,9 +758,8 @@ Sử dụng Google Gemini Flash (hoặc Groq free tier) để hỗ trợ admin v
 | :- | :- | :- | :- |
 |Mobile App|React Native / Expo|MIT / Free|iOS + Android từ 1 codebase|
 |Web CMS|React 18 + Vite|MIT / Free|SPA admin dashboard|
-|Backend API|FastAPI (Python)|MIT / Free|async, /api/v1 prefix|
-|Backend helper|Node.js / Express|MIT / Free|File upload, QR generation|
-|Database|MongoDB + Motor|SSPL / Free tier|Async driver cho FastAPI|
+|Backend API|C# ASP.NET Core 8|MIT / Free|Async/await, /api/v1 prefix, Swagger UI, Dependency Injection|
+|Database|MongoDB + C# Driver|SSPL / Free tier|Async driver cho ASP.NET Core|
 |Map (mobile)|MapLibre GL JS hoặc Google Maps SDK|Open-source / Free tier|Vector maps|
 |Map (CMS)|Google Maps JS SDK|Free tier (28k load/tháng)|Admin POI placement|
 |Geofencing|Turf.js (Haversine)|MIT / Free|Client-side distance calc|
@@ -773,8 +771,8 @@ Sử dụng Google Gemini Flash (hoặc Groq free tier) để hỗ trợ admin v
 |State (mobile)|Zustand|MIT / Free|Lightweight state management|
 |QR Scanning|expo-camera / react-native-vision-camera|MIT / Free||
 |Audio Playback|expo-av / react-native-track-player|MIT / Free|Background audio support|
-|Auth tokens|PyJWT (Python)|MIT / Free|HS256 JWT|
-|Password|bcrypt (Python)|Apache 2.0 / Free||
+|Auth tokens|System.IdentityModel.Tokens.Jwt|MIT / Free|HS256 JWT tokens for C#|
+|Password|BCrypt.Net-Next|Apache 2.0 / Free|Secure password hashing|
 
 
 
@@ -837,7 +835,7 @@ Sử dụng Google Gemini Flash (hoặc Groq free tier) để hỗ trợ admin v
 |**#**|**Open Question**|**Assumption hiện tại**|**Owner**|
 | :- | :- | :- | :- |
 |OQ-01|Map provider: Google Maps SDK cho mobile hay MapLibre GL (open-source)?|Dùng MapLibre + Google Maps free tile cho CMS (admin không cần offline)|Tech Lead|
-|OQ-02|Backend: FastAPI đảm nhận toàn bộ hay cần Node.js layer riêng?|FastAPI là primary API. Node.js chỉ cho QR generation + file upload helper.|Tech Lead|
+|OQ-02|Backend: C# ASP.NET Core 8 đảm nhận toàn bộ hay cần helper tasks?|C# ASP.NET Core 8 là primary API xử lý tất cả: Auth, POI CRUD, Tours, Analytics, Audio TTS, Localization. Không cần Node.js layer riêng.|Tech Lead|
 |OQ-03|Edge-TTS có ổn định đủ cho production? Có cần plan B?|Dùng Edge-TTS + SpeechSynthesis fallback. Azure TTS là plan B nếu cần.|Tech Lead|
 |OQ-04|Offline map: PMTiles self-host hay dùng cloud map API?|Cloud map API (free tier). PMTiles là Future Enhancement.|Tech Lead / DevOps|
 |OQ-05|Gemini free tier có đủ quota cho demo/đồ án không (15 RPM)?|Đủ cho demo. Rate limit 10/ngày/admin để không vượt quota.|Dev team|
@@ -872,7 +870,8 @@ Sử dụng Google Gemini Flash (hoặc Groq free tier) để hỗ trợ admin v
 
 |**Phiên bản**|**Ngày**|**Tác giả**|**Thay đổi**|
 | :- | :- | :- | :- |
-|v1.0|2025|Nhóm phát triển|PRD khởi tạo — Full system MVP. Nguồn: StepLowCode\_UI\_Flow\_Rule.txt + system-presentation.html (tham khảo)|
+|v1.1|2026-03-25|Nhóm phát triển|PRD cập nhật — Thay đổi backend từ FastAPI (Python) sang C# ASP.NET Core 8. Cập nhật tech stack, API layer, auth/password dependencies.|
+|v1.0|2025|Nhóm phát triển|PRD khởi tạo — Full system MVP. Nguồn: StepLowCode_UI_Flow_Rule.txt + system-presentation.html (tham khảo)|
 
 
 # **Phụ lục B: Ghi chú kỹ thuật tham khảo**
