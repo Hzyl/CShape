@@ -278,6 +278,44 @@ namespace CShapeBackend.Controllers
                 });
             }
         }
+
+        [HttpGet("qr/{hash}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetByQRHash(string hash)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(hash))
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "QR hash cannot be empty"
+                    });
+
+                var poi = await _poiService.GetPOIByQRHashAsync(hash);
+                if (poi == null)
+                    return NotFound(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "POI not found for the given QR code"
+                    });
+
+                return Ok(new ApiResponse<POIResponse>
+                {
+                    Success = true,
+                    Data = poi
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error fetching POI by QR hash: {ex.Message}");
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Error fetching POI by QR hash"
+                });
+            }
+        }
     }
 
     [ApiController]

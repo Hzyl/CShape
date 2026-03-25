@@ -144,6 +144,7 @@ namespace CShapeBackend.Services
     {
         Task<PaginatedResponse<POIResponse>> GetAllPOIsAsync(int page, int limit, string? search = null, string? type = null);
         Task<POIResponse?> GetPOIByIdAsync(string id);
+        Task<POIResponse?> GetPOIByQRHashAsync(string qrHash);
         Task<POIResponse> CreatePOIAsync(CreatePOIRequest request, string createdBy);
         Task<POIResponse?> UpdatePOIAsync(string id, UpdatePOIRequest request);
         Task<bool> DeletePOIAsync(string id);
@@ -196,6 +197,12 @@ namespace CShapeBackend.Services
         public async Task<POIResponse?> GetPOIByIdAsync(string id)
         {
             var poi = await _context.POIs.Find(x => x.Id == id).FirstOrDefaultAsync();
+            return poi == null ? null : MapToResponse(poi);
+        }
+
+        public async Task<POIResponse?> GetPOIByQRHashAsync(string qrHash)
+        {
+            var poi = await _context.POIs.Find(x => x.QrCodeHash == qrHash).FirstOrDefaultAsync();
             return poi == null ? null : MapToResponse(poi);
         }
 
