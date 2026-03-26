@@ -1,0 +1,160 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "CShape.Blazor/1.0.0": {
+        "dependencies": {
+          "Blazorise": "1.4.0",
+          "Blazorise.Bootstrap": "1.4.0",
+          "CShape.Shared": "1.0.0",
+          "Microsoft.AspNetCore.OpenApi": "10.0.3"
+        },
+        "runtime": {
+          "CShape.Blazor.dll": {}
+        }
+      },
+      "Blazorise/1.4.0": {
+        "dependencies": {
+          "Blazorise.Licensing": "1.2.0",
+          "DeepCloner": "0.10.4"
+        },
+        "runtime": {
+          "lib/net8.0/Blazorise.dll": {
+            "assemblyVersion": "1.4.0.0",
+            "fileVersion": "1.4.0.0"
+          }
+        }
+      },
+      "Blazorise.Bootstrap/1.4.0": {
+        "dependencies": {
+          "Blazorise": "1.4.0"
+        },
+        "runtime": {
+          "lib/net8.0/Blazorise.Bootstrap.dll": {
+            "assemblyVersion": "1.4.0.0",
+            "fileVersion": "1.4.0.0"
+          }
+        }
+      },
+      "Blazorise.Licensing/1.2.0": {
+        "runtime": {
+          "lib/net8.0/Blazorise.Licensing.dll": {
+            "assemblyVersion": "1.2.0.0",
+            "fileVersion": "1.2.0.0"
+          }
+        }
+      },
+      "DeepCloner/0.10.4": {
+        "runtime": {
+          "lib/netstandard1.3/DeepCloner.dll": {
+            "assemblyVersion": "0.10.0.0",
+            "fileVersion": "0.10.4.0"
+          }
+        }
+      },
+      "Microsoft.AspNetCore.OpenApi/10.0.3": {
+        "dependencies": {
+          "Microsoft.OpenApi": "2.0.0"
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.AspNetCore.OpenApi.dll": {
+            "assemblyVersion": "10.0.3.0",
+            "fileVersion": "10.0.326.7603"
+          }
+        }
+      },
+      "Microsoft.OpenApi/2.0.0": {
+        "runtime": {
+          "lib/net8.0/Microsoft.OpenApi.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.0.0.0"
+          }
+        }
+      },
+      "MongoDB.Bson/2.23.1": {
+        "runtime": {
+          "lib/netstandard2.1/MongoDB.Bson.dll": {
+            "assemblyVersion": "2.23.1.0",
+            "fileVersion": "2.23.1.0"
+          }
+        }
+      },
+      "CShape.Shared/1.0.0": {
+        "dependencies": {
+          "MongoDB.Bson": "2.23.1"
+        },
+        "runtime": {
+          "CShape.Shared.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "CShape.Blazor/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Blazorise/1.4.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-RgewqcqsYJN7r5qkX0lYzWq1xpNRBpwdJKN1/wH2Q9hPcLcgyBUIYYTiah0hvlHIhtpWfX+zV85CPlJ5X1Yk4A==",
+      "path": "blazorise/1.4.0",
+      "hashPath": "blazorise.1.4.0.nupkg.sha512"
+    },
+    "Blazorise.Bootstrap/1.4.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-QCcDVd8aIWdNUdCWxsHCTrvKoK63MfPcA1R3AWbozHhkgCpo/PheRZMbneBeVUJRBljqlCE8N/qeIADS66R8zA==",
+      "path": "blazorise.bootstrap/1.4.0",
+      "hashPath": "blazorise.bootstrap.1.4.0.nupkg.sha512"
+    },
+    "Blazorise.Licensing/1.2.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-h7jkAF+yyIKnUqFYivaxIySDma1zLV+0xcg52r2gIe772BLQWnBaANjpMBKXxRlYiEyOGPQWjMHJWs3dL/TgmA==",
+      "path": "blazorise.licensing/1.2.0",
+      "hashPath": "blazorise.licensing.1.2.0.nupkg.sha512"
+    },
+    "DeepCloner/0.10.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-z8ASd9bjXkVjcnIrwUKrxb/bPi/gvG5NX3nv7MHK/5QrlYwbK7N5ZTDNaYXQ5qunaUCMGN0UHdgkNARIEBTEyA==",
+      "path": "deepcloner/0.10.4",
+      "hashPath": "deepcloner.0.10.4.nupkg.sha512"
+    },
+    "Microsoft.AspNetCore.OpenApi/10.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-SAvSrKDgnY5GDjDAngOXxPhUvEKlTU/0zIq8zidqHvh/xnZBPs0Vc4LqwyvnmnafNnyUaivtRABz4K4wodXfSg==",
+      "path": "microsoft.aspnetcore.openapi/10.0.3",
+      "hashPath": "microsoft.aspnetcore.openapi.10.0.3.nupkg.sha512"
+    },
+    "Microsoft.OpenApi/2.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GGYLfzV/G/ct80OZ45JxnWP7NvMX1BCugn/lX7TH5o0lcVaviavsLMTxmFV2AybXWjbi3h6FF1vgZiTK6PXndw==",
+      "path": "microsoft.openapi/2.0.0",
+      "hashPath": "microsoft.openapi.2.0.0.nupkg.sha512"
+    },
+    "MongoDB.Bson/2.23.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-IX9tycM35xK5hFwnU+rzharPJOtKYtON6E6Lp2nwOVjh40TUcS/HYToEEWZkLgqKNMCfYPK3Fz3QUCxzhkQRGA==",
+      "path": "mongodb.bson/2.23.1",
+      "hashPath": "mongodb.bson.2.23.1.nupkg.sha512"
+    },
+    "CShape.Shared/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

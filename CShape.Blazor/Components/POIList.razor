@@ -1,0 +1,160 @@
+@using CShape.Shared.Models
+@using CShape.Blazor.Services
+@inject IAdminService AdminService
+
+<div class="poi-management">
+    <h3>Points of Interest Management</h3>
+    
+    @if (isLoading)
+    {
+        <p><em>Loading POIs...</em></p>
+    }
+    else
+    {
+        <button class="btn btn-primary mb-3" @onclick="ShowAddForm">
+            + Add POI
+        </button>
+
+        @if (pois.Any())
+        {
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var poi in pois)
+                    {
+                        <tr>
+                            <td>@poi.Name</td>
+                            <td>@poi.Type</td>
+                            <td>@poi.Category</td>
+                            <td>
+                                <span class="badge bg-info">@poi.AudioStatus</span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" @onclick="() => EditPOI(poi)">Edit</button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeletePOI(poi.Id)">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>No POIs found.</p>
+        }
+    }
+
+    @if (showForm)
+    {
+        <div class="modal d-block show" style="display: block;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(editingPoi?.Id == null ? "Add POI" : "Edit POI")</h5>
+                        <button type="button" class="btn-close" @onclick="CloseForm"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form>
+                            <div class="mb-3">
+                                <label class="form-label">Name</label>
+                                <input type="text" class="form-control" @bind="editingPoi.Name" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Type</label>
+                                <input type="text" class="form-control" @bind="editingPoi.Type" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Category</label>
+                                <input type="text" class="form-control" @bind="editingPoi.Category" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Latitude</label>
+                                <input type="number" step="0.000001" class="form-control" @bind="editingPoi.Latitude" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Longitude</label>
+                                <input type="number" step="0.000001" class="form-control" @bind="editingPoi.Longitude" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Description (Vietnamese)</label>
+                                <textarea class="form-control" @bind="editingPoi.DescriptionVi" rows="3"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="SavePOI">Save POI</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+</div>
+
+@code {
+    private List<POI> pois = new();
+    private bool isLoading = true;
+    private bool showForm = false;
+    private POI editingPoi = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPOIs();
+    }
+
+    private async Task LoadPOIs()
+    {
+        isLoading = true;
+        pois = await AdminService.GetAllPOIsAsync();
+        isLoading = false;
+    }
+
+    private void ShowAddForm()
+    {
+        editingPoi = new POI();
+        showForm = true;
+    }
+
+    private void EditPOI(POI poi)
+    {
+        editingPoi = poi;
+        showForm = true;
+    }
+
+    private async Task SavePOI()
+    {
+        if (editingPoi.Id == null)
+        {
+            await AdminService.CreatePOIAsync(editingPoi);
+        }
+        else
+        {
+            await AdminService.UpdatePOIAsync(editingPoi.Id, editingPoi);
+        }
+        CloseForm();
+        await LoadPOIs();
+    }
+
+    private async Task DeletePOI(string? id)
+    {
+        if (id != null && await AdminService.DeletePOIAsync(id))
+        {
+            await LoadPOIs();
+        }
+    }
+
+    private void CloseForm()
+    {
+        showForm = false;
+        editingPoi = new();
+    }
+}

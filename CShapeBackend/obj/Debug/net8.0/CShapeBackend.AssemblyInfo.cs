@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CShapeBackend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4234382289a2c9f1a5c51bd1ae7043c40e4e347a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+17c9979eb9305358c4c6ebc303698c68079625e1")]
 [assembly: System.Reflection.AssemblyProductAttribute("CShapeBackend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CShapeBackend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

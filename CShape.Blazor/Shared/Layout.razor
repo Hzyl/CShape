@@ -1,0 +1,54 @@
+@inherits LayoutComponentBase
+
+<div class="d-flex">
+    <!-- Sidebar -->
+    <nav class="bg-dark text-white p-3" style="width: 250px; min-height: 100vh;">
+        <h2 class="mb-4">
+            <a href="/" class="text-white text-decoration-none">CShape</a>
+        </h2>
+        <ul class="nav flex-column">
+            <li class="nav-item mb-2">
+                <NavLink class="nav-link" href="/">
+                    Dashboard
+                </NavLink>
+            </li>
+            <li class="nav-item mb-2">
+                <NavLink class="nav-link" href="/pois">
+                    POIs
+                </NavLink>
+            </li>
+            <li class="nav-item mb-2">
+                <NavLink class="nav-link" href="/tours">
+                    Tours
+                </NavLink>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="flex-grow-1">
+        <!-- Header -->
+        <header class="bg-light border-bottom p-3">
+            <div class="container-fluid">
+                <h1 class="h3">CShape Admin Dashboard</h1>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <main class="p-4">
+            @Body
+        </main>
+    </div>
+</div>
+
+<style>
+    .nav-link {
+        color: rgba(255,255,255,.75);
+    }
+    .nav-link.active {
+        color: #fff;
+    }
+    .nav-link:hover {
+        color: #fff;
+    }
+</style>

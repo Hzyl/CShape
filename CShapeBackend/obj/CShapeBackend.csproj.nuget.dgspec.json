@@ -4,14 +4,14 @@
     "C:\\Users\\ASUS\\CShape\\CShapeBackend\\CShapeBackend.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ASUS\\CShape\\CShapeBackend\\CShapeBackend.csproj": {
+    "C:\\Users\\ASUS\\CShape\\CShape.Shared\\CShape.Shared.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ASUS\\CShape\\CShapeBackend\\CShapeBackend.csproj",
-        "projectName": "CShapeBackend",
-        "projectPath": "C:\\Users\\ASUS\\CShape\\CShapeBackend\\CShapeBackend.csproj",
+        "projectUniqueName": "C:\\Users\\ASUS\\CShape\\CShape.Shared\\CShape.Shared.csproj",
+        "projectName": "CShape.Shared",
+        "projectPath": "C:\\Users\\ASUS\\CShape\\CShape.Shared\\CShape.Shared.csproj",
         "packagesPath": "C:\\Users\\ASUS\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ASUS\\CShape\\CShapeBackend\\obj\\",
+        "outputPath": "C:\\Users\\ASUS\\CShape\\CShape.Shared\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\ASUS\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -44,6 +44,89 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "MongoDB.Bson": {
+              "target": "Package",
+              "version": "[2.23.1, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.103/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\ASUS\\CShape\\CShapeBackend\\CShapeBackend.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\ASUS\\CShape\\CShapeBackend\\CShapeBackend.csproj",
+        "projectName": "CShapeBackend",
+        "projectPath": "C:\\Users\\ASUS\\CShape\\CShapeBackend\\CShapeBackend.csproj",
+        "packagesPath": "C:\\Users\\ASUS\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\ASUS\\CShape\\CShapeBackend\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\ASUS\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "C:\\Users\\ASUS\\CShape\\CShape.Shared\\CShape.Shared.csproj": {
+                "projectPath": "C:\\Users\\ASUS\\CShape\\CShape.Shared\\CShape.Shared.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.100"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
             "BCrypt.Net-Next": {
               "target": "Package",
               "version": "[4.0.3, )"
@@ -58,11 +141,11 @@
             },
             "Microsoft.IdentityModel.Tokens": {
               "target": "Package",
-              "version": "[7.0.0, )"
+              "version": "[7.0.3, )"
             },
             "MongoDB.Driver": {
               "target": "Package",
-              "version": "[2.22.0, )"
+              "version": "[2.23.1, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
@@ -70,7 +153,7 @@
             },
             "System.IdentityModel.Tokens.Jwt": {
               "target": "Package",
-              "version": "[7.0.0, )"
+              "version": "[7.0.3, )"
             }
           },
           "imports": [

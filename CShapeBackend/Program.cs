@@ -1,7 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using CShapeBackend.Data;
 using CShapeBackend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,13 +20,12 @@ builder.Services.AddCors(options =>
 });
 
 // MongoDB
-builder.Services.AddSingleton<MongoDbContext>();
+builder.Services.AddSingleton<MongoDbService>();
 
 // Services
-builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPOIService, POIService>();
 builder.Services.AddScoped<ITourService, TourService>();
-builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -66,12 +64,5 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
-// Initialize default admin user
-using (var scope = app.Services.CreateScope())
-{
-    var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();
-    await authService.InitializeDefaultAdminAsync();
-}
 
 app.Run();

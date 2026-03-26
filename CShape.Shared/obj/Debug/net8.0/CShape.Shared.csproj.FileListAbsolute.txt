@@ -1,0 +1,13 @@
+C:\Users\ASUS\CShape\CShape.Shared\bin\Debug\net8.0\CShape.Shared.deps.json
+C:\Users\ASUS\CShape\CShape.Shared\bin\Debug\net8.0\CShape.Shared.dll
+C:\Users\ASUS\CShape\CShape.Shared\bin\Debug\net8.0\CShape.Shared.pdb
+C:\Users\ASUS\CShape\CShape.Shared\obj\Debug\net8.0\CShape.Shared.csproj.AssemblyReference.cache
+C:\Users\ASUS\CShape\CShape.Shared\obj\Debug\net8.0\CShape.Shared.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ASUS\CShape\CShape.Shared\obj\Debug\net8.0\CShape.Shared.AssemblyInfoInputs.cache
+C:\Users\ASUS\CShape\CShape.Shared\obj\Debug\net8.0\CShape.Shared.AssemblyInfo.cs
+C:\Users\ASUS\CShape\CShape.Shared\obj\Debug\net8.0\CShape.Shared.csproj.CoreCompileInputs.cache
+C:\Users\ASUS\CShape\CShape.Shared\obj\Debug\net8.0\CShape.Shared.sourcelink.json
+C:\Users\ASUS\CShape\CShape.Shared\obj\Debug\net8.0\CShape.Shared.dll
+C:\Users\ASUS\CShape\CShape.Shared\obj\Debug\net8.0\refint\CShape.Shared.dll
+C:\Users\ASUS\CShape\CShape.Shared\obj\Debug\net8.0\CShape.Shared.pdb
+C:\Users\ASUS\CShape\CShape.Shared\obj\Debug\net8.0\ref\CShape.Shared.dll
