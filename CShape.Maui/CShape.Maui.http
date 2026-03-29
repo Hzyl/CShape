@@ -1,6 +1,0 @@
-@CShape.Maui_HostAddress = http://localhost:5043
-
-GET {{CShape.Maui_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

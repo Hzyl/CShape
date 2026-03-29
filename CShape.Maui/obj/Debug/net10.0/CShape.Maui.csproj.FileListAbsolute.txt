@@ -1,9 +1,0 @@
-C:\Users\ASUS\CShape\CShape.Maui\obj\Debug\net10.0\CShape.Maui.csproj.AssemblyReference.cache
-C:\Users\ASUS\CShape\CShape.Maui\obj\Debug\net10.0\rpswa.dswa.cache.json
-C:\Users\ASUS\CShape\CShape.Maui\obj\Debug\net10.0\CShape.Maui.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\ASUS\CShape\CShape.Maui\obj\Debug\net10.0\CShape.Maui.AssemblyInfoInputs.cache
-C:\Users\ASUS\CShape\CShape.Maui\obj\Debug\net10.0\CShape.Maui.AssemblyInfo.cs
-C:\Users\ASUS\CShape\CShape.Maui\obj\Debug\net10.0\CShape.Maui.csproj.CoreCompileInputs.cache
-C:\Users\ASUS\CShape\CShape.Maui\obj\Debug\net10.0\CShape.Maui.MvcApplicationPartsAssemblyInfo.cs
-C:\Users\ASUS\CShape\CShape.Maui\obj\Debug\net10.0\CShape.Maui.MvcApplicationPartsAssemblyInfo.cache
-C:\Users\ASUS\CShape\CShape.Maui\obj\Debug\net10.0\CShape.Maui.sourcelink.json
