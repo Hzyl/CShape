@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="AudioGuide.App.Views.SettingsPage"
+             Title="⚙️ Cài Đặt"
+             BackgroundColor="#f5f5f5">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="15" Spacing="15">
+
+            <!-- Language Section -->
+            <Label Text="🌍 Ngôn Ngữ & Hiển Thị"
+                   FontSize="16" FontAttributes="Bold" />
+
+            <Frame BorderColor="#512BD4" CornerRadius="10" Padding="12" HasShadow="True">
+                <StackLayout Spacing="10">
+                    <Label Text="Chọn ngôn ngữ ứng dụng:"
+                           FontSize="12" TextColor="#666" />
+
+                    <!-- Language Picker -->
+                    <Picker x:Name="LanguagePicker"
+                           ItemsSource="{Binding AvailableLanguages}"
+                           SelectedItem="{Binding SelectedLanguage}"
+                           ItemDisplayBinding="{Binding DisplayName}"
+                           Title="Chọn ngôn ngữ"
+                           BackgroundColor="White"
+                           TextColor="#333"
+                           TitleColor="#999" />
+
+                    <Label Text="{Binding SettingsMessage}"
+                           FontSize="11" TextColor="#28a745" />
+                </StackLayout>
+            </Frame>
+
+            <!-- API & Connection Section -->
+            <Label Text="🔌 Kết Nối & API"
+                   FontSize="16" FontAttributes="Bold" />
+
+            <Frame BorderColor="#17a2b8" CornerRadius="10" Padding="12" HasShadow="True">
+                <StackLayout Spacing="10">
+                    <StackLayout Orientation="Horizontal" Spacing="10">
+                        <Label Text="Trạng thái API:"
+                               FontSize="12" />
+                        <Label Text="{Binding ApiConnectionStatus}"
+                               FontSize="12" FontAttributes="Bold" TextColor="#17a2b8" />
+                    </StackLayout>
+
+                    <Button Text="🔍 Kiểm Tra Kết Nối API"
+                            Command="{Binding CheckApiConnectionCommand}"
+                            BackgroundColor="#17a2b8" TextColor="White"
+                            CornerRadius="10" Padding="10"
+                            IsEnabled="{Binding IsLoading, Converter={StaticResource InvertedBoolConverter}}" />
+
+                    <StackLayout Orientation="Horizontal" Spacing="10"
+                                IsVisible="{Binding IsLoading}">
+                        <ActivityIndicator IsRunning="True" Color="#17a2b8" />
+                        <Label Text="Đang kiểm tra..." VerticalTextAlignment="Center" />
+                    </StackLayout>
+                </StackLayout>
+            </Frame>
+
+            <!-- Cache & Storage Section -->
+            <Label Text="💾 Bộ Nhớ & Dữ Liệu"
+                   FontSize="16" FontAttributes="Bold" />
+
+            <Frame BorderColor="#ff9500" CornerRadius="10" Padding="12" HasShadow="True">
+                <StackLayout Spacing="10">
+                    <Label Text="Xóa bộ nhớ cache (lịch sử, cài đặt tạm thời):"
+                           FontSize="12" TextColor="#666" />
+
+                    <Button Text="🗑️ Xóa Cache"
+                            Command="{Binding ClearCacheCommand}"
+                            BackgroundColor="#ff9500" TextColor="White"
+                            CornerRadius="10" Padding="10"
+                            IsEnabled="{Binding IsLoading, Converter={StaticResource InvertedBoolConverter}}" />
+
+                    <Label Text="💡 Lưu ý: Này sẽ xóa lịch sử phát audio nhưng giữ lại cài đặt ngôn ngữ."
+                           FontSize="10" TextColor="#999" LineBreakMode="WordWrap" />
+                </StackLayout>
+            </Frame>
+
+            <!-- System Settings -->
+            <Label Text="🔐 Quyền Truy Cập"
+                   FontSize="16" FontAttributes="Bold" />
+
+            <Frame BorderColor="#6c757d" CornerRadius="10" Padding="12" HasShadow="True">
+                <StackLayout Spacing="10">
+                    <Label Text="Quản lý quyền truy cập: GPS, Camera, Microphone"
+                           FontSize="12" TextColor="#666" />
+
+                    <Button Text="⚙️ Mở Cài Đặt Hệ Thống"
+                            Command="{Binding OpenSystemSettingsCommand}"
+                            BackgroundColor="#6c757d" TextColor="White"
+                            CornerRadius="10" Padding="10" />
+                </StackLayout>
+            </Frame>
+
+            <!-- Debug Info Section -->
+            <Label Text="🔧 Thông Tin Debug"
+                   FontSize="16" FontAttributes="Bold"
+                   IsVisible="{Binding IsDebugMode}" />
+
+            <Frame BorderColor="#6c757d" CornerRadius="10" Padding="12" HasShadow="True"
+                   IsVisible="{Binding IsDebugMode}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="{Binding DebugInfo}"
+                           FontSize="10" FontFamily="Courier"
+                           TextColor="#666" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- About Section -->
+            <Label Text="ℹ️ Về Ứng Dụng"
+                   FontSize="16" FontAttributes="Bold" />
+
+            <Frame BorderColor="#512BD4" CornerRadius="10" Padding="12" HasShadow="True">
+                <StackLayout Spacing="10">
+                    <Label Text="🎧 Audio Guide System"
+                           FontSize="16" FontAttributes="Bold" />
+
+                    <Label Text="{Binding AppVersion, StringFormat='Phiên bản: {0}'}"
+                           FontSize="12" TextColor="#666" />
+
+                    <Button Text="📖 Xem Thông Tin Ứng Dụng"
+                            Command="{Binding ShowAboutCommand}"
+                            BackgroundColor="#512BD4" TextColor="White"
+                            CornerRadius="10" Padding="10" />
+
+                    <Label Text="{Binding SettingsMessage}"
+                           FontSize="11" TextColor="#333" LineBreakMode="WordWrap" />
+                </StackLayout>
+            </Frame>
+
+            <!-- Footer -->
+            <Label Text="© 2026 Audio Guide System. Bảo lưu mọi quyền."
+                   FontSize="11" TextColor="#999"
+                   HorizontalTextAlignment="Center"
+                   Margin="0,20,0,0" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

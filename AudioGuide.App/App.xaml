@@ -1,0 +1,26 @@
+&lt;?xml version="1.0" encoding="utf-8" ?&gt;
+&lt;Application
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="AudioGuide.App.App"&gt;
+    &lt;Application.Resources&gt;
+        &lt;ResourceDictionary&gt;
+            &lt;Color x:Key="PageBackgroundColor"&gt;#ffffff&lt;/Color&gt;
+            &lt;Color x:Key="PrimaryColor"&gt;#512BD4&lt;/Color&gt;
+            &lt;Color x:Key="SecondaryColor"&gt;#DFD8F7&lt;/Color&gt;
+
+            &lt;Style TargetType="Label"&gt;
+                &lt;Setter Property="TextColor" Value="#000000" /&gt;
+                &lt;Setter Property="BackgroundColor" Value="Transparent" /&gt;
+            &lt;/Style&gt;
+
+            &lt;Style TargetType="Button"&gt;
+                &lt;Setter Property="TextColor" Value="#ffffff" /&gt;
+                &lt;Setter Property="BackgroundColor" Value="#512BD4" /&gt;
+                &lt;Setter Property="FontSize" Value="18" /&gt;
+                &lt;Setter Property="Padding" Value="8" /&gt;
+                &lt;Setter Property="CornerRadius" Value="8" /&gt;
+            &lt;/Style&gt;
+        &lt;/ResourceDictionary&gt;
+    &lt;/Application.Resources&gt;
+&lt;/Application&gt;
