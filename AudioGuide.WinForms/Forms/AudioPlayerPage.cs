@@ -93,25 +93,28 @@ namespace AudioGuide.WinForms.Forms
             _prevButton.Location = new Point(50, 110);
             _prevButton.Size = new Size(80, 35);
             _prevButton.Click += PrevButton_Click;
+            ButtonStyleHelper.ApplySecondaryStyle(_prevButton);
             _playerPanel.Controls.Add(_prevButton);
 
             _playPauseButton.Text = "▶ Phát";
             _playPauseButton.Location = new Point(150, 110);
             _playPauseButton.Size = new Size(100, 35);
-            _playPauseButton.Font = new Font(Font.FontFamily, 10, FontStyle.Bold);
             _playPauseButton.Click += PlayPauseButton_Click;
+            ButtonStyleHelper.ApplySuccessStyle(_playPauseButton);
             _playerPanel.Controls.Add(_playPauseButton);
 
             _nextButton.Text = "Tiếp ⏭";
             _nextButton.Location = new Point(270, 110);
             _nextButton.Size = new Size(80, 35);
             _nextButton.Click += NextButton_Click;
+            ButtonStyleHelper.ApplySecondaryStyle(_nextButton);
             _playerPanel.Controls.Add(_nextButton);
 
             _clearQueueButton.Text = "🗑️ Xóa Hàng Đợi";
             _clearQueueButton.Location = new Point(50, 155);
             _clearQueueButton.Size = new Size(120, 35);
             _clearQueueButton.Click += ClearQueueButton_Click;
+            ButtonStyleHelper.ApplyDangerStyle(_clearQueueButton);
             _playerPanel.Controls.Add(_clearQueueButton);
 
             Controls.Add(_playerPanel);

@@ -67,12 +67,14 @@ namespace AudioGuide.WinForms.Forms
             _selectImageButton.Location = new Point(10, 10);
             _selectImageButton.Size = new Size(120, 30);
             _selectImageButton.Click += SelectImageButton_Click;
+            ButtonStyleHelper.ApplyPrimaryStyle(_selectImageButton);
             buttonPanel.Controls.Add(_selectImageButton);
 
             _scanWebcamButton.Text = "📹 Webcam";
             _scanWebcamButton.Location = new Point(140, 10);
             _scanWebcamButton.Size = new Size(120, 30);
             _scanWebcamButton.Click += ScanWebcamButton_Click;
+            ButtonStyleHelper.ApplySecondaryStyle(_scanWebcamButton);
             buttonPanel.Controls.Add(_scanWebcamButton);
 
             Controls.Add(buttonPanel);
@@ -100,6 +102,7 @@ namespace AudioGuide.WinForms.Forms
             _okButton.Size = new Size(100, 30);
             _okButton.Click += OkButton_Click;
             _okButton.DialogResult = DialogResult.OK;
+            ButtonStyleHelper.ApplySuccessStyle(_okButton);
             bottomPanel.Controls.Add(_okButton);
 
             _cancelButton.Text = "❌ Hủy";
@@ -107,6 +110,7 @@ namespace AudioGuide.WinForms.Forms
             _cancelButton.Size = new Size(100, 30);
             _cancelButton.Click += CancelButton_Click;
             _cancelButton.DialogResult = DialogResult.Cancel;
+            ButtonStyleHelper.ApplyDangerStyle(_cancelButton);
             bottomPanel.Controls.Add(_cancelButton);
 
             Controls.Add(bottomPanel);

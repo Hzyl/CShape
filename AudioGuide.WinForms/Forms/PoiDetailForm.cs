@@ -102,12 +102,14 @@ namespace AudioGuide.WinForms.Forms
             _playAudioButton.Location = new Point(10, 10);
             _playAudioButton.Size = new Size(120, 30);
             _playAudioButton.Click += PlayAudioButton_Click;
+            ButtonStyleHelper.ApplySuccessStyle(_playAudioButton);
             buttonPanel.Controls.Add(_playAudioButton);
 
             _closeButton.Text = "❌ Đóng";
             _closeButton.Location = new Point(460, 10);
             _closeButton.Size = new Size(100, 30);
             _closeButton.Click += CloseButton_Click;
+            ButtonStyleHelper.ApplyDangerStyle(_closeButton);
             buttonPanel.Controls.Add(_closeButton);
 
             Controls.Add(buttonPanel);

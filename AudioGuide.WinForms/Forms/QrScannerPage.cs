@@ -58,6 +58,7 @@ namespace AudioGuide.WinForms.Forms
             _scanButton.Location = new Point(10, 20);
             _scanButton.Size = new Size(150, 35);
             _scanButton.Click += ScanButton_Click;
+            ButtonStyleHelper.ApplyPrimaryStyle(_scanButton);
             scanPanel.Controls.Add(_scanButton);
 
             var manualLabel = new Label { Text = "Hoặc nhập mã QR:" };
@@ -79,6 +80,7 @@ namespace AudioGuide.WinForms.Forms
             _searchButton.Location = new Point(320, 8);
             _searchButton.Size = new Size(80, 25);
             _searchButton.Click += SearchButton_Click;
+            ButtonStyleHelper.ApplyPrimaryStyle(_searchButton);
             inputPanel.Controls.Add(_searchButton);
 
             Controls.Add(inputPanel);

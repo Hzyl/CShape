@@ -105,6 +105,7 @@ namespace AudioGuide.WinForms.Forms
             _setLocationButton.Location = new Point(10, 55);
             _setLocationButton.Size = new Size(100, 35);
             _setLocationButton.Click += SetLocationButton_Click;
+            ButtonStyleHelper.ApplySuccessStyle(_setLocationButton);
             _gpsBox.Controls.Add(_setLocationButton);
 
             Controls.Add(_gpsBox);
@@ -143,18 +144,21 @@ namespace AudioGuide.WinForms.Forms
             _searchButton.Location = new Point(10, 75);
             _searchButton.Size = new Size(100, 35);
             _searchButton.Click += SearchButton_Click;
+            ButtonStyleHelper.ApplyPrimaryStyle(_searchButton);
             _searchBox.Controls.Add(_searchButton);
 
             _refreshButton.Text = "🔄 Làm Mới";
             _refreshButton.Location = new Point(120, 75);
             _refreshButton.Size = new Size(100, 35);
             _refreshButton.Click += RefreshButton_Click;
+            ButtonStyleHelper.ApplySecondaryStyle(_refreshButton);
             _searchBox.Controls.Add(_refreshButton);
 
             _startGeofencingButton.Text = "🚀 Geofencing";
             _startGeofencingButton.Location = new Point(230, 75);
             _startGeofencingButton.Size = new Size(100, 35);
             _startGeofencingButton.Click += StartGeofencingButton_Click;
+            ButtonStyleHelper.ApplyPrimaryStyle(_startGeofencingButton);
             _searchBox.Controls.Add(_startGeofencingButton);
 
             Controls.Add(_searchBox);
