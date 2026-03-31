@@ -1,4 +1,5 @@
 using AudioGuide.WinForms.Services;
+using AudioGuide.WinForms.Helpers;
 
 namespace AudioGuide.WinForms.Forms
 {
@@ -8,18 +9,20 @@ namespace AudioGuide.WinForms.Forms
         private readonly IAudioQueueService _audioQueueService;
         private readonly IAppLanguageService _languageService;
         private readonly IGeofenceService _geofenceService;
+        private readonly IMockGpsService _mockGpsService;
 
         private MapPage? _mapPage;
         private AudioPlayerPage? _playerPage;
         private QrScannerPage? _qrPage;
         private SettingsPage? _settingsPage;
 
-        public MainForm(IApiService apiService, IAudioQueueService audioQueueService, IAppLanguageService languageService, IGeofenceService geofenceService)
+        public MainForm(IApiService apiService, IAudioQueueService audioQueueService, IAppLanguageService languageService, IGeofenceService geofenceService, IMockGpsService mockGpsService)
         {
             _apiService = apiService;
             _audioQueueService = audioQueueService;
             _languageService = languageService;
             _geofenceService = geofenceService;
+            _mockGpsService = mockGpsService;
 
             SetupUI();
         }
@@ -31,7 +34,25 @@ namespace AudioGuide.WinForms.Forms
             Width = 1024;
             Height = 768;
             StartPosition = FormStartPosition.CenterScreen;
-            Icon = null; // Can set an icon here
+
+            // Try to load application icon
+            try
+            {
+                var iconPath = Path.Combine(AppContext.BaseDirectory, "Resources", "app_icon.ico");
+                if (File.Exists(iconPath))
+                {
+                    Icon = new Icon(iconPath);
+                    Constants.DebugLog("📁 Tải biểu tượng ứng dụng thành công");
+                }
+                else
+                {
+                    Constants.DebugLog("⚠️ Tệp biểu tượng không tìm thấy: " + iconPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Constants.ErrorLog("❌ Lỗi khi tải biểu tượng ứng dụng", ex);
+            }
 
             // Create TabControl
             var tabControl = new TabControl
@@ -66,7 +87,7 @@ namespace AudioGuide.WinForms.Forms
             };
 
             // Create page instances
-            _mapPage = new MapPage(_apiService, _audioQueueService, _languageService, _geofenceService);
+            _mapPage = new MapPage(_apiService, _audioQueueService, _languageService, _geofenceService, _mockGpsService);
             _mapPage.Dock = DockStyle.Fill;
             mapTab.Controls.Add(_mapPage);
 

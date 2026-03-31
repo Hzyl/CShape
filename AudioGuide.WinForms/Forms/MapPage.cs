@@ -13,6 +13,7 @@ namespace AudioGuide.WinForms.Forms
         private readonly IAudioQueueService _audioQueueService;
         private readonly IAppLanguageService _languageService;
         private readonly IGeofenceService _geofenceService;
+        private readonly IMockGpsService _mockGpsService;
 
         private decimal _userLatitude = 0;
         private decimal _userLongitude = 0;
@@ -20,6 +21,12 @@ namespace AudioGuide.WinForms.Forms
 
         // UI Controls
         private Label _titleLabel = new();
+        private GroupBox _gpsBox = new();
+        private Label _latitudeLabel = new();
+        private TextBox _latitudeTextBox = new();
+        private Label _longitudeLabel = new();
+        private TextBox _longitudeTextBox = new();
+        private Button _setLocationButton = new();
         private GroupBox _searchBox = new();
         private Label _radiusLabel = new();
         private TrackBar _radiusSlider = new();
@@ -31,15 +38,20 @@ namespace AudioGuide.WinForms.Forms
         private DataGridView _poiGrid = new();
         private Label _messageLabel = new();
 
-        public MapPage(IApiService apiService, IAudioQueueService audioQueueService, IAppLanguageService languageService, IGeofenceService geofenceService)
+        public MapPage(IApiService apiService, IAudioQueueService audioQueueService, IAppLanguageService languageService, IGeofenceService geofenceService, IMockGpsService mockGpsService)
         {
             _apiService = apiService;
             _audioQueueService = audioQueueService;
             _languageService = languageService;
             _geofenceService = geofenceService;
+            _mockGpsService = mockGpsService;
 
             InitializeComponent();
             SetupControls();
+
+            // Initialize location from mock service
+            var (lat, lng) = _mockGpsService.GetCurrentLocation();
+            UpdateUserLocation(lat, lng);
 
             Constants.DebugLog("🗺️ MapPage khởi tạo");
         }
@@ -59,6 +71,43 @@ namespace AudioGuide.WinForms.Forms
             _titleLabel.Height = 30;
             _titleLabel.Padding = new Padding(10);
             Controls.Add(_titleLabel);
+
+            // GPS Input Box
+            _gpsBox.Text = "📍 GPS Mock - Nhập Tọa Độ";
+            _gpsBox.Dock = DockStyle.Top;
+            _gpsBox.Height = 100;
+            _gpsBox.Padding = new Padding(10);
+
+            // Latitude Label and TextBox
+            _latitudeLabel.Text = "Vĩ độ (Latitude):";
+            _latitudeLabel.Location = new Point(10, 20);
+            _latitudeLabel.Size = new Size(120, 20);
+            _gpsBox.Controls.Add(_latitudeLabel);
+
+            _latitudeTextBox.Location = new Point(140, 20);
+            _latitudeTextBox.Size = new Size(100, 24);
+            _latitudeTextBox.PlaceholderText = "21.0285";
+            _gpsBox.Controls.Add(_latitudeTextBox);
+
+            // Longitude Label and TextBox
+            _longitudeLabel.Text = "Kinh độ (Longitude):";
+            _longitudeLabel.Location = new Point(250, 20);
+            _longitudeLabel.Size = new Size(130, 20);
+            _gpsBox.Controls.Add(_longitudeLabel);
+
+            _longitudeTextBox.Location = new Point(390, 20);
+            _longitudeTextBox.Size = new Size(100, 24);
+            _longitudeTextBox.PlaceholderText = "105.8542";
+            _gpsBox.Controls.Add(_longitudeTextBox);
+
+            // Set Location Button
+            _setLocationButton.Text = "📌 Đặt Vị Trí";
+            _setLocationButton.Location = new Point(10, 55);
+            _setLocationButton.Size = new Size(100, 35);
+            _setLocationButton.Click += SetLocationButton_Click;
+            _gpsBox.Controls.Add(_setLocationButton);
+
+            Controls.Add(_gpsBox);
 
             // Search Box
             _searchBox.Text = "Tìm Kiếm";
@@ -133,6 +182,44 @@ namespace AudioGuide.WinForms.Forms
             _messageLabel.Padding = new Padding(10);
             _messageLabel.ForeColor = Color.Red;
             Controls.Add(_messageLabel);
+        }
+
+        private void SetLocationButton_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                // Parse latitude
+                if (!decimal.TryParse(_latitudeTextBox.Text, out decimal latitude) || latitude < -90 || latitude > 90)
+                {
+                    _messageLabel.Text = "❌ Vĩ độ không hợp lệ (phải từ -90 đến 90)";
+                    DialogHelper.ShowError("Lỗi GPS", "Vĩ độ không hợp lệ (phải từ -90 đến 90)");
+                    return;
+                }
+
+                // Parse longitude
+                if (!decimal.TryParse(_longitudeTextBox.Text, out decimal longitude) || longitude < -180 || longitude > 180)
+                {
+                    _messageLabel.Text = "❌ Kinh độ không hợp lệ (phải từ -180 đến 180)";
+                    DialogHelper.ShowError("Lỗi GPS", "Kinh độ không hợp lệ (phải từ -180 đến 180)");
+                    return;
+                }
+
+                // Set location in mock GPS service
+                _mockGpsService.SetMockLocation(latitude, longitude);
+
+                // Update UI
+                UpdateUserLocation(latitude, longitude);
+                _messageLabel.Text = $"✅ Đã đặt vị trí: {latitude:F6}, {longitude:F6}";
+                DialogHelper.ShowSuccess("GPS", $"Vị trí đã được đặt: {latitude:F6}, {longitude:F6}");
+
+                Constants.DebugLog($"📍 Đặt vị trí GPS Mock: {latitude}, {longitude}");
+            }
+            catch (Exception ex)
+            {
+                _messageLabel.Text = $"❌ Lỗi: {ex.Message}";
+                Constants.ErrorLog("Lỗi khi đặt vị trí GPS", ex);
+                DialogHelper.ShowError("Lỗi GPS", $"Không thể đặt vị trí: {ex.Message}", ex);
+            }
         }
 
         private void RadiusSlider_ValueChanged(object? sender, EventArgs e)
