@@ -305,8 +305,35 @@ namespace AudioGuide.WinForms.Forms
 
         private void ShowPoiDetail(PoiMapDto poi)
         {
-            // TODO: Open POI detail form
-            _messageLabel.Text = $"📍 Chi tiết: {poi.Name} - Khoảng cách: {poi.DistanceInMeters}m";
+            try
+            {
+                using (var detailForm = new PoiDetailForm(poi, OnPlayAudio))
+                {
+                    detailForm.ShowDialog();
+                }
+            }
+            catch (Exception ex)
+            {
+                _messageLabel.Text = $"❌ Lỗi: {ex.Message}";
+                Constants.ErrorLog("Lỗi khi hiển thị chi tiết POI", ex);
+                DialogHelper.ShowError("Lỗi", $"Không thể hiển thị chi tiết POI: {ex.Message}", ex);
+            }
+        }
+
+        private void OnPlayAudio(PoiMapDto poi)
+        {
+            try
+            {
+                // TODO: Queue audio when detailed audio data is available
+                // For now, just show message
+                _messageLabel.Text = $"🎵 Chọn POI: {poi.Name} (Audio queuing cần API chi tiết)";
+                Constants.DebugLog($"📍 Selected POI: {poi.Name} - Audio queuing pending full POI data");
+            }
+            catch (Exception ex)
+            {
+                Constants.ErrorLog("Lỗi khi chọn POI", ex);
+                DialogHelper.ShowError("Lỗi", $"Không thể chọn POI: {ex.Message}", ex);
+            }
         }
 
         /// <summary>
