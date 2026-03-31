@@ -10,6 +10,7 @@ namespace AudioGuide.WinForms.Forms
     {
         private readonly IApiService _apiService;
         private readonly IAppLanguageService _languageService;
+        private readonly IQrScannerService _qrScannerService;
 
         // UI Controls
         private Label _titleLabel = new();
@@ -19,10 +20,11 @@ namespace AudioGuide.WinForms.Forms
         private Label _resultLabel = new();
         private RichTextBox _detailRichTextBox = new();
 
-        public QrScannerPage(IApiService apiService, IAppLanguageService languageService)
+        public QrScannerPage(IApiService apiService, IAppLanguageService languageService, IQrScannerService qrScannerService)
         {
             _apiService = apiService;
             _languageService = languageService;
+            _qrScannerService = qrScannerService;
 
             InitializeComponent();
             SetupControls();
@@ -95,8 +97,35 @@ namespace AudioGuide.WinForms.Forms
 
         private async void ScanButton_Click(object? sender, EventArgs e)
         {
-            _resultLabel.Text = "📷 Tính năng camera chưa được implement";
-            _resultLabel.ForeColor = Color.Orange;
+            try
+            {
+                _resultLabel.Text = "⏳ Mở camera scanning...";
+                _resultLabel.ForeColor = Color.Gray;
+
+                var qrCode = await _qrScannerService.ScanQrCodeAsync();
+
+                if (qrCode != null)
+                {
+                    _qrInputTextBox.Text = qrCode;
+                    _resultLabel.Text = $"✅ Mã QR quét được: {qrCode}";
+                    _resultLabel.ForeColor = Color.Green;
+
+                    // Tự động tìm kiếm
+                    SearchButton_Click(sender, e);
+                }
+                else
+                {
+                    _resultLabel.Text = "❌ Quét bị hủy hoặc không thành công";
+                    _resultLabel.ForeColor = Color.Red;
+                }
+            }
+            catch (Exception ex)
+            {
+                _resultLabel.Text = $"❌ Lỗi: {ex.Message}";
+                _resultLabel.ForeColor = Color.Red;
+                Constants.ErrorLog("Lỗi khi quét QR", ex);
+                DialogHelper.ShowError("Lỗi Quét QR", $"Không thể quét QR code: {ex.Message}", ex);
+            }
         }
 
         private async void SearchButton_Click(object? sender, EventArgs e)

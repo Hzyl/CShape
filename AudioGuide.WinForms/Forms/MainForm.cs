@@ -10,19 +10,21 @@ namespace AudioGuide.WinForms.Forms
         private readonly IAppLanguageService _languageService;
         private readonly IGeofenceService _geofenceService;
         private readonly IMockGpsService _mockGpsService;
+        private readonly IQrScannerService _qrScannerService;
 
         private MapPage? _mapPage;
         private AudioPlayerPage? _playerPage;
         private QrScannerPage? _qrPage;
         private SettingsPage? _settingsPage;
 
-        public MainForm(IApiService apiService, IAudioQueueService audioQueueService, IAppLanguageService languageService, IGeofenceService geofenceService, IMockGpsService mockGpsService)
+        public MainForm(IApiService apiService, IAudioQueueService audioQueueService, IAppLanguageService languageService, IGeofenceService geofenceService, IMockGpsService mockGpsService, IQrScannerService qrScannerService)
         {
             _apiService = apiService;
             _audioQueueService = audioQueueService;
             _languageService = languageService;
             _geofenceService = geofenceService;
             _mockGpsService = mockGpsService;
+            _qrScannerService = qrScannerService;
 
             SetupUI();
         }
@@ -95,7 +97,7 @@ namespace AudioGuide.WinForms.Forms
             _playerPage.Dock = DockStyle.Fill;
             playerTab.Controls.Add(_playerPage);
 
-            _qrPage = new QrScannerPage(_apiService, _languageService);
+            _qrPage = new QrScannerPage(_apiService, _languageService, _qrScannerService);
             _qrPage.Dock = DockStyle.Fill;
             qrTab.Controls.Add(_qrPage);
 

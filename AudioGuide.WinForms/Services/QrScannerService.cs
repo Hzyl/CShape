@@ -1,10 +1,11 @@
 using AudioGuide.WinForms.Helpers;
+using AudioGuide.WinForms.Forms;
 
 namespace AudioGuide.WinForms.Services
 {
     /// <summary>
     /// Thực thi IQrScannerService cho WinForms
-    /// Placeholder implementation - có thể mở rộng bằng ZXing.Net hoặc OpenCV
+    /// Sử dụng ZXing.Net cho QR decoding
     /// </summary>
     public class QrScannerService : IQrScannerService
     {
@@ -14,8 +15,8 @@ namespace AudioGuide.WinForms.Services
         }
 
         /// <summary>
-        /// Scan QR code từ camera
-        /// Placeholder: cần implement với ZXing.Net hoặc library khác
+        /// Scan QR code từ camera (dạng hộp thoại modal)
+        /// Người dùng có thể chọn ảnh chứa QR code để decode
         /// </summary>
         public async Task<string?> ScanQrCodeAsync()
         {
@@ -23,9 +24,22 @@ namespace AudioGuide.WinForms.Services
             {
                 Constants.DebugLog("📷 Bắt đầu scan QR code");
 
-                // TODO: Implement QR scanning using ZXing.Net or other library
-                // Placeholder return
-                return null;
+                // Mở dialog camera để người dùng chọn ảnh QR
+                using (var cameraForm = new CameraForm())
+                {
+                    var dialogResult = cameraForm.ShowDialog();
+
+                    if (dialogResult == DialogResult.OK && !string.IsNullOrEmpty(cameraForm.QrCodeResult))
+                    {
+                        Constants.DebugLog($"✅ QR Code quét được: {cameraForm.QrCodeResult}");
+                        return cameraForm.QrCodeResult;
+                    }
+                    else
+                    {
+                        Constants.DebugLog("❌ QR scan bị hủy hoặc không thành công");
+                        return null;
+                    }
+                }
             }
             catch (Exception ex)
             {
