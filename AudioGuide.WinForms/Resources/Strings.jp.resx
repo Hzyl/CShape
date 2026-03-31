@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- Microsoft ResX File, format version 2.0 -->
+  <!-- Generated for Japanese (ja-JP) localization -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Main Form -->
+  <data name="MainForm_Title" xml:space="preserve">
+    <value>Audio Guide - マルチメディア観光案内システム</value>
+  </data>
+
+  <!-- Map Page -->
+  <data name="MapPage_Title" xml:space="preserve">
+    <value>🗺️ マップ - 近くのPOIを検索</value>
+  </data>
+  <data name="MapPage_TabName" xml:space="preserve">
+    <value>🗺️ マップ</value>
+  </data>
+  <data name="MapPage_SearchBoxTitle" xml:space="preserve">
+    <value>検索</value>
+  </data>
+  <data name="MapPage_RadiusLabel" xml:space="preserve">
+    <value>検索半径（メートル）:</value>
+  </data>
+  <data name="MapPage_SearchButton" xml:space="preserve">
+    <value>🔍 検索</value>
+  </data>
+  <data name="MapPage_RefreshButton" xml:space="preserve">
+    <value>🔄 更新</value>
+  </data>
+  <data name="MapPage_GeofenceButton" xml:space="preserve">
+    <value>🚀 ジオフェンシング</value>
+  </data>
+  <data name="MapPage_StatusMessage" xml:space="preserve">
+    <value>GPS位置を入力して開始してください</value>
+  </data>
+  <data name="MapPage_Searching" xml:space="preserve">
+    <value>⏳ POIを検索中...</value>
+  </data>
+  <data name="MapPage_NoResults" xml:space="preserve">
+    <value>❌ 観光地が見つかりません</value>
+  </data>
+  <data name="MapPage_FoundResults" xml:space="preserve">
+    <value>✅ {0}個の観光地が見つかりました</value>
+  </data>
+  <data name="MapPage_InvalidLocation" xml:space="preserve">
+    <value>❌ GPS座標を入力してください</value>
+  </data>
+  <data name="MapPage_SetLocationButton" xml:space="preserve">
+    <value>位置を設定</value>
+  </data>
+  <data name="MapPage_LatitudeLabel" xml:space="preserve">
+    <value>緯度:</value>
+  </data>
+  <data name="MapPage_LongitudeLabel" xml:space="preserve">
+    <value>経度:</value>
+  </data>
+
+  <!-- Audio Player Page -->
+  <data name="AudioPlayerPage_Title" xml:space="preserve">
+    <value>🎵 オーディオ再生</value>
+  </data>
+  <data name="AudioPlayerPage_TabName" xml:space="preserve">
+    <value>🎵 再生</value>
+  </data>
+  <data name="AudioPlayerPage_QueueLabel" xml:space="preserve">
+    <value>オーディオキュー</value>
+  </data>
+  <data name="AudioPlayerPage_PlayButton" xml:space="preserve">
+    <value>▶ 再生</value>
+  </data>
+  <data name="AudioPlayerPage_PauseButton" xml:space="preserve">
+    <value>⏸ 一時停止</value>
+  </data>
+  <data name="AudioPlayerPage_PrevButton" xml:space="preserve">
+    <value>⏮ 前へ</value>
+  </data>
+  <data name="AudioPlayerPage_NextButton" xml:space="preserve">
+    <value>次へ ⏭</value>
+  </data>
+  <data name="AudioPlayerPage_ClearQueueButton" xml:space="preserve">
+    <value>🗑️ キューをクリア</value>
+  </data>
+  <data name="AudioPlayerPage_EmptyQueue" xml:space="preserve">
+    <value>キューは空です</value>
+  </data>
+  <data name="AudioPlayerPage_Playing" xml:space="preserve">
+    <value>▶️ 再生中</value>
+  </data>
+  <data name="AudioPlayerPage_Paused" xml:space="preserve">
+    <value>⏸️ 一時停止中</value>
+  </data>
+
+  <!-- QR Scanner Page -->
+  <data name="QrScannerPage_Title" xml:space="preserve">
+    <value>📱 QRコードをスキャン</value>
+  </data>
+  <data name="QrScannerPage_TabName" xml:space="preserve">
+    <value>📱 QR</value>
+  </data>
+  <data name="QrScannerPage_ScanButton" xml:space="preserve">
+    <value>📷 カメラでスキャン</value>
+  </data>
+  <data name="QrScannerPage_ManualInputLabel" xml:space="preserve">
+    <value>またはQRコードを入力:</value>
+  </data>
+  <data name="QrScannerPage_SearchButton" xml:space="preserve">
+    <value>🔍 検索</value>
+  </data>
+  <data name="QrScannerPage_InputPlaceholder" xml:space="preserve">
+    <value>QRコードまたはハッシュを入力...</value>
+  </data>
+  <data name="QrScannerPage_EmptyInput" xml:space="preserve">
+    <value>❌ QRコードを入力してください</value>
+  </data>
+  <data name="QrScannerPage_Searching" xml:space="preserve">
+    <value>⏳ 検索中...</value>
+  </data>
+  <data name="QrScannerPage_Found" xml:space="preserve">
+    <value>✅ 見つかりました: {0}</value>
+  </data>
+  <data name="QrScannerPage_NotImplemented" xml:space="preserve">
+    <value>📷 カメラ機能はまだ実装されていません</value>
+  </data>
+
+  <!-- Settings Page -->
+  <data name="SettingsPage_Title" xml:space="preserve">
+    <value>⚙️ 設定</value>
+  </data>
+  <data name="SettingsPage_TabName" xml:space="preserve">
+    <value>⚙️ 設定</value>
+  </data>
+  <data name="SettingsPage_LanguageGroupBox" xml:space="preserve">
+    <value>言語</value>
+  </data>
+  <data name="SettingsPage_LanguageVI" xml:space="preserve">
+    <value>Tiếng Việt (ベトナム語)</value>
+  </data>
+  <data name="SettingsPage_LanguageEN" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="SettingsPage_LanguageJP" xml:space="preserve">
+    <value>日本語 (Japanese)</value>
+  </data>
+  <data name="SettingsPage_LanguageChanged" xml:space="preserve">
+    <value>🌍 言語が変更されました: {0}</value>
+  </data>
+
+  <!-- Error/Success Messages -->
+  <data name="Error_Title" xml:space="preserve">
+    <value>エラー</value>
+  </data>
+  <data name="Error_ApiConnection" xml:space="preserve">
+    <value>❌ バックエンドAPIに接続できません</value>
+  </data>
+  <data name="Error_FetchPois" xml:space="preserve">
+    <value>❌ POIリストの読み込みエラー</value>
+  </data>
+  <data name="Error_FetchPoiDetail" xml:space="preserve">
+    <value>❌ POI詳細の読み込みエラー</value>
+  </data>
+  <data name="Error_InvalidCoordinates" xml:space="preserve">
+    <value>❌ 無効なGPS座標です（緯度: -90〜90、経度: -180〜180）</value>
+  </data>
+  <data name="Error_QueueFull" xml:space="preserve">
+    <value>❌ オーディオキューが満杯です</value>
+  </data>
+  <data name="Error_Cooldown" xml:space="preserve">
+    <value>⏳ '{0}'はクールダウン中です。あと{1:F0}秒待ってください</value>
+  </data>
+  <data name="Success_Title" xml:space="preserve">
+    <value>成功</value>
+  </data>
+  <data name="Success_LocationSet" xml:space="preserve">
+    <value>✅ 位置が更新されました</value>
+  </data>
+  <data name="Success_QueueAdded" xml:space="preserve">
+    <value>✅ '{0}'をキューに追加しました</value>
+  </data>
+  <data name="Warning_Title" xml:space="preserve">
+    <value>警告</value>
+  </data>
+  <data name="Warning_ApiNotHealthy" xml:space="preserve">
+    <value>⚠️ バックエンドAPIが応答していません。一部の機能が利用できない場合があります。</value>
+  </data>
+</root>

@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- Microsoft ResX File, format version 2.0 -->
+  <!-- Generated for English (en-US) localization -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Main Form -->
+  <data name="MainForm_Title" xml:space="preserve">
+    <value>Audio Guide - Multimedia Tourism Guidance System</value>
+  </data>
+
+  <!-- Map Page -->
+  <data name="MapPage_Title" xml:space="preserve">
+    <value>🗺️ Map - Find Nearby POIs</value>
+  </data>
+  <data name="MapPage_TabName" xml:space="preserve">
+    <value>🗺️ Map</value>
+  </data>
+  <data name="MapPage_SearchBoxTitle" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="MapPage_RadiusLabel" xml:space="preserve">
+    <value>Search radius (meters):</value>
+  </data>
+  <data name="MapPage_SearchButton" xml:space="preserve">
+    <value>🔍 Search</value>
+  </data>
+  <data name="MapPage_RefreshButton" xml:space="preserve">
+    <value>🔄 Refresh</value>
+  </data>
+  <data name="MapPage_GeofenceButton" xml:space="preserve">
+    <value>🚀 Geofencing</value>
+  </data>
+  <data name="MapPage_StatusMessage" xml:space="preserve">
+    <value>Enter your GPS location to start</value>
+  </data>
+  <data name="MapPage_Searching" xml:space="preserve">
+    <value>⏳ Searching for POIs...</value>
+  </data>
+  <data name="MapPage_NoResults" xml:space="preserve">
+    <value>❌ No points of interest found</value>
+  </data>
+  <data name="MapPage_FoundResults" xml:space="preserve">
+    <value>✅ Found {0} points of interest</value>
+  </data>
+  <data name="MapPage_InvalidLocation" xml:space="preserve">
+    <value>❌ Please enter GPS coordinates</value>
+  </data>
+  <data name="MapPage_SetLocationButton" xml:space="preserve">
+    <value>Set Location</value>
+  </data>
+  <data name="MapPage_LatitudeLabel" xml:space="preserve">
+    <value>Latitude:</value>
+  </data>
+  <data name="MapPage_LongitudeLabel" xml:space="preserve">
+    <value>Longitude:</value>
+  </data>
+
+  <!-- Audio Player Page -->
+  <data name="AudioPlayerPage_Title" xml:space="preserve">
+    <value>🎵 Play Audio</value>
+  </data>
+  <data name="AudioPlayerPage_TabName" xml:space="preserve">
+    <value>🎵 Play</value>
+  </data>
+  <data name="AudioPlayerPage_QueueLabel" xml:space="preserve">
+    <value>Audio Queue</value>
+  </data>
+  <data name="AudioPlayerPage_PlayButton" xml:space="preserve">
+    <value>▶ Play</value>
+  </data>
+  <data name="AudioPlayerPage_PauseButton" xml:space="preserve">
+    <value>⏸ Pause</value>
+  </data>
+  <data name="AudioPlayerPage_PrevButton" xml:space="preserve">
+    <value>⏮ Previous</value>
+  </data>
+  <data name="AudioPlayerPage_NextButton" xml:space="preserve">
+    <value>Next ⏭</value>
+  </data>
+  <data name="AudioPlayerPage_ClearQueueButton" xml:space="preserve">
+    <value>🗑️ Clear Queue</value>
+  </data>
+  <data name="AudioPlayerPage_EmptyQueue" xml:space="preserve">
+    <value>Queue is empty</value>
+  </data>
+  <data name="AudioPlayerPage_Playing" xml:space="preserve">
+    <value>▶️ Playing</value>
+  </data>
+  <data name="AudioPlayerPage_Paused" xml:space="preserve">
+    <value>⏸️ Paused</value>
+  </data>
+
+  <!-- QR Scanner Page -->
+  <data name="QrScannerPage_Title" xml:space="preserve">
+    <value>📱 Scan QR Code</value>
+  </data>
+  <data name="QrScannerPage_TabName" xml:space="preserve">
+    <value>📱 QR</value>
+  </data>
+  <data name="QrScannerPage_ScanButton" xml:space="preserve">
+    <value>📷 Scan from Camera</value>
+  </data>
+  <data name="QrScannerPage_ManualInputLabel" xml:space="preserve">
+    <value>Or enter QR code:</value>
+  </data>
+  <data name="QrScannerPage_SearchButton" xml:space="preserve">
+    <value>🔍 Find</value>
+  </data>
+  <data name="QrScannerPage_InputPlaceholder" xml:space="preserve">
+    <value>Enter QR code or hash...</value>
+  </data>
+  <data name="QrScannerPage_EmptyInput" xml:space="preserve">
+    <value>❌ Please enter a QR code</value>
+  </data>
+  <data name="QrScannerPage_Searching" xml:space="preserve">
+    <value>⏳ Searching...</value>
+  </data>
+  <data name="QrScannerPage_Found" xml:space="preserve">
+    <value>✅ Found: {0}</value>
+  </data>
+  <data name="QrScannerPage_NotImplemented" xml:space="preserve">
+    <value>📷 Camera feature not yet implemented</value>
+  </data>
+
+  <!-- Settings Page -->
+  <data name="SettingsPage_Title" xml:space="preserve">
+    <value>⚙️ Settings</value>
+  </data>
+  <data name="SettingsPage_TabName" xml:space="preserve">
+    <value>⚙️ Settings</value>
+  </data>
+  <data name="SettingsPage_LanguageGroupBox" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="SettingsPage_LanguageVI" xml:space="preserve">
+    <value>Tiếng Việt (Vietnamese)</value>
+  </data>
+  <data name="SettingsPage_LanguageEN" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="SettingsPage_LanguageJP" xml:space="preserve">
+    <value>日本語 (Japanese)</value>
+  </data>
+  <data name="SettingsPage_LanguageChanged" xml:space="preserve">
+    <value>🌍 Language changed to: {0}</value>
+  </data>
+
+  <!-- Error/Success Messages -->
+  <data name="Error_Title" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Error_ApiConnection" xml:space="preserve">
+    <value>❌ Cannot connect to Backend API</value>
+  </data>
+  <data name="Error_FetchPois" xml:space="preserve">
+    <value>❌ Error loading POI list</value>
+  </data>
+  <data name="Error_FetchPoiDetail" xml:space="preserve">
+    <value>❌ Error loading POI details</value>
+  </data>
+  <data name="Error_InvalidCoordinates" xml:space="preserve">
+    <value>❌ Invalid GPS coordinates (Latitude: -90 to 90, Longitude: -180 to 180)</value>
+  </data>
+  <data name="Error_QueueFull" xml:space="preserve">
+    <value>❌ Audio queue is full</value>
+  </data>
+  <data name="Error_Cooldown" xml:space="preserve">
+    <value>⏳ '{0}' is in cooldown. Wait {1:F0}s more</value>
+  </data>
+  <data name="Success_Title" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="Success_LocationSet" xml:space="preserve">
+    <value>✅ Location updated</value>
+  </data>
+  <data name="Success_QueueAdded" xml:space="preserve">
+    <value>✅ Added '{0}' to queue</value>
+  </data>
+  <data name="Warning_Title" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="Warning_ApiNotHealthy" xml:space="preserve">
+    <value>⚠️ Backend API is not responding. Some features may be unavailable.</value>
+  </data>
+</root>

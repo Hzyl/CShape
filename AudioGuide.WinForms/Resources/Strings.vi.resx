@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- Microsoft ResX File, format version 2.0 -->
+  <!-- Generated for Vietnamese (vi-VN) localization -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Main Form -->
+  <data name="MainForm_Title" xml:space="preserve">
+    <value>Audio Guide - Hướng dẫn Du lịch Đa Phương Tiện</value>
+  </data>
+
+  <!-- Map Page -->
+  <data name="MapPage_Title" xml:space="preserve">
+    <value>🗺️ Bản Đồ - Tìm POI Gần Vị Trí</value>
+  </data>
+  <data name="MapPage_TabName" xml:space="preserve">
+    <value>🗺️ Bản Đồ</value>
+  </data>
+  <data name="MapPage_SearchBoxTitle" xml:space="preserve">
+    <value>Tìm Kiếm</value>
+  </data>
+  <data name="MapPage_RadiusLabel" xml:space="preserve">
+    <value>Bán kính tìm kiếm (m):</value>
+  </data>
+  <data name="MapPage_SearchButton" xml:space="preserve">
+    <value>🔍 Tìm Kiếm</value>
+  </data>
+  <data name="MapPage_RefreshButton" xml:space="preserve">
+    <value>🔄 Làm Mới</value>
+  </data>
+  <data name="MapPage_GeofenceButton" xml:space="preserve">
+    <value>🚀 Geofencing</value>
+  </data>
+  <data name="MapPage_StatusMessage" xml:space="preserve">
+    <value>Nhập vị trí GPS của bạn để bắt đầu</value>
+  </data>
+  <data name="MapPage_Searching" xml:space="preserve">
+    <value>⏳ Đang tìm kiếm POI...</value>
+  </data>
+  <data name="MapPage_NoResults" xml:space="preserve">
+    <value>❌ Không tìm thấy điểm du lịch nào</value>
+  </data>
+  <data name="MapPage_FoundResults" xml:space="preserve">
+    <value>✅ Tìm thấy {0} điểm du lịch</value>
+  </data>
+  <data name="MapPage_InvalidLocation" xml:space="preserve">
+    <value>❌ Vui lòng nhập tọa độ GPS</value>
+  </data>
+  <data name="MapPage_SetLocationButton" xml:space="preserve">
+    <value>Đặt Vị Trí</value>
+  </data>
+  <data name="MapPage_LatitudeLabel" xml:space="preserve">
+    <value>Vĩ độ:</value>
+  </data>
+  <data name="MapPage_LongitudeLabel" xml:space="preserve">
+    <value>Kinh độ:</value>
+  </data>
+
+  <!-- Audio Player Page -->
+  <data name="AudioPlayerPage_Title" xml:space="preserve">
+    <value>🎵 Phát Nhạc</value>
+  </data>
+  <data name="AudioPlayerPage_TabName" xml:space="preserve">
+    <value>🎵 Phát Nhạc</value>
+  </data>
+  <data name="AudioPlayerPage_QueueLabel" xml:space="preserve">
+    <value>Hàng Đợi Audio</value>
+  </data>
+  <data name="AudioPlayerPage_PlayButton" xml:space="preserve">
+    <value>▶ Phát</value>
+  </data>
+  <data name="AudioPlayerPage_PauseButton" xml:space="preserve">
+    <value>⏸ Tạm Dừng</value>
+  </data>
+  <data name="AudioPlayerPage_PrevButton" xml:space="preserve">
+    <value>⏮ Trước</value>
+  </data>
+  <data name="AudioPlayerPage_NextButton" xml:space="preserve">
+    <value>Tiếp ⏭</value>
+  </data>
+  <data name="AudioPlayerPage_ClearQueueButton" xml:space="preserve">
+    <value>🗑️ Xóa Hàng Đợi</value>
+  </data>
+  <data name="AudioPlayerPage_EmptyQueue" xml:space="preserve">
+    <value>Hàng đợi trống</value>
+  </data>
+  <data name="AudioPlayerPage_Playing" xml:space="preserve">
+    <value>▶️ Đang phát</value>
+  </data>
+  <data name="AudioPlayerPage_Paused" xml:space="preserve">
+    <value>⏸️ Tạm dừng</value>
+  </data>
+
+  <!-- QR Scanner Page -->
+  <data name="QrScannerPage_Title" xml:space="preserve">
+    <value>📱 Quét Mã QR</value>
+  </data>
+  <data name="QrScannerPage_TabName" xml:space="preserve">
+    <value>📱 Quét QR</value>
+  </data>
+  <data name="QrScannerPage_ScanButton" xml:space="preserve">
+    <value>📷 Quét Từ Camera</value>
+  </data>
+  <data name="QrScannerPage_ManualInputLabel" xml:space="preserve">
+    <value>Hoặc nhập mã QR:</value>
+  </data>
+  <data name="QrScannerPage_SearchButton" xml:space="preserve">
+    <value>🔍 Tìm</value>
+  </data>
+  <data name="QrScannerPage_InputPlaceholder" xml:space="preserve">
+    <value>Nhập mã QR hoặc hash...</value>
+  </data>
+  <data name="QrScannerPage_EmptyInput" xml:space="preserve">
+    <value>❌ Vui lòng nhập mã QR</value>
+  </data>
+  <data name="QrScannerPage_Searching" xml:space="preserve">
+    <value>⏳ Đang tìm kiếm...</value>
+  </data>
+  <data name="QrScannerPage_Found" xml:space="preserve">
+    <value>✅ Tìm thấy: {0}</value>
+  </data>
+  <data name="QrScannerPage_NotImplemented" xml:space="preserve">
+    <value>📷 Tính năng camera chưa được implement</value>
+  </data>
+
+  <!-- Settings Page -->
+  <data name="SettingsPage_Title" xml:space="preserve">
+    <value>⚙️ Cài Đặt</value>
+  </data>
+  <data name="SettingsPage_TabName" xml:space="preserve">
+    <value>⚙️ Cài Đặt</value>
+  </data>
+  <data name="SettingsPage_LanguageGroupBox" xml:space="preserve">
+    <value>Ngôn Ngữ</value>
+  </data>
+  <data name="SettingsPage_LanguageVI" xml:space="preserve">
+    <value>Tiếng Việt (Vietnamese)</value>
+  </data>
+  <data name="SettingsPage_LanguageEN" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="SettingsPage_LanguageJP" xml:space="preserve">
+    <value>日本語 (Japanese)</value>
+  </data>
+  <data name="SettingsPage_LanguageChanged" xml:space="preserve">
+    <value>🌍 Ngôn ngữ đã được thay đổi: {0}</value>
+  </data>
+
+  <!-- Error/Success Messages -->
+  <data name="Error_Title" xml:space="preserve">
+    <value>Lỗi</value>
+  </data>
+  <data name="Error_ApiConnection" xml:space="preserve">
+    <value>❌ Không thể kết nối tới Backend API</value>
+  </data>
+  <data name="Error_FetchPois" xml:space="preserve">
+    <value>❌ Lỗi khi tải danh sách POI</value>
+  </data>
+  <data name="Error_FetchPoiDetail" xml:space="preserve">
+    <value>❌ Lỗi khi tải chi tiết POI</value>
+  </data>
+  <data name="Error_InvalidCoordinates" xml:space="preserve">
+    <value>❌ Tọa độ GPS không hợp lệ (Vĩ độ: -90 đến 90, Kinh độ: -180 đến 180)</value>
+  </data>
+  <data name="Error_QueueFull" xml:space="preserve">
+    <value>❌ Hàng đợi audio đầy</value>
+  </data>
+  <data name="Error_Cooldown" xml:space="preserve">
+    <value>⏳ '{0}' đang trong cooldown. Chờ {1:F0}s nữa</value>
+  </data>
+  <data name="Success_Title" xml:space="preserve">
+    <value>Thành công</value>
+  </data>
+  <data name="Success_LocationSet" xml:space="preserve">
+    <value>✅ Vị trí đã được cập nhật</value>
+  </data>
+  <data name="Success_QueueAdded" xml:space="preserve">
+    <value>✅ Đã thêm '{0}' vào hàng đợi</value>
+  </data>
+  <data name="Warning_Title" xml:space="preserve">
+    <value>Cảnh báo</value>
+  </data>
+  <data name="Warning_ApiNotHealthy" xml:space="preserve">
+    <value>⚠️ Backend API không hoạt động. Một số tính năng có thể không khả dụng.</value>
+  </data>
+</root>
