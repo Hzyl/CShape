@@ -6,6 +6,9 @@
 // Session ID ẩn danh
 window.APP_SESSION_ID = 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
 
+// Auth token key
+const AUTH_TOKEN_KEY = 'vinhkhanh_token';
+
 // State
 const AppState = {
     language: 'vi',
@@ -92,12 +95,105 @@ function t(key) {
 // ==================== INITIALIZATION ====================
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Xóa params rác khỏi URL (nocache, v=...) — không reload, chỉ clean URL bar
+    cleanUrlParams(['nocache', 'v']);
+
     // Dừng audio cũ nếu trang được reload
     if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
     }
 
-    // Init managers
+    // Check đăng nhập: nếu chưa có token → hiện login form, đợi đăng nhập xong mới init app
+    const token = sessionStorage.getItem(AUTH_TOKEN_KEY);
+    if (!token) {
+        setupLoginForm();
+        return; // Dừng tại đây, chờ login thành công sẽ gọi initApp()
+    }
+
+    // Đã đăng nhập → ẩn login screen và vào app
+    document.getElementById('login-screen').classList.add('hidden');
+    await initApp();
+});
+
+/** Xóa các query params không cần thiết khỏi URL bar (không reload trang) */
+function cleanUrlParams(removeKeys) {
+    const url = new URL(window.location.href);
+    let changed = false;
+    removeKeys.forEach(k => {
+        if (url.searchParams.has(k)) {
+            url.searchParams.delete(k);
+            changed = true;
+        }
+    });
+    if (changed) {
+        window.history.replaceState({}, '', url.pathname + (url.search || '') + (url.hash || ''));
+    }
+}
+
+/** Hiển thị form đăng nhập và xử lý submit */
+function setupLoginForm() {
+    const loginScreen = document.getElementById('login-screen');
+    const loginForm   = document.getElementById('login-form');
+    const loginBtn    = document.getElementById('login-btn');
+    const loginError  = document.getElementById('login-error');
+    const togglePw    = document.getElementById('toggle-pw');
+    const pwInput     = document.getElementById('login-password');
+    const pwIcon      = document.getElementById('toggle-pw-icon');
+
+    // Toggle hiện/ẩn mật khẩu
+    togglePw.addEventListener('click', () => {
+        const isHidden = pwInput.type === 'password';
+        pwInput.type = isHidden ? 'text' : 'password';
+        pwIcon.textContent = isHidden ? 'visibility' : 'visibility_off';
+    });
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        loginError.classList.add('hidden');
+
+        const username = document.getElementById('login-username').value.trim();
+        const password = pwInput.value;
+
+        if (!username || !password) return;
+
+        // Loading state
+        loginBtn.disabled = true;
+        loginBtn.classList.add('loading');
+        loginBtn.querySelector('.material-icons-round').textContent = 'refresh';
+        loginBtn.lastChild.textContent = ' Đang đăng nhập...';
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (!res.ok) throw new Error('Invalid credentials');
+
+            const data = await res.json();
+            // Lưu token vào sessionStorage (xóa khi đóng tab)
+            sessionStorage.setItem(AUTH_TOKEN_KEY, data.token);
+            sessionStorage.setItem('vinhkhanh_user', data.username);
+
+            // Ẩn login screen với animation
+            loginScreen.classList.add('hidden');
+
+            // Tiếp tục init app
+            await initApp();
+
+        } catch {
+            loginError.classList.remove('hidden');
+            loginBtn.disabled = false;
+            loginBtn.classList.remove('loading');
+            loginBtn.querySelector('.material-icons-round').textContent = 'login';
+            loginBtn.lastChild.textContent = ' Đăng nhập';
+        }
+    });
+}
+
+/** Khởi tạo toàn bộ app sau khi đăng nhập thành công */
+async function initApp() {
     audioManager = new AudioManager();
     mapManager = new MapManager('map');
     geofenceManager = new GeofenceManager();
@@ -144,7 +240,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.speechSynthesis.cancel();
         }
     });
-});
+
+    // Xử lý URL param ?qr= (khi mở app bằng cách quét QR code)
+    handleQrUrlParam();
+
+    // Kéo bottom sheet lên/xuống
+    setupBottomSheetDrag();
+
+    // Hiển thị splash
+    document.getElementById('splash-screen').classList.remove('hidden');
+}
+
 
 // ==================== DATA LOADING ====================
 
@@ -207,6 +313,52 @@ async function loadPois() {
     }
 }
 
+// ==================== QR URL HANDLER ====================
+
+/**
+ * Xử lý khi mở app bằng cách quét QR Code tại cửa hàng.
+ * URL: /index.html?qr=VK-POI-001
+ * Tự động tìm POI và phát thuyết minh.
+ */
+function handleQrUrlParam() {
+    const params = new URLSearchParams(window.location.search);
+    const qrCode = params.get('qr');
+    if (!qrCode) return;
+
+    console.log('📱 Mở app qua QR Code:', qrCode);
+    
+    // Đợi POI load xong (tối đa 5s)
+    const tryFind = (attempt = 0) => {
+        const poi = AppState.pois.find(p => 
+            (p.qrCode && p.qrCode === qrCode) || p.id === qrCode
+        );
+        
+        if (poi) {
+            // Hiển thị chi tiết và phát thế minh ngay
+            showPoiDetail(poi);
+            mapManager.centerOnPoi(poi.id);
+            
+            const lang = AppState.language;
+            const name = poi.name[lang] || poi.name.vi;
+            const script = poi.ttsScript[lang] || poi.ttsScript.vi;
+            
+            // Phát sau 1 giây (chờ splash screen tắt)
+            setTimeout(() => {
+                audioManager.playDirect(poi.id, script, name);
+                console.log('✅ QR: Đang phát thuyết minh cho', name);
+            }, 1800);
+        } else if (attempt < 10) {
+            // Thử lại sau 500ms nếu POI chưa load
+            setTimeout(() => tryFind(attempt + 1), 500);
+        } else {
+            console.warn('⚠️ Không tìm thấy POI với mã QR:', qrCode);
+        }
+    };
+    
+    // Bắt đầu tìm sau khi splash screen bắt đầu tắt (1.5s)
+    setTimeout(() => tryFind(), 1500);
+}
+
 function updateNetworkStatus() {
     const banner = document.getElementById('offline-banner');
     if (!banner) return;
@@ -248,6 +400,12 @@ function setupGeofenceCallbacks() {
         // Tìm full POI data
         const fullPoi = AppState.pois.find(p => p.id === poi.id);
         if (!fullPoi) return;
+
+        // Chỉ phát 1 lần/POI trong session
+        if (audioManager.hasPlayed(poi.id)) {
+            console.log(`⏭️ POI ${poi.name.vi} đã được thuyết minh trong session này, bỏ qua.`);
+            return;
+        }
 
         const lang = AppState.language;
         const name = fullPoi.name[lang] || fullPoi.name.vi;
@@ -307,11 +465,17 @@ function setupAudioCallbacks() {
         const titleEl = document.getElementById('audio-title');
         const waveEl = document.querySelector('.audio-wave');
         const fabStop = document.getElementById('btn-fab-stop');
+        const bottomSheet = document.getElementById('poi-detail');
 
         if (state.isPlaying || state.isPaused) {
             playerBar.classList.remove('hidden');
             fabStop.classList.remove('hidden');
             titleEl.textContent = state.currentItem?.title || '';
+            
+            // Đẩy bottom-sheet lên trên khi audio bar xuất hiện (56px = chiều cao audio bar)
+            if (bottomSheet && !bottomSheet.classList.contains('hidden')) {
+                bottomSheet.style.paddingBottom = '60px';
+            }
             
             if (state.isPaused) {
                 playBtn.querySelector('.material-icons-round').textContent = 'play_arrow';
@@ -323,6 +487,7 @@ function setupAudioCallbacks() {
         } else {
             playerBar.classList.add('hidden');
             fabStop.classList.add('hidden');
+            if (bottomSheet) bottomSheet.style.paddingBottom = '';
         }
     };
 }
@@ -420,6 +585,10 @@ function setupUIEvents() {
 
     document.getElementById('btn-close-detail').addEventListener('click', closePoiDetail);
 
+    // QR lightbox
+    document.getElementById('btn-qr-thumb').addEventListener('click', openQrLightbox);
+    document.getElementById('qr-lightbox-backdrop').addEventListener('click', closeQrLightbox);
+
     // Filter buttons
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -443,17 +612,41 @@ function changeLanguage(lang) {
     mapManager.updateLanguage(AppState.pois, lang);
     renderPoiList(AppState.pois);
     
-    // Update UI text
+    // Update UI text — dùng lastChild.textContent để KHÔNG xóa <span class="material-icons-round">
+    // (nếu dùng .innerHTML thì querySelector('.material-icons-round') trong audio callback sẽ return null)
     document.getElementById('gps-text').textContent = AppState.isGpsActive ? t('gpsActive') : t('gpsSearching');
-    document.getElementById('btn-listen').innerHTML = `<span class="material-icons-round">volume_up</span> ${t('listen')}`;
-    document.getElementById('btn-navigate').innerHTML = `<span class="material-icons-round">directions</span> ${t('navigate')}`;
-    document.getElementById('btn-close-detail').innerHTML = `<span class="material-icons-round">close</span> ${t('close')}`;
+    setBtnText('btn-listen',       t('listen'));
+    setBtnText('btn-navigate',     t('navigate'));
+    setBtnText('btn-close-detail', t('close'));
+    
+    // Re-sync audio player bar (đảm bảo pause button vẫn hiện nếu đang phát)
+    if (audioManager.onStateChange) {
+        audioManager.onStateChange(audioManager.getState ? audioManager.getState() : { isPlaying: false, isPaused: false });
+    }
     
     // Update detail if open
     if (AppState.selectedPoi) {
         showPoiDetail(AppState.selectedPoi);
     }
 }
+
+/**
+ * Cập nhật text của button mà GIỮ NGUYÊN icon <span> bên trong.
+ * Tránh rebuild innerHTML làm mất DOM reference của audio callbacks.
+ */
+function setBtnText(btnId, text) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    // Tìm text node cuối (sau span icon) và update; nếu chưa có thì thêm mới
+    const nodes = Array.from(btn.childNodes);
+    const textNode = nodes.find(n => n.nodeType === Node.TEXT_NODE);
+    if (textNode) {
+        textNode.textContent = ' ' + text;
+    } else {
+        btn.appendChild(document.createTextNode(' ' + text));
+    }
+}
+
 
 function renderPoiList(pois, filter = 'all') {
     const listEl = document.getElementById('poi-list');
@@ -518,12 +711,25 @@ function showPoiDetail(poi) {
     const distance = geofenceManager.getDistanceTo(poi.latitude, poi.longitude);
     document.getElementById('detail-distance-text').textContent = GeofenceManager.formatDistance(distance);
 
+    // Set QR code ngay trong bottom sheet
+    // QR encode URL → khi du khách quét bằng camera sẽ mở app và tự phát thuyết minh
+    const qrCode = poi.qrCode || poi.id;
+    const qrUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
+    const qrImg = document.getElementById('detail-qr-img');
+    if (qrImg) {
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
+        qrImg.alt = `QR Code - ${poi.name[lang] || poi.name.vi}`;
+    }
+
     document.getElementById('poi-detail').classList.remove('hidden');
     mapManager.setActiveMarker(poi.id);
 }
 
 function closePoiDetail() {
-    document.getElementById('poi-detail').classList.add('hidden');
+    const sheet = document.getElementById('poi-detail');
+    sheet.classList.add('hidden');
+    sheet.classList.remove('expanded');
+    sheet.style.maxHeight = '';
     AppState.selectedPoi = null;
     mapManager.setActiveMarker(null);
 }
@@ -583,4 +789,112 @@ function openQRModal() {
 function closeQRModal() {
     qrScanner.stop();
     document.getElementById('qr-modal').classList.add('hidden');
+}
+
+// ==================== POI QR DISPLAY ====================
+
+/**
+ * Hiển thị QR Code của POI để nhân viên/du khách quét.
+ * QR encode URL app → khi quét tự mở app và phát thuyết minh.
+ */
+function showPoiQr(poi) {
+    const lang = AppState.language;
+    const name = poi.name[lang] || poi.name.vi;
+    const qrCode = poi.qrCode || poi.id;
+    
+    // URL mà QR sẽ encode: mở app và tự phát thuyết minh
+    const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
+    
+    document.getElementById('poi-qr-name').textContent = name;
+    document.getElementById('poi-qr-img').src = 
+        `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(appUrl)}`;
+    
+    document.getElementById('poi-qr-modal').classList.remove('hidden');
+}
+
+function closePoiQrModal() {
+    document.getElementById('poi-qr-modal').classList.add('hidden');
+}
+
+// ==================== BOTTOM SHEET DRAG ====================
+
+/**
+ * Kéo handle để:
+ * - Kéo lên: mở rộng bottom sheet (thêm class .expanded)
+ * - Kéo xuống đủ mạnh: đóng bottom sheet
+ */
+function setupBottomSheetDrag() {
+    const sheet  = document.getElementById('poi-detail');
+    const handle = document.getElementById('sheet-handle');
+    if (!handle || !sheet) return;
+
+    let startY     = 0;
+    let startH     = 0;
+    let dragging   = false;
+
+    const onStart = (y) => {
+        dragging = true;
+        startY   = y;
+        startH   = sheet.getBoundingClientRect().height;
+        sheet.style.transition = 'none';
+    };
+
+    const onMove = (y) => {
+        if (!dragging) return;
+        const delta  = startY - y;           // dương = kéo lên
+        const newH   = Math.min(Math.max(startH + delta, 60), window.innerHeight * 0.82);
+        sheet.style.maxHeight = newH + 'px';
+    };
+
+    const onEnd = (y) => {
+        if (!dragging) return;
+        dragging = false;
+        sheet.style.transition = '';
+
+        const delta = startY - y;
+        if (delta < -80) {
+            // Kéo xuống mạnh → đóng
+            closePoiDetail();
+        } else if (delta > 60) {
+            // Kéo lên → mở rộng
+            sheet.classList.add('expanded');
+            sheet.style.maxHeight = '';
+        } else {
+            // Trả về mặc định
+            sheet.classList.remove('expanded');
+            sheet.style.maxHeight = '';
+        }
+    };
+
+    // Touch
+    handle.addEventListener('touchstart', (e) => onStart(e.touches[0].clientY), { passive: true });
+    handle.addEventListener('touchmove',  (e) => { e.preventDefault(); onMove(e.touches[0].clientY); }, { passive: false });
+    handle.addEventListener('touchend',   (e) => onEnd(e.changedTouches[0].clientY));
+
+    // Mouse (để test trên PC)
+    handle.addEventListener('mousedown', (e) => { e.preventDefault(); onStart(e.clientY); });
+    window.addEventListener('mousemove', (e) => onMove(e.clientY));
+    window.addEventListener('mouseup',   (e) => onEnd(e.clientY));
+}
+
+// ==================== QR LIGHTBOX ====================
+
+function openQrLightbox() {
+    const poi = AppState.selectedPoi;
+    if (!poi) return;
+
+    const lang  = AppState.language;
+    const name  = poi.name[lang] || poi.name.vi;
+    const qrCode = poi.qrCode || poi.id;
+    const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
+
+    document.getElementById('qr-lightbox-name').textContent = name;
+    document.getElementById('qr-lightbox-img').src =
+        `https://api.qrserver.com/v1/create-qr-code/?size=480x480&data=${encodeURIComponent(appUrl)}`;
+
+    document.getElementById('qr-lightbox').classList.remove('hidden');
+}
+
+function closeQrLightbox() {
+    document.getElementById('qr-lightbox').classList.add('hidden');
 }

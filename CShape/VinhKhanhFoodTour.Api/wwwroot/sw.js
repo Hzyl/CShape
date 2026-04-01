@@ -4,9 +4,9 @@
  * Khi offline → phục vụ từ cache
  */
 
-const CACHE_NAME = 'vinhkhanh-v2';
-const API_CACHE = 'vinhkhanh-api-v2';
-const TILE_CACHE = 'vinhkhanh-tiles-v2';
+const CACHE_NAME = 'vinhkhanh-v6';
+const API_CACHE = 'vinhkhanh-api-v6';
+const TILE_CACHE = 'vinhkhanh-tiles-v6';
 
 // Static assets cần pre-cache
 const PRECACHE_ASSETS = [

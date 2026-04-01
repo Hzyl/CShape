@@ -49,9 +49,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAll");
 
-// Serve static files (wwwroot)
-app.UseDefaultFiles();
 app.UseStaticFiles();
+
+// Route "/" → tự động redirect sang /index.html
+app.MapGet("/", context =>
+{
+    context.Response.Redirect("/index.html", permanent: false);
+    return Task.CompletedTask;
+});
 
 app.MapControllers();
 

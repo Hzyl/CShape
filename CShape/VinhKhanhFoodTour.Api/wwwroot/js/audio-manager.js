@@ -44,6 +44,15 @@ class AudioManager {
         }
     }
 
+    /** Trả về snapshot trạng thái hiện tại — dùng để re-sync UI */
+    getState() {
+        return {
+            isPlaying: this.isPlaying,
+            isPaused: this.isPaused,
+            currentItem: this.currentItem
+        };
+    }
+
     _loadVoices() {
         const newVoices = this.synth.getVoices();
         if (newVoices.length === 0) return;

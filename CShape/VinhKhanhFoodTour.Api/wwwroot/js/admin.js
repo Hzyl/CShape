@@ -242,10 +242,13 @@ async function loadPoisTable() {
                 <td>${poi.priority}</td>
                 <td><span class="status-badge ${poi.isActive ? 'active' : 'inactive'}">${poi.isActive ? 'Hoạt động' : 'Ẩn'}</span></td>
                 <td class="actions">
-                    <button class="btn btn-ghost btn-sm" onclick="editPoi('${poi.id}')">
+                    <button class="btn btn-primary btn-sm" onclick="viewQr('${poi.id}')" title="Hiển thị mã QR">
+                        <span class="material-icons-round" style="font-size: 16px">qr_code_2</span>
+                    </button>
+                    <button class="btn btn-ghost btn-sm" onclick="editPoi('${poi.id}')" title="Sửa">
                         <span class="material-icons-round" style="font-size: 16px">edit</span>
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="deletePoi('${poi.id}')">
+                    <button class="btn btn-danger btn-sm" onclick="deletePoi('${poi.id}')" title="Xóa">
                         <span class="material-icons-round" style="font-size: 16px">delete</span>
                     </button>
                 </td>
@@ -522,4 +525,57 @@ async function loadTranslations() {
             </div>
         `;
     }).join('');
+}
+
+// ==================== QR VIEWER ====================
+
+function viewQr(poiId) {
+    const poi = adminPois.find(p => p.id === poiId);
+    if (!poi) return;
+    
+    // Mã QR encode URL đầy đủ: khi quét bằng camera sẽ mở app và tự phát thuyết minh
+    const qrCode = poi.qrCode || poi.id;
+    const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
+    const name = poi.name?.vi || 'Điểm Thuyết Minh';
+
+    document.getElementById('qr-poi-name').textContent = name;
+    document.getElementById('qr-poi-code').textContent = 'Đường dẫn: ' + appUrl;
+    
+    const container = document.getElementById('qr-image-container');
+    container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(appUrl)}" alt="QR Code" style="width: 250px; height: 250px; display: block; margin: 0 auto;">`;
+    
+    // Lưu để dùng khi in
+    document.getElementById('qr-view-modal').dataset.poiName = name;
+    document.getElementById('qr-view-modal').dataset.qrUrl = appUrl;
+    document.getElementById('qr-view-modal').classList.remove('hidden');
+}
+
+function closeQrViewModal() {
+    document.getElementById('qr-view-modal').classList.add('hidden');
+}
+
+function printQr() {
+    const container = document.getElementById('qr-image-container').innerHTML;
+    const name = document.getElementById('qr-poi-name').textContent;
+    const code = document.getElementById('qr-poi-code').textContent;
+    
+    const printWindow = window.open('', '', 'height=600,width=800');
+    // Mở một cửa sổ mới để in
+    printWindow.document.write('<html><head><title>In QR Code</title>');
+    printWindow.document.write('<style>body { font-family: sans-serif; text-align: center; padding: 40px; } img { width: 300px; height: 300px; margin: 20px auto; } h1 { font-size: 28px; margin-bottom: 20px; color: #333; } p { font-size: 18px; color: #666; }</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(`<h1>Phố Ẩm Thực Vĩnh Khánh</h1>`);
+    printWindow.document.write(`<h2 style="font-size: 24px; color: #FF6B35;">${name}</h2>`);
+    printWindow.document.write(container);
+    printWindow.document.write(`<p style="font-weight: bold; color: #000;">${code}</p>`);
+    printWindow.document.write('<p>Quét mã này bằng ứng dụng <br><strong>Vĩnh Khánh Food Tour</strong> để nghe thuyết minh.</p>');
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    
+    // Đợi ảnh load xong mới in
+    printWindow.setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 1000);
 }

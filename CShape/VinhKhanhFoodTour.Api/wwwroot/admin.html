@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CMS Admin - Phố Ẩm Thực Vĩnh Khánh</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="/css/admin.css">
 </head>
+
 <body>
     <!-- Login Screen -->
     <div id="login-screen" class="login-screen">
@@ -32,7 +35,7 @@
                 <button type="submit" class="btn btn-primary btn-full" id="login-btn">
                     <span class="material-icons-round">login</span> Đăng nhập
                 </button>
-                <p class="login-hint">Mặc định: admin / admin123</p>
+                <!-- <p class="login-hint">Mặc định: admin / admin123</p> -->
             </form>
         </div>
     </div>
@@ -51,10 +54,10 @@
                     <span class="material-icons-round">dashboard</span> Dashboard
                 </a>
                 <a class="nav-item" data-page="pois" onclick="switchPage('pois')">
-                    <span class="material-icons-round">place</span> Quản lý POI
+                    <span class="material-icons-round">place</span> Quản lý POIs
                 </a>
                 <a class="nav-item" data-page="tours" onclick="switchPage('tours')">
-                    <span class="material-icons-round">explore</span> Quản lý Tour
+                    <span class="material-icons-round">explore</span> Quản lý Tours
                 </a>
                 <a class="nav-item" data-page="analytics" onclick="switchPage('analytics')">
                     <span class="material-icons-round">analytics</span> Phân tích
@@ -333,7 +336,35 @@
         </div>
     </div>
 
+    <!-- QR View Modal -->
+    <div class="modal hidden" id="qr-view-modal">
+        <div class="modal-backdrop" onclick="closeQrViewModal()"></div>
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2>Mã QR Điểm Thuyết Minh</h2>
+                <button class="icon-btn" onclick="closeQrViewModal()">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <h3 id="qr-poi-name" style="margin-bottom: 15px;">Tên POI</h3>
+                <div id="qr-image-container"
+                    style="background: white; padding: 20px; border-radius: 10px; display: inline-block;">
+                    <!-- QR Image will be injected here -->
+                </div>
+                <p id="qr-poi-code" style="margin-top: 15px; font-weight: bold; color: var(--primary);"></p>
+                <p style="margin-top: 10px; font-size: 14px; color: var(--text-muted);">In mã QR này dán tại địa điểm để
+                    du khách quét nghe thuyết minh.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeQrViewModal()">Đóng</button>
+                <button type="button" class="btn btn-primary" onclick="printQr()">🖨️ In QR Code</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/js/admin.js"></script>
 </body>
+
 </html>

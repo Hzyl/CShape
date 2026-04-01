@@ -68,9 +68,9 @@
     --z-fab: 200;
     --z-panel: 300;
     --z-bottom-sheet: 400;
-    --z-audio: 500;
-    --z-toast: 600;
-    --z-modal: 700;
+    --z-audio: 600;
+    --z-toast: 700;
+    --z-modal: 800;
     --z-splash: 1000;
 }
 
@@ -93,7 +93,192 @@ html, body {
 
 .hidden { display: none !important; }
 
+/* --- Login Screen --- */
+.login-screen {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-splash) + 10);
+    background: var(--color-bg-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-md);
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.login-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-xl) var(--space-xl);
+    box-shadow: var(--shadow-lg);
+    animation: loginCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes loginCardIn {
+    from { opacity: 0; transform: translateY(24px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.login-logo {
+    font-size: 56px;
+    text-align: center;
+    margin-bottom: var(--space-sm);
+    animation: splashBounce 2s ease-in-out infinite;
+}
+
+.login-title {
+    font-size: 28px;
+    font-weight: 800;
+    text-align: center;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+}
+
+.login-subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: var(--color-text-muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: var(--space-xl);
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.login-field label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.login-field label .material-icons-round {
+    font-size: 15px;
+    color: var(--color-primary);
+}
+
+.login-field input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    font-size: 15px;
+    font-family: var(--font-main);
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.login-field input::placeholder {
+    color: var(--color-text-muted);
+}
+
+.login-field input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15);
+}
+
+.login-password-wrap {
+    position: relative;
+}
+
+.login-password-wrap input {
+    padding-right: 48px;
+}
+
+.toggle-pw {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    padding: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.toggle-pw:hover { color: var(--color-text); }
+.toggle-pw .material-icons-round { font-size: 20px; }
+
+.login-error {
+    color: var(--color-danger);
+    font-size: 13px;
+    text-align: center;
+    padding: 8px 12px;
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    border-radius: var(--radius-sm);
+    animation: loginCardIn 0.3s ease;
+}
+
+.login-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    width: 100%;
+    padding: 14px;
+    background: var(--gradient-primary);
+    border: none;
+    border-radius: var(--radius-md);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+    margin-top: var(--space-sm);
+}
+
+.login-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-glow);
+}
+
+.login-btn:active { transform: translateY(0); }
+
+.login-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.login-btn.loading .material-icons-round {
+    animation: loginSpinner 0.8s linear infinite;
+}
+
+@keyframes loginSpinner {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
 /* --- Splash Screen --- */
+
 .splash-screen {
     position: fixed;
     inset: 0;
@@ -612,22 +797,156 @@ html, body {
     z-index: var(--z-bottom-sheet);
     background: var(--color-bg-card);
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    max-height: 70vh;
+    height: auto;
+    max-height: 46vh;   /* Chỉ chếm ~hành nửa màn hình */
     overflow-y: auto;
-    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.5);
+    transition: height 0.25s ease, max-height 0.25s ease, padding-bottom 0.3s ease;
+    will-change: height;
+}
+
+.bottom-sheet.expanded {
+    max-height: 80vh;
 }
 
 .bottom-sheet-handle {
     width: 40px;
-    height: 4px;
-    background: var(--color-text-muted);
-    border-radius: 2px;
-    margin: var(--space-sm) auto;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    margin: 10px auto 6px;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
 }
+
+.bottom-sheet-handle:active { cursor: grabbing; }
 
 .bottom-sheet-content {
     padding: 0 var(--space-lg) var(--space-lg);
+    overflow: hidden;
+}
+
+/* --- POI Header Top Row (category + QR thumb) --- */
+.poi-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-sm);
+}
+
+/* QR thumbnail button - nhỏ ở góc phải mễu header */
+.qr-thumb-btn {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    padding: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.qr-thumb-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Icon placeholder khi QR chưa load */
+.qr-thumb-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    font-size: 22px;
+    background: rgba(255,255,255,0.9);
+    transition: opacity 0.2s;
+}
+
+.qr-thumb-btn img[src]:not([src=""]) + .qr-thumb-icon {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.qr-thumb-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    border-color: var(--color-primary);
+}
+
+/* --- QR Lightbox (full size giữa màn hình) --- */
+.qr-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-lightbox.hidden { display: none !important; }
+
+.qr-lightbox-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    cursor: pointer;
+}
+
+.qr-lightbox-card {
+    position: relative;
+    background: var(--color-bg-card);
+    border-radius: var(--radius-xl);
+    padding: var(--space-xl);
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    animation: qrLightboxIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    max-width: 320px;
+    width: 90vw;
+}
+
+@keyframes qrLightboxIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+.qr-lightbox-name {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: var(--space-md);
+    color: var(--color-text);
+}
+
+.qr-lightbox-img-wrap {
+    background: #fff;
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: inline-block;
+    margin-bottom: var(--space-md);
+}
+
+.qr-lightbox-img-wrap img {
+    width: 240px;
+    height: 240px;
+    display: block;
+    object-fit: contain;
+}
+
+.qr-lightbox-hint {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 .poi-detail-category {
@@ -690,11 +1009,57 @@ html, body {
     margin-bottom: var(--space-lg);
 }
 
+/* --- Inline QR Code trong POI Detail --- */
+.poi-detail-qr {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.poi-qr-box {
+    flex-shrink: 0;
+    width: 100px;
+    height: 100px;
+    background: #fff;
+    border-radius: var(--radius-sm);
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.poi-qr-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.poi-qr-label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.poi-qr-label span:last-child {
+    font-weight: 500;
+    color: var(--color-text);
+}
+
 .poi-detail-actions {
     display: flex;
     gap: var(--space-sm);
     flex-wrap: wrap;
 }
+
 
 .action-btn {
     display: flex;

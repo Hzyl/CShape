@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ASUS\\OneDrive\\Máy tính\\CShape\\VinhKhanhFoodTour.Api\\VinhKhanhFoodTour.Api.csproj": {}
+    "C:\\Users\\ASUS\\CShape\\CShape\\VinhKhanhFoodTour.Api\\VinhKhanhFoodTour.Api.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ASUS\\OneDrive\\Máy tính\\CShape\\VinhKhanhFoodTour.Api\\VinhKhanhFoodTour.Api.csproj": {
+    "C:\\Users\\ASUS\\CShape\\CShape\\VinhKhanhFoodTour.Api\\VinhKhanhFoodTour.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ASUS\\OneDrive\\Máy tính\\CShape\\VinhKhanhFoodTour.Api\\VinhKhanhFoodTour.Api.csproj",
+        "projectUniqueName": "C:\\Users\\ASUS\\CShape\\CShape\\VinhKhanhFoodTour.Api\\VinhKhanhFoodTour.Api.csproj",
         "projectName": "VinhKhanhFoodTour.Api",
-        "projectPath": "C:\\Users\\ASUS\\OneDrive\\Máy tính\\CShape\\VinhKhanhFoodTour.Api\\VinhKhanhFoodTour.Api.csproj",
+        "projectPath": "C:\\Users\\ASUS\\CShape\\CShape\\VinhKhanhFoodTour.Api\\VinhKhanhFoodTour.Api.csproj",
         "packagesPath": "C:\\Users\\ASUS\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ASUS\\OneDrive\\Máy tính\\CShape\\VinhKhanhFoodTour.Api\\obj\\",
+        "outputPath": "C:\\Users\\ASUS\\CShape\\CShape\\VinhKhanhFoodTour.Api\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
