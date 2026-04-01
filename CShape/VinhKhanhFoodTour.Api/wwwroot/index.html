@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Phố Ẩm Thực Vĩnh Khánh - Thuyết Minh Đa Ngôn Ngữ</title>
+    <meta name="description" content="Ứng dụng thuyết minh đa ngôn ngữ tự động cho phố ẩm thực Vĩnh Khánh, Quận 4, TP.HCM. Khám phá ẩm thực đường phố Sài Gòn.">
+    <meta name="theme-color" content="#FF6B35">
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-content">
+            <div class="splash-icon">🍜</div>
+            <h1 class="splash-title">Vĩnh Khánh</h1>
+            <p class="splash-subtitle">Phố Ẩm Thực • Food Street</p>
+            <div class="splash-loader">
+                <div class="splash-loader-bar"></div>
+            </div>
+            <p class="splash-status" id="splash-status">Đang tải dữ liệu...</p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="app hidden">
+        <!-- Header -->
+        <header class="app-header" id="app-header">
+            <div class="header-left">
+                <button class="icon-btn" id="btn-menu" title="Menu">
+                    <span class="material-icons-round">menu</span>
+                </button>
+                <div class="header-title">
+                    <h1>🍜 Vĩnh Khánh</h1>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="language-selector" id="language-selector">
+                    <button class="lang-btn active" data-lang="vi" title="Tiếng Việt">VI</button>
+                    <button class="lang-btn" data-lang="en" title="English">EN</button>
+                    <button class="lang-btn" data-lang="ja" title="日本語">JP</button>
+                    <button class="lang-btn" data-lang="zh" title="中文">ZH</button>
+                </div>
+                <button class="icon-btn" id="btn-qr" title="Quét QR Code">
+                    <span class="material-icons-round">qr_code_scanner</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Map Container -->
+        <div id="map" class="map-container"></div>
+
+        <!-- GPS Status Bar -->
+        <div class="gps-status-bar" id="gps-status">
+            <span class="material-icons-round gps-icon">gps_fixed</span>
+            <span class="gps-text" id="gps-text">Đang lấy vị trí GPS...</span>
+            <div class="gps-accuracy" id="gps-accuracy"></div>
+        </div>
+
+        <!-- Audio Player Bar -->
+        <div class="audio-player-bar hidden" id="audio-player">
+            <div class="audio-progress">
+                <div class="audio-progress-fill" id="audio-progress-fill"></div>
+            </div>
+            <div class="audio-info">
+                <div class="audio-now-playing">
+                    <span class="audio-wave">
+                        <span></span><span></span><span></span><span></span>
+                    </span>
+                    <span class="audio-title" id="audio-title">Đang phát...</span>
+                </div>
+                <div class="audio-controls">
+                    <button class="audio-btn audio-btn-main" id="btn-audio-play" title="Phát/Dừng">
+                        <span class="material-icons-round">pause</span>
+                    </button>
+                    <button class="audio-btn audio-btn-stop" id="btn-audio-stop" title="Dừng">
+                        <span class="material-icons-round">stop</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- POI List Panel (Sidebar) -->
+        <div class="poi-panel hidden" id="poi-panel">
+            <div class="poi-panel-header">
+                <h2>📍 Điểm thuyết minh</h2>
+                <button class="icon-btn" id="btn-close-panel">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <div class="poi-filter-bar">
+                <button class="filter-btn active" data-filter="all">Tất cả</button>
+                <button class="filter-btn" data-filter="seafood">🦐 Hải sản</button>
+                <button class="filter-btn" data-filter="hotpot">🍲 Lẩu</button>
+                <button class="filter-btn" data-filter="street_food">🍜 Đường phố</button>
+                <button class="filter-btn" data-filter="snack">🧁 Ăn vặt</button>
+                <button class="filter-btn" data-filter="landmark">🏛️ Địa danh</button>
+            </div>
+            <div class="poi-list" id="poi-list">
+                <!-- POI items sẽ được render bằng JS -->
+            </div>
+        </div>
+
+        <!-- POI Detail Bottom Sheet -->
+        <div class="bottom-sheet hidden" id="poi-detail">
+            <div class="bottom-sheet-handle"></div>
+            <div class="bottom-sheet-content">
+                <div class="poi-detail-header">
+                    <div class="poi-detail-category" id="detail-category"></div>
+                    <h2 class="poi-detail-name" id="detail-name"></h2>
+                    <div class="poi-detail-meta">
+                        <span class="poi-detail-address" id="detail-address"></span>
+                    </div>
+                </div>
+                <div class="poi-detail-tags">
+                    <span class="poi-tag" id="detail-hours"><span class="material-icons-round">schedule</span> <span id="detail-hours-text"></span></span>
+                    <span class="poi-tag" id="detail-price"><span class="material-icons-round">payments</span> <span id="detail-price-text"></span></span>
+                    <span class="poi-tag" id="detail-distance"><span class="material-icons-round">near_me</span> <span id="detail-distance-text"></span></span>
+                </div>
+                <p class="poi-detail-desc" id="detail-description"></p>
+                <div class="poi-detail-actions">
+                    <button class="action-btn action-btn-primary" id="btn-listen">
+                        <span class="material-icons-round">volume_up</span>
+                        Nghe thuyết minh
+                    </button>
+                    <button class="action-btn" id="btn-navigate">
+                        <span class="material-icons-round">directions</span>
+                        Chỉ đường
+                    </button>
+                    <button class="action-btn" id="btn-close-detail">
+                        <span class="material-icons-round">close</span>
+                        Đóng
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Scanner Modal -->
+        <div class="modal hidden" id="qr-modal">
+            <div class="modal-backdrop" id="qr-backdrop"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><span class="material-icons-round">qr_code_scanner</span> Quét QR Code</h2>
+                    <button class="icon-btn" id="btn-close-qr">
+                        <span class="material-icons-round">close</span>
+                    </button>
+                </div>
+                <div class="qr-scanner-container">
+                    <div id="qr-reader"></div>
+                    <p class="qr-instruction">Hướng camera vào mã QR tại điểm dừng</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Action Buttons -->
+        <div class="fab-container">
+            <button class="fab fab-stop hidden" id="btn-fab-stop" title="Dừng phát audio">
+                <span class="material-icons-round">stop_circle</span>
+            </button>
+            <button class="fab" id="btn-my-location" title="Vị trí của tôi">
+                <span class="material-icons-round">my_location</span>
+            </button>
+            <button class="fab fab-secondary" id="btn-toggle-list" title="Danh sách POI">
+                <span class="material-icons-round">list</span>
+            </button>
+        </div>
+
+        <!-- Geofence Notification Toast -->
+        <div class="toast hidden" id="geofence-toast">
+            <div class="toast-icon">
+                <span class="material-icons-round">place</span>
+            </div>
+            <div class="toast-content">
+                <div class="toast-title" id="toast-title"></div>
+                <div class="toast-message" id="toast-message"></div>
+            </div>
+            <button class="toast-action" id="toast-listen">Nghe</button>
+        </div>
+    </div>
+
+    <!-- Offline Status Banner -->
+    <div class="offline-banner hidden" id="offline-banner">
+        <span class="material-icons-round">cloud_off</span>
+        <span>Đang offline — Dữ liệu từ bộ nhớ cache</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="/js/offline-db.js"></script>
+    <script src="/js/audio-manager.js"></script>
+    <script src="/js/map.js"></script>
+    <script src="/js/geofence.js"></script>
+    <script src="/js/qr-scanner.js"></script>
+    <script src="/js/app.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('✅ Service Worker registered:', reg.scope))
+                    .catch(err => console.warn('⚠️ SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

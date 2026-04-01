@@ -1,0 +1,23 @@
+{
+    "name": "Vĩnh Khánh Food Tour",
+    "short_name": "Vĩnh Khánh",
+    "description": "Ứng dụng thuyết minh đa ngôn ngữ phố ẩm thực Vĩnh Khánh, Quận 4, TP.HCM",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0F1724",
+    "theme_color": "#FF6B35",
+    "orientation": "portrait",
+    "lang": "vi",
+    "icons": [
+        {
+            "src": "/images/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/images/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
