@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("VinhKhanhFoodTour.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+492b27d290bd70b2fe42f606a98509070b10b272")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9e3874c5eaaf48b0b03768b15b5940aa59140991")]
 [assembly: System.Reflection.AssemblyProductAttribute("VinhKhanhFoodTour.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("VinhKhanhFoodTour.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
