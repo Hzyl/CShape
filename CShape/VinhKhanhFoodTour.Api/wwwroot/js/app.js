@@ -103,15 +103,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.speechSynthesis.cancel();
     }
 
-    // Check đăng nhập: nếu chưa có token → hiện login form, đợi đăng nhập xong mới init app
-    const token = sessionStorage.getItem(AUTH_TOKEN_KEY);
-    if (!token) {
-        setupLoginForm();
-        return; // Dừng tại đây, chờ login thành công sẽ gọi initApp()
-    }
+    // [TẠM TẮT LOGIN] — Bỏ qua đăng nhập, vào thẳng app
+    // const token = sessionStorage.getItem(AUTH_TOKEN_KEY);
+    // if (!token) {
+    //     setupLoginForm();
+    //     return;
+    // }
 
-    // Đã đăng nhập → ẩn login screen và vào app
-    document.getElementById('login-screen').classList.add('hidden');
+    // Ẩn login screen và vào app luôn
+    const loginScreen = document.getElementById('login-screen');
+    if (loginScreen) loginScreen.classList.add('hidden');
     await initApp();
 });
 
@@ -495,30 +496,60 @@ function setupAudioCallbacks() {
 // ==================== QR CALLBACKS ====================
 
 function setupQRCallbacks() {
-    qrScanner.onQRDetected = async (qrCode) => {
+    qrScanner.onQRDetected = async (rawQrCode) => {
         closeQRModal();
 
+        // Nếu QR chứa URL (ví dụ: https://host/index.html?qr=VK-POI-001)
+        // → trích xuất mã QR thật từ param ?qr=
+        let qrCode = rawQrCode;
         try {
-            // Tìm POI bằng QR Code
-            const response = await fetch(`/api/poi/qr/${encodeURIComponent(qrCode)}`);
-            if (!response.ok) {
-                alert('Không tìm thấy điểm thuyết minh cho QR này');
-                return;
+            const url = new URL(rawQrCode);
+            const qrParam = url.searchParams.get('qr');
+            if (qrParam) {
+                qrCode = qrParam;
+                console.log('📱 Extracted QR code from URL:', qrCode);
             }
-
-            const poi = await response.json();
-            poi.id = poi.id || poi._id;
-            
-            // Show detail và phát audio
-            showPoiDetail(poi);
-            
-            const lang = AppState.language;
-            const name = poi.name[lang] || poi.name.vi;
-            const script = poi.ttsScript[lang] || poi.ttsScript.vi;
-            audioManager.playDirect(poi.id, script, name);
         } catch (e) {
-            console.error('QR lookup error:', e);
+            // Không phải URL → dùng nguyên giá trị
         }
+
+        console.log('🔍 Looking up POI for QR:', qrCode);
+
+        // Bước 1: Tìm trong dữ liệu đã load (nhanh, hoạt động offline)
+        let poi = AppState.pois.find(p => 
+            (p.qrCode && p.qrCode === qrCode) || p.id === qrCode
+        );
+
+        // Bước 2: Nếu không tìm thấy local → thử gọi API
+        if (!poi) {
+            try {
+                const response = await fetch(`/api/poi/qr/${encodeURIComponent(qrCode)}`);
+                if (response.ok) {
+                    poi = await response.json();
+                    poi.id = poi.id || poi._id;
+                }
+            } catch (e) {
+                console.warn('API QR lookup failed:', e);
+            }
+        }
+
+        if (!poi) {
+            alert('Không tìm thấy điểm thuyết minh cho QR này');
+            return;
+        }
+
+        // Show detail + center map
+        showPoiDetail(poi);
+        mapManager.centerOnPoi(poi.id);
+
+        // Mobile: hiện toast "Bấm để nghe" (vì autoplay bị chặn trên đt)
+        // Desktop: thử phát trực tiếp
+        const lang = AppState.language;
+        const name = poi.name[lang] || poi.name.vi;
+
+        // Lưu POI pending để toast button có thể phát
+        window._pendingQrPoi = poi;
+        showGeofenceToast(name, poi);
     };
 }
 
@@ -598,9 +629,19 @@ function setupUIEvents() {
         });
     });
 
-    // Toast listen button
+    // Toast listen button — bấm để phát thuyết minh (cần user gesture cho mobile)
     document.getElementById('toast-listen').addEventListener('click', () => {
         hideGeofenceToast();
+
+        // Phát audio cho POI pending (từ QR hoặc geofence)
+        const poi = window._pendingQrPoi || AppState.selectedPoi;
+        if (poi) {
+            const lang = AppState.language;
+            const name = poi.name[lang] || poi.name.vi;
+            const script = poi.ttsScript[lang] || poi.ttsScript.vi;
+            audioManager.playDirect(poi.id, script, name);
+            window._pendingQrPoi = null;
+        }
     });
 }
 

@@ -132,7 +132,6 @@ C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\rjsmrazor.ds
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\scopedcss\bundle\VinhKhanhFoodTour.Api.styles.css
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\itw980ajgp-{0}-6y4dkjbgdb-6y4dkjbgdb.gz
-C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\qr6gmyu489-{0}-h9lp47syqh-h9lp47syqh.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\aqrd07cyao-{0}-6rewg7fl6b-6rewg7fl6b.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\rnpchgx4g6-{0}-y0k093aahi-y0k093aahi.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\yibqkgqpds-{0}-xtp8kcaah1-xtp8kcaah1.gz
@@ -150,8 +149,9 @@ C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\VinhKhanhFoo
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\VinhKhanhFoodTour.Api.genruntimeconfig.cache
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\ref\VinhKhanhFoodTour.Api.dll
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\vkibfw8zvp-{0}-mqvizdju1g-mqvizdju1g.gz
-C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\wngmoel4jr-{0}-trv6fs0zxo-trv6fs0zxo.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\s2cghosk5k-{0}-wzrein6an8-wzrein6an8.gz
-C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\zvrh7qfpo8-{0}-frlyj3i2xn-frlyj3i2xn.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\5gdq717894-{0}-xx5vaffzjh-xx5vaffzjh.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\4xgwugjcc3-{0}-k2b0jiscdi-k2b0jiscdi.gz
+C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\qr6gmyu489-{0}-lg8r7yeag6-lg8r7yeag6.gz
+C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\zvrh7qfpo8-{0}-ccbbefrd2n-ccbbefrd2n.gz
+C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\wngmoel4jr-{0}-6w1fpybel9-6w1fpybel9.gz

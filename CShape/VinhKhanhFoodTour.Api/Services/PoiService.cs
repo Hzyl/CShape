@@ -394,6 +394,176 @@ namespace VinhKhanhFoodTour.Api.Services
                     PriceRange = "",
                     QrCode = "VK-POI-010",
                     ImageUrl = "/images/cau-nvc.jpg"
+                },
+                new Poi
+                {
+                    Name = new Dictionary<string, string>
+                    {
+                        { "vi", "Nghêu Sò Ốc Hến 368" },
+                        { "en", "Clam & Snail House 368" },
+                        { "ja", "貝とカタツムリハウス368" },
+                        { "zh", "蛤蜊螺蛳屋368" }
+                    },
+                    Description = new Dictionary<string, string>
+                    {
+                        { "vi", "Quán chuyên nghêu sò ốc hến với hàng chục món ốc đa dạng: nghêu hấp sả, sò điệp nướng mỡ hành, ốc len xào dừa. Không gian sân vườn thoáng mát." },
+                        { "en", "Specializing in clams, mussels and snails with dozens of varieties: lemongrass steamed clams, grilled scallops with scallion oil, coconut stir-fried snails. Spacious garden setting." },
+                        { "ja", "貝類とカタツムリを専門とし、レモングラス蒸しアサリ、ネギ油焼きホタテ、ココナッツ炒めカタツムリなど多彩なメニュー。広々とした庭園空間。" },
+                        { "zh", "专营蛤蜊、贻贝和螺蛳，数十种品种：香茅蒸蛤蜊、葱油烤扇贝、椰子炒螺蛳。宽敞的花园环境。" }
+                    },
+                    TtsScript = new Dictionary<string, string>
+                    {
+                        { "vi", "Chào bạn! Đây là quán Nghêu Sò Ốc Hến 368, thiên đường cho người yêu hải sản vỏ. Quán có hàng chục loại ốc và nghêu sò khác nhau. Đặc biệt nhất là nghêu hấp sả ớt, sò điệp nướng mỡ hành và món ốc len xào dừa béo ngậy. Không gian sân vườn thoáng mát rất thích hợp cho nhóm bạn." },
+                        { "en", "Welcome to Clam and Snail House 368, a paradise for shellfish lovers! The restaurant offers dozens of snail and clam varieties. The highlights are lemongrass chili steamed clams, scallion oil grilled scallops, and creamy coconut stir-fried snails. The spacious garden is perfect for groups." },
+                        { "ja", "貝とカタツムリハウス368へようこそ！貝類愛好家の楽園です。数十種類のカタツムリと貝類を提供しています。レモングラスチリ蒸しアサリ、ネギ油焼きホタテ、クリーミーなココナッツ炒めカタツムリが人気です。" },
+                        { "zh", "欢迎来到蛤蜊螺蛳屋368！这是贝类爱好者的天堂。餐厅提供数十种螺蛳和蛤蜊品种。招牌菜是香茅辣椒蒸蛤蜊、葱油烤扇贝和奶油椰子炒螺蛳。" }
+                    },
+                    Latitude = 10.7575,
+                    Longitude = 106.6955,
+                    Radius = 35,
+                    Priority = 2,
+                    Category = "seafood",
+                    Address = "38 Vĩnh Khánh, Phường 1, Quận 4",
+                    OpeningHours = "15:00 - 23:30",
+                    PriceRange = "40.000 - 180.000 VNĐ",
+                    QrCode = "VK-POI-011",
+                    ImageUrl = "/images/ngheu-so.jpg"
+                },
+                new Poi
+                {
+                    Name = new Dictionary<string, string>
+                    {
+                        { "vi", "Bò Né 3 Ngon" },
+                        { "en", "3 Ngon Sizzling Beef" },
+                        { "ja", "3ゴン鉄板ビーフ" },
+                        { "zh", "3好铁板牛肉" }
+                    },
+                    Description = new Dictionary<string, string>
+                    {
+                        { "vi", "Quán bò né nổi tiếng với bò bít tết, trứng ốp la, pate, bánh mì nóng trên đĩa gang nóng hổi. Bữa sáng kiểu Sài Gòn chính hiệu." },
+                        { "en", "Famous sizzling beef restaurant with beef steak, fried eggs, pate, and hot bread on a sizzling iron plate. Authentic Saigon-style breakfast." },
+                        { "ja", "ビーフステーキ、目玉焼き、パテ、熱いパンを鉄板で提供する有名な鉄板ビーフ店。正統派サイゴン式朝食。" },
+                        { "zh", "著名的铁板牛肉店，提供牛排、煎蛋、肉酱和热面包，盛在滋滋作响的铁板上。正宗西贡式早餐。" }
+                    },
+                    TtsScript = new Dictionary<string, string>
+                    {
+                        { "vi", "Đây là quán Bò Né 3 Ngon! Bò né là món ăn sáng đặc trưng của Sài Gòn. Một đĩa gang nóng bốc khói với bò bít tết mềm juicy, trứng ốp la, pate thơm béo và bánh mì nóng giòn. Chấm với tương ớt và tiêu đen. Giá chỉ từ 45 nghìn đồng cho một phần đầy đủ." },
+                        { "en", "This is 3 Ngon Sizzling Beef! Bo ne is a classic Saigon breakfast dish. A smoking hot iron plate with juicy beef steak, fried eggs, savory pate, and crispy hot bread. Dip with chili sauce and black pepper. Only about 2 dollars for a full serving." },
+                        { "ja", "3ゴン鉄板ビーフです！ボーネーはサイゴンの定番朝食です。熱々の鉄板にジューシーなビーフステーキ、目玉焼き、パテ、サクサクのパンが乗っています。チリソースと黒コショウで。" },
+                        { "zh", "这是3好铁板牛肉！铁板牛肉是西贡经典早餐。滋滋冒烟的铁板上有多汁牛排、煎蛋、肉酱和脆面包。蘸辣椒酱和黑胡椒。一份只需约2美元。" }
+                    },
+                    Latitude = 10.7570,
+                    Longitude = 106.6947,
+                    Radius = 30,
+                    Priority = 5,
+                    Category = "street_food",
+                    Address = "72 Vĩnh Khánh, Phường 1, Quận 4",
+                    OpeningHours = "06:00 - 10:00, 15:00 - 21:00",
+                    PriceRange = "45.000 - 85.000 VNĐ",
+                    QrCode = "VK-POI-012",
+                    ImageUrl = "/images/bo-ne.jpg"
+                },
+                new Poi
+                {
+                    Name = new Dictionary<string, string>
+                    {
+                        { "vi", "Chè Cô Năm" },
+                        { "en", "Aunt Nam's Sweet Soup" },
+                        { "ja", "コーナムのチェー" },
+                        { "zh", "五姨甜汤" }
+                    },
+                    Description = new Dictionary<string, string>
+                    {
+                        { "vi", "Quán chè truyền thống với hơn 30 loại chè: chè bưởi, chè ba màu, chè thái, chè đậu xanh bột báng. Tráng miệng hoàn hảo sau khi ăn hải sản." },
+                        { "en", "Traditional sweet soup shop with over 30 varieties: pomelo sweet soup, three-color sweet soup, Thai sweet soup, mung bean tapioca. Perfect dessert after seafood." },
+                        { "ja", "30種類以上のチェーを提供する伝統的なスイーツ店：ポメロチェー、三色チェー、タイチェー、緑豆タピオカ。シーフードの後のデザートに最適。" },
+                        { "zh", "传统甜汤店，提供30多种甜汤：柚子甜汤、三色甜汤、泰式甜汤、绿豆西米。吃完海鲜后的完美甜点。" }
+                    },
+                    TtsScript = new Dictionary<string, string>
+                    {
+                        { "vi", "Chè Cô Năm là quán chè lâu đời nhất phố Vĩnh Khánh! Cô Năm bán hơn 30 loại chè truyền thống. Đặc biệt nhất là chè bưởi thanh mát, chè ba màu đầy đủ đậu, thạch, nước cốt dừa, và chè khúc bạch mềm mịn. Sau khi ăn hải sản cay nóng, một ly chè mát lạnh là tuyệt vời!" },
+                        { "en", "Aunt Nam's Sweet Soup is the oldest dessert shop on Vinh Khanh Street! Aunt Nam serves over 30 traditional sweet soups. The highlights are refreshing pomelo sweet soup, three-color sweet soup with beans, jelly and coconut cream, and silky panna cotta sweet soup. Perfect after spicy seafood!" },
+                        { "ja", "コーナムのチェーはヴィンカイン通りで最も古いデザートショップです！30種類以上の伝統的なチェーを提供しています。さわやかなポメロチェー、三色チェー、シルキーなパンナコッタチェーが人気です。" },
+                        { "zh", "五姨甜汤是永庆街最古老的甜品店！五姨提供30多种传统甜汤。招牌是清爽的柚子甜汤、三色甜汤和丝滑的奶冻甜汤。吃完辛辣海鲜后来一杯冰凉甜汤太棒了！" }
+                    },
+                    Latitude = 10.7563,
+                    Longitude = 106.6944,
+                    Radius = 25,
+                    Priority = 6,
+                    Category = "snack",
+                    Address = "112 Vĩnh Khánh, Phường 1, Quận 4",
+                    OpeningHours = "13:00 - 22:30",
+                    PriceRange = "15.000 - 40.000 VNĐ",
+                    QrCode = "VK-POI-013",
+                    ImageUrl = "/images/che-co-nam.jpg"
+                },
+                new Poi
+                {
+                    Name = new Dictionary<string, string>
+                    {
+                        { "vi", "Nướng Ngói Quận 4" },
+                        { "en", "District 4 Tile-Grilled BBQ" },
+                        { "ja", "4区瓦焼きBBQ" },
+                        { "zh", "四区瓦片烧烤" }
+                    },
+                    Description = new Dictionary<string, string>
+                    {
+                        { "vi", "Quán nướng ngói độc đáo với thịt bò, bạch tuộc, tôm nướng trên ngói đất nung nóng. Phong cách nướng truyền thống miền Trung." },
+                        { "en", "Unique tile-grilled BBQ with beef, octopus, and shrimp grilled on heated clay tiles. Traditional Central Vietnamese grilling style." },
+                        { "ja", "牛肉、タコ、エビを熱い瓦の上で焼くユニークな瓦焼きBBQ。伝統的な中部ベトナムのグリルスタイル。" },
+                        { "zh", "独特的瓦片烧烤，将牛肉、章鱼和虾在加热的陶瓦上烤制。传统的越南中部烧烤风格。" }
+                    },
+                    TtsScript = new Dictionary<string, string>
+                    {
+                        { "vi", "Nướng Ngói Quận 4 là quán nướng độc đáo nhất phố Vĩnh Khánh! Thịt bò, bạch tuộc và tôm được nướng trên miếng ngói đất nung thật nóng, giữ nguyên vị ngọt tự nhiên của thực phẩm. Đây là phong cách nướng truyền thống từ miền Trung Việt Nam. Kèm bún, rau sống và nước chấm mắm nêm đặc biệt." },
+                        { "en", "District 4 Tile-Grilled BBQ is the most unique grill on Vinh Khanh Street! Beef, octopus and shrimp are grilled on real heated clay tiles, preserving the natural sweet flavor. This is a traditional Central Vietnamese grilling method. Served with rice noodles, fresh herbs and special anchovy dipping sauce." },
+                        { "ja", "4区瓦焼きBBQはヴィンカイン通りで最もユニークなグリルです！牛肉、タコ、エビを本物の熱い瓦の上で焼き、食材の自然な甘みを保ちます。中部ベトナムの伝統的なグリル方法です。" },
+                        { "zh", "四区瓦片烧烤是永庆街最独特的烧烤！牛肉、章鱼和虾在真正的加热陶瓦上烤制，保留食材的天然甜味。这是越南中部的传统烧烤方法。配米粉、新鲜香草和特制鱼露蘸酱。" }
+                    },
+                    Latitude = 10.7567,
+                    Longitude = 106.6952,
+                    Radius = 30,
+                    Priority = 3,
+                    Category = "street_food",
+                    Address = "92 Vĩnh Khánh, Phường 1, Quận 4",
+                    OpeningHours = "16:00 - 23:00",
+                    PriceRange = "60.000 - 180.000 VNĐ",
+                    QrCode = "VK-POI-014",
+                    ImageUrl = "/images/nuong-ngoi.jpg"
+                },
+                new Poi
+                {
+                    Name = new Dictionary<string, string>
+                    {
+                        { "vi", "Hủ Tiếu Nam Vang Quận 4" },
+                        { "en", "Phnom Penh Noodle Soup Q4" },
+                        { "ja", "プノンペン麺Q4" },
+                        { "zh", "四区金边粉" }
+                    },
+                    Description = new Dictionary<string, string>
+                    {
+                        { "vi", "Quán hủ tiếu Nam Vang lâu đời với nước lèo trong vắt từ xương heo, tôm, thịt băm, gan heo. Phục vụ cả hủ tiếu khô và nước." },
+                        { "en", "Long-standing Phnom Penh noodle soup with clear pork bone broth, shrimp, minced pork, and pork liver. Available in soup or dry style." },
+                        { "ja", "豚骨クリアスープ、エビ、豚ひき肉、豚レバーの伝統的なプノンペン麺。スープとドライスタイルがあります。" },
+                        { "zh", "历史悠久的金边粉，清澈的猪骨汤底，配虾、猪肉末和猪肝。提供汤粉和干粉两种。" }
+                    },
+                    TtsScript = new Dictionary<string, string>
+                    {
+                        { "vi", "Hủ Tiếu Nam Vang Quận 4 là quán hủ tiếu lâu đời tại đây! Nước lèo trong vắt được ninh từ xương heo hàng giờ đồng hồ, ngọt tự nhiên. Trong tô có tôm tươi, thịt heo băm, gan heo, và hành phi giòn rụm. Bạn có thể chọn hủ tiếu nước hoặc hủ tiếu khô với nước lèo riêng. Mở từ 6 giờ sáng, rất thích hợp cho bữa sáng." },
+                        { "en", "Phnom Penh Noodle Soup District 4 is a long-standing noodle shop! The crystal-clear broth is simmered from pork bones for hours, naturally sweet. Each bowl has fresh shrimp, minced pork, pork liver, and crispy fried shallots. Choose soup style or dry with broth on the side. Opens at 6am, perfect for breakfast." },
+                        { "ja", "4区プノンペン麺は歴史あるラーメン店です！透き通ったスープは豚骨を何時間も煮込んで作られ、自然な甘みがあります。新鮮なエビ、豚ひき肉、豚レバー、サクサクのフライドシャロットが入っています。" },
+                        { "zh", "四区金边粉是一家历史悠久的粉店！清澈的汤底用猪骨熬制数小时，自然甘甜。每碗都有鲜虾、猪肉末、猪肝和酥脆炸葱。可选汤粉或干粉配汤。早上6点开门，非常适合早餐。" }
+                    },
+                    Latitude = 10.7557,
+                    Longitude = 106.6942,
+                    Radius = 30,
+                    Priority = 4,
+                    Category = "street_food",
+                    Address = "156 Vĩnh Khánh, Phường 1, Quận 4",
+                    OpeningHours = "06:00 - 14:00",
+                    PriceRange = "40.000 - 70.000 VNĐ",
+                    QrCode = "VK-POI-015",
+                    ImageUrl = "/images/hu-tieu.jpg"
                 }
             };
 
