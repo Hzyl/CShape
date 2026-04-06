@@ -616,6 +616,12 @@ function setupUIEvents() {
 
     document.getElementById('btn-close-detail').addEventListener('click', closePoiDetail);
 
+    // AAC - Nói giúp tôi
+    document.getElementById('btn-aac').addEventListener('click', openAACModal);
+    document.getElementById('btn-close-aac').addEventListener('click', closeAACModal);
+    document.getElementById('aac-backdrop').addEventListener('click', closeAACModal);
+    document.getElementById('btn-aac-speak').addEventListener('click', aacSpeak);
+
     // QR lightbox
     document.getElementById('btn-qr-thumb').addEventListener('click', openQrLightbox);
     document.getElementById('qr-lightbox-backdrop').addEventListener('click', closeQrLightbox);
@@ -938,4 +944,174 @@ function openQrLightbox() {
 
 function closeQrLightbox() {
     document.getElementById('qr-lightbox').classList.add('hidden');
+}
+
+// ==================== AAC - NÓI GIÚP TÔI ====================
+
+/** Các câu mẫu thường dùng theo ngôn ngữ */
+const AAC_PHRASES = {
+    vi: [
+        'Xin chào!',
+        'Cảm ơn bạn!',
+        'Cho tôi xem thực đơn',
+        'Tính tiền giúp tôi',
+        'Cho tôi 1 ly nước',
+        'Không cay',
+        'Ít cay thôi',
+        'Cho thêm đá',
+        'Ngon lắm!',
+        'Tôi bị dị ứng hải sản',
+        'Nhà vệ sinh ở đâu?',
+        'Bao nhiêu tiền?',
+        'Cho tôi thêm 1 phần',
+        'Chờ một chút',
+        'Tôi không ăn được cay',
+        'Cho tôi mang về'
+    ],
+    en: [
+        'Hello!',
+        'Thank you!',
+        'Can I see the menu?',
+        'Check please',
+        'A glass of water please',
+        'Not spicy',
+        'A little spicy',
+        'More ice please',
+        'Delicious!',
+        'I\'m allergic to seafood',
+        'Where is the restroom?',
+        'How much?',
+        'One more serving please',
+        'Wait a moment',
+        'I can\'t eat spicy food',
+        'To go please'
+    ],
+    ja: [
+        'こんにちは！',
+        'ありがとう！',
+        'メニューを見せてください',
+        'お会計お願いします',
+        '水をください',
+        '辛くしないで',
+        '少し辛くして',
+        '氷を追加して',
+        'おいしい！',
+        '海鮮アレルギーです',
+        'トイレはどこですか？',
+        'いくらですか？',
+        'もう一つください',
+        'ちょっと待ってください',
+        '辛い物は食べられません',
+        'テイクアウトお願いします'
+    ],
+    zh: [
+        '你好！',
+        '谢谢！',
+        '请给我看菜单',
+        '请结账',
+        '请给我一杯水',
+        '不要辣',
+        '微辣',
+        '多加冰',
+        '好吃！',
+        '我对海鲜过敏',
+        '洗手间在哪里？',
+        '多少钱？',
+        '再来一份',
+        '等一下',
+        '我不能吃辣',
+        '打包带走'
+    ]
+};
+
+function openAACModal() {
+    const modal = document.getElementById('aac-modal');
+    modal.classList.remove('hidden');
+
+    // Mặc định load câu mẫu theo ngôn ngữ đang chọn ở màn hình chính
+    renderAACPhrases(AppState.language);
+
+    // Focus vào ô nhập
+    setTimeout(() => document.getElementById('aac-text').focus(), 300);
+}
+
+function closeAACModal() {
+    document.getElementById('aac-modal').classList.add('hidden');
+    // Dừng phát nếu đang nói
+    if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+    }
+    const btn = document.getElementById('btn-aac-speak');
+    btn.classList.remove('speaking');
+    btn.querySelector('.material-icons-round').textContent = 'volume_up';
+}
+
+function renderAACPhrases(lang) {
+    const container = document.getElementById('aac-phrases');
+    const phrases = AAC_PHRASES[lang] || AAC_PHRASES.vi;
+
+    container.innerHTML = phrases.map(phrase =>
+        `<button class="aac-phrase-btn" data-phrase="${phrase.replace(/"/g, '&quot;')}">${phrase}</button>`
+    ).join('');
+
+    // Click câu mẫu → điền vào ô nhập và phát luôn
+    container.querySelectorAll('.aac-phrase-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById('aac-text').value = btn.dataset.phrase;
+            aacSpeak();
+        });
+    });
+}
+
+function aacSpeak() {
+    const text = document.getElementById('aac-text').value.trim();
+    if (!text) return;
+
+    const btn = document.getElementById('btn-aac-speak');
+
+    // Nếu đang nói → dừng
+    if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        btn.classList.remove('speaking');
+        btn.querySelector('.material-icons-round').textContent = 'volume_up';
+        return;
+    }
+
+    // Tự động phát hiện ngôn ngữ dựa trên ký tự
+    let lang = AppState.language; // Mặc định theo ngôn ngữ app
+    if (/[ぁ-んァ-ン]/.test(text)) lang = 'ja';      // Ký tự tiếng Nhật
+    else if (/[\u4e00-\u9fa5]/.test(text)) lang = 'zh'; // Ký tự tiếng Trung (Hán tự)
+    else if (/[àáãạảăắằẳẵặâấầẩẫậèéẹẻẽêềếểễệđìíĩỉịòóõọỏôốồổỗộơớờởỡợùúũụủưứừửữựỳýỵỷỹÀÁÃẠẢĂẮẰẲẴẶÂẤẦẨẪẬÈÉẸẺẼÊỀẾỂỄỆĐÌÍĨỈỊÒÓÕỌỎÔỐỒỔỖỘƠỚỜỞỠỢÙÚŨỤỦƯỨỪỬỮỰỲÝỴỶỸ]/.test(text)) lang = 'vi'; // Có dấu tiếng Việt
+
+    // Map lang code sang BCP47 cho speechSynthesis
+    const langMap = { vi: 'vi-VN', en: 'en-US', ja: 'ja-JP', zh: 'zh-CN' };
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = langMap[lang] || 'vi-VN';
+    utterance.rate = 0.9;  // Nói chậm hơn chút để người nghe hiểu rõ
+    utterance.volume = 1.0; // Âm lượng tối đa
+
+    // Tìm giọng tốt nhất
+    const voices = window.speechSynthesis.getVoices();
+    const targetLang = langMap[lang];
+    const bestVoice = voices.find(v => v.lang === targetLang && v.name.includes('Neural'))
+        || voices.find(v => v.lang === targetLang)
+        || voices.find(v => v.lang.startsWith(lang));
+    if (bestVoice) utterance.voice = bestVoice;
+
+    // UI: hiệu ứng đang nói
+    btn.classList.add('speaking');
+    btn.querySelector('.material-icons-round').textContent = 'stop';
+
+    utterance.onend = () => {
+        btn.classList.remove('speaking');
+        btn.querySelector('.material-icons-round').textContent = 'volume_up';
+    };
+
+    utterance.onerror = () => {
+        btn.classList.remove('speaking');
+        btn.querySelector('.material-icons-round').textContent = 'volume_up';
+    };
+
+    window.speechSynthesis.speak(utterance);
 }

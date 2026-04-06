@@ -257,10 +257,43 @@
             </div>
         </div>
 
+        <!-- Speak For Me Modal (Hỗ trợ người câm) -->
+        <div class="modal hidden" id="aac-modal">
+            <div class="modal-backdrop" id="aac-backdrop"></div>
+            <div class="modal-content aac-modal-content">
+                <div class="modal-header">
+                    <h2><span class="material-icons-round">record_voice_over</span> Nói giúp tôi</h2>
+                    <button class="icon-btn" id="btn-close-aac">
+                        <span class="material-icons-round">close</span>
+                    </button>
+                </div>
+                <div class="aac-body">
+                    <p class="aac-hint">Gõ nội dung bạn muốn nói, điện thoại sẽ đọc to giúp bạn</p>
+                    
+                    <div class="aac-input-wrap">
+                        <textarea id="aac-text" rows="3" placeholder="Nhập nội dung muốn nói..."></textarea>
+                        <button class="aac-speak-btn" id="btn-aac-speak" title="Phát">
+                            <span class="material-icons-round">volume_up</span>
+                        </button>
+                    </div>
+
+
+
+                    <div class="aac-phrases-label">💬 Câu mẫu thường dùng:</div>
+                    <div class="aac-phrases" id="aac-phrases">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Floating Action Buttons -->
         <div class="fab-container">
             <button class="fab fab-stop hidden" id="btn-fab-stop" title="Dừng phát audio">
                 <span class="material-icons-round">stop_circle</span>
+            </button>
+            <button class="fab fab-aac" id="btn-aac" title="Nói giúp tôi">
+                <span class="material-icons-round">record_voice_over</span>
             </button>
             <button class="fab" id="btn-my-location" title="Vị trí của tôi">
                 <span class="material-icons-round">my_location</span>
