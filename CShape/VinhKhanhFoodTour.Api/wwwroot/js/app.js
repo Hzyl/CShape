@@ -253,6 +253,22 @@ async function initApp() {
 }
 
 
+
+/**
+ * Kiểm tra URL param ?qr= khi load trang
+ * (trường hợp du khách quét QR bằng camera điện thoại → mở link trong trình duyệt)
+ */
+function handleQrUrlParam() {
+    const params = new URLSearchParams(window.location.search);
+    const qrCode = params.get('qr');
+    if (qrCode) {
+        console.log('📱 QR code from URL param:', qrCode);
+        // Đợi 1 chút cho map render xong rồi mới xử lý
+        setTimeout(() => handleQrCode(qrCode), 2000);
+    }
+}
+
+
 // ==================== DATA LOADING ====================
 
 async function loadPois() {
@@ -493,64 +509,147 @@ function setupAudioCallbacks() {
     };
 }
 
-// ==================== QR CALLBACKS ====================
-
 function setupQRCallbacks() {
     qrScanner.onQRDetected = async (rawQrCode) => {
         closeQRModal();
+        await handleQrCode(rawQrCode);
+    };
+}
 
-        // Nếu QR chứa URL (ví dụ: https://host/index.html?qr=VK-POI-001)
-        // → trích xuất mã QR thật từ param ?qr=
-        let qrCode = rawQrCode;
+/**
+ * Xử lý mã QR — dùng cả cho QR scanner trong app lẫn QR param từ URL
+ */
+async function handleQrCode(rawQrCode) {
+    // Nếu QR chứa URL (ví dụ: https://host/index.html?qr=VK-POI-001)
+    // → trích xuất mã QR thật từ param ?qr=
+    let qrCode = rawQrCode;
+    try {
+        const url = new URL(rawQrCode);
+        const qrParam = url.searchParams.get('qr');
+        if (qrParam) {
+            qrCode = qrParam;
+            console.log('📱 Extracted QR code from URL:', qrCode);
+        }
+    } catch (e) {
+        // Không phải URL → dùng nguyên giá trị
+    }
+
+    console.log('🔍 Looking up POI for QR:', qrCode);
+
+    // Bước 1: Tìm trong dữ liệu đã load (nhanh, hoạt động offline)
+    let poi = AppState.pois.find(p => 
+        (p.qrCode && p.qrCode === qrCode) || p.id === qrCode
+    );
+
+    // Bước 2: Nếu không tìm thấy local → thử gọi API
+    if (!poi) {
         try {
-            const url = new URL(rawQrCode);
-            const qrParam = url.searchParams.get('qr');
-            if (qrParam) {
-                qrCode = qrParam;
-                console.log('📱 Extracted QR code from URL:', qrCode);
+            const response = await fetch(`/api/poi/qr/${encodeURIComponent(qrCode)}`);
+            if (response.ok) {
+                poi = await response.json();
+                poi.id = poi.id || poi._id;
             }
         } catch (e) {
-            // Không phải URL → dùng nguyên giá trị
+            console.warn('API QR lookup failed:', e);
         }
+    }
 
-        console.log('🔍 Looking up POI for QR:', qrCode);
+    if (!poi) {
+        alert('Không tìm thấy điểm thuyết minh cho QR này');
+        return;
+    }
 
-        // Bước 1: Tìm trong dữ liệu đã load (nhanh, hoạt động offline)
-        let poi = AppState.pois.find(p => 
-            (p.qrCode && p.qrCode === qrCode) || p.id === qrCode
-        );
+    // Show detail + center map
+    showPoiDetail(poi);
+    mapManager.centerOnPoi(poi.id);
 
-        // Bước 2: Nếu không tìm thấy local → thử gọi API
-        if (!poi) {
-            try {
-                const response = await fetch(`/api/poi/qr/${encodeURIComponent(qrCode)}`);
-                if (response.ok) {
-                    poi = await response.json();
-                    poi.id = poi.id || poi._id;
-                }
-            } catch (e) {
-                console.warn('API QR lookup failed:', e);
-            }
+    // Lưu POI pending để nút nghe có thể phát
+    window._pendingQrPoi = poi;
+
+    // Hiện overlay "Bấm để nghe" — cần user gesture cho mobile
+    showAudioPrompt(poi);
+}
+
+/**
+ * Hiện overlay to rõ ràng yêu cầu người dùng bấm để phát audio
+ * Giải quyết vấn đề autoplay bị chặn trên điện thoại
+ */
+function showAudioPrompt(poi) {
+    // Xóa prompt cũ nếu có
+    const old = document.getElementById('audio-prompt-overlay');
+    if (old) old.remove();
+
+    const lang = AppState.language;
+    const name = poi.name[lang] || poi.name.vi;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'audio-prompt-overlay';
+    overlay.style.cssText = `
+        position: fixed; inset: 0; z-index: 10000;
+        background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+        display: flex; align-items: center; justify-content: center;
+        animation: fadeIn 0.3s ease;
+    `;
+    overlay.innerHTML = `
+        <div style="
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            border-radius: 20px; padding: 32px 24px; text-align: center;
+            max-width: 320px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+        ">
+            <div style="font-size: 48px; margin-bottom: 16px;">🎧</div>
+            <h3 style="color: #fff; font-size: 18px; margin-bottom: 8px; font-weight: 700;">${name}</h3>
+            <p style="color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 24px;">Bấm nút bên dưới để nghe thuyết minh</p>
+            <button id="audio-prompt-btn" style="
+                background: linear-gradient(135deg, #FF6B35, #F7931E);
+                color: white; border: none; border-radius: 16px;
+                padding: 16px 40px; font-size: 16px; font-weight: 700;
+                cursor: pointer; display: flex; align-items: center;
+                gap: 10px; margin: 0 auto;
+                box-shadow: 0 8px 24px rgba(255,107,53,0.4);
+                font-family: 'Inter', sans-serif;
+                transition: transform 0.2s, box-shadow 0.2s;
+            ">
+                <span class="material-icons-round" style="font-size: 24px;">volume_up</span>
+                Nghe thuyết minh
+            </button>
+            <button id="audio-prompt-close" style="
+                background: none; border: 1px solid rgba(255,255,255,0.15);
+                color: rgba(255,255,255,0.5); border-radius: 10px;
+                padding: 10px 24px; font-size: 13px; cursor: pointer;
+                margin-top: 12px; font-family: 'Inter', sans-serif;
+            ">Bỏ qua</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Bấm "Nghe thuyết minh" → phát audio (USER GESTURE ✓)
+    document.getElementById('audio-prompt-btn').addEventListener('click', () => {
+        overlay.remove();
+        const p = window._pendingQrPoi;
+        if (p) {
+            const l = AppState.language;
+            const n = p.name[l] || p.name.vi;
+            const script = p.ttsScript[l] || p.ttsScript.vi;
+            audioManager.playDirect(p.id, script, n);
+            window._pendingQrPoi = null;
         }
+    });
 
-        if (!poi) {
-            alert('Không tìm thấy điểm thuyết minh cho QR này');
-            return;
+    // Bấm "Bỏ qua"
+    document.getElementById('audio-prompt-close').addEventListener('click', () => {
+        overlay.remove();
+        window._pendingQrPoi = null;
+    });
+
+    // Bấm ngoài cũng đóng
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            overlay.remove();
+            window._pendingQrPoi = null;
         }
-
-        // Show detail + center map
-        showPoiDetail(poi);
-        mapManager.centerOnPoi(poi.id);
-
-        // Mobile: hiện toast "Bấm để nghe" (vì autoplay bị chặn trên đt)
-        // Desktop: thử phát trực tiếp
-        const lang = AppState.language;
-        const name = poi.name[lang] || poi.name.vi;
-
-        // Lưu POI pending để toast button có thể phát
-        window._pendingQrPoi = poi;
-        showGeofenceToast(name, poi);
-    };
+    });
 }
 
 // ==================== UI EVENTS ====================
