@@ -3,10 +3,21 @@
  * Quản lý POI, Tour, Analytics, Translations
  */
 
-let adminToken = '';
+let adminToken = sessionStorage.getItem('adminToken') || '';
 let adminPois = [];
 let adminTours = [];
 let heatmapMap = null;
+
+// Auto-login nếu đã có token từ phiên trước
+document.addEventListener('DOMContentLoaded', async () => {
+    if (adminToken) {
+        const savedUser = sessionStorage.getItem('adminUser') || 'Admin';
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('admin-app').classList.remove('hidden');
+        document.querySelector('.admin-user').textContent = `👤 ${savedUser}`;
+        await loadDashboardData();
+    }
+});
 
 // ==================== LOGIN ====================
 
@@ -34,6 +45,8 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
         const data = await res.json();
         adminToken = data.token;
+        sessionStorage.setItem('adminToken', adminToken);
+        sessionStorage.setItem('adminUser', data.username);
         
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('admin-app').classList.remove('hidden');
@@ -51,6 +64,8 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
 function logout() {
     adminToken = '';
+    sessionStorage.removeItem('adminToken');
+    sessionStorage.removeItem('adminUser');
     document.getElementById('admin-app').classList.add('hidden');
     document.getElementById('login-screen').classList.remove('hidden');
 }
@@ -248,6 +263,9 @@ async function loadPoisTable() {
                     <button class="btn btn-ghost btn-sm" onclick="editPoi('${poi.id}')" title="Sửa">
                         <span class="material-icons-round" style="font-size: 16px">edit</span>
                     </button>
+                    <button class="btn btn-ghost btn-sm" onclick="togglePoiStatus('${poi.id}')" title="${poi.isActive ? 'Khóa (Ẩn)' : 'Mở khóa (Hiện)'}">
+                        <span class="material-icons-round" style="font-size: 16px" style="color: ${poi.isActive ? 'var(--warning)' : 'var(--success)'}">${poi.isActive ? 'lock' : 'lock_open'}</span>
+                    </button>
                     <button class="btn btn-danger btn-sm" onclick="deletePoi('${poi.id}')" title="Xóa">
                         <span class="material-icons-round" style="font-size: 16px">delete</span>
                     </button>
@@ -360,6 +378,34 @@ async function deletePoi(poiId) {
         if (res.ok || res.status === 204) {
             loadPoisTable();
             alert('Đã xóa POI!');
+        }
+    } catch (err) {
+        alert('Lỗi: ' + err.message);
+    }
+}
+
+async function togglePoiStatus(poiId) {
+    const poi = adminPois.find(p => p.id === poiId);
+    if (!poi) return;
+
+    const actionText = poi.isActive ? 'khóa (ẩn)' : 'mở khóa (hiện)';
+    if (!confirm(`Bạn có chắc muốn ${actionText} điểm thuyết minh "${poi.name?.vi || poiId}" không?`)) return;
+
+    // Toggle trạng thái
+    const updatedPoi = { ...poi, isActive: !poi.isActive };
+
+    try {
+        const res = await fetch(`/api/poi/${poiId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedPoi)
+        });
+
+        if (res.ok || res.status === 204) {
+            loadPoisTable();
+            alert(`Đã ${actionText} POI thành công!`);
+        } else {
+            alert('Lỗi khi cập nhật trạng thái POI');
         }
     } catch (err) {
         alert('Lỗi: ' + err.message);

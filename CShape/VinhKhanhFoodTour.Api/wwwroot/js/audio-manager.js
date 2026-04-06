@@ -234,90 +234,78 @@ class AudioManager {
     }
 
     /**
-     * Phát TTS - tự động điều chỉnh tham số theo chất lượng voice
+     * Phát TTS - thử Web Speech API trước, fallback sang Google Translate TTS
      */
     _speak(text, lang) {
-        if (!this.synth) {
-            console.error('❌ Trình duyệt không hỗ trợ Speech Synthesis');
-            this._playNext();
-            return;
+        // Cancel bất kỳ audio nào đang phát
+        this._stopGoogleAudio();
+        if (this.synth) this.synth.cancel();
+
+        // Kiểm tra có voice cho ngôn ngữ này không
+        const freshVoices = (this.synth && this.synth.getVoices()) || [];
+        if (freshVoices.length > 0) this.voices = freshVoices;
+
+        const voice = this._getVoice(lang);
+        const langPrefix = lang.substring(0, 2).toLowerCase();
+        const hasVoice = voice || (this.voices || []).some(v => v.lang.toLowerCase().startsWith(langPrefix));
+
+        // Nếu có voice → dùng Web Speech API
+        if (hasVoice && this.synth) {
+            console.log('🔈 Dùng Web Speech API');
+            this._speakWithWebSpeech(text, lang, voice);
+        } else {
+            // Fallback → Google Translate TTS (hoạt động mọi thiết bị)
+            console.log('🔈 Fallback sang Google Translate TTS');
+            this._speakWithGoogleTTS(text, lang);
         }
+    }
 
-        // Cancel bất kỳ utterance nào đang phát
-        this.synth.cancel();
-
-        // Force reload voices mỗi lần phát để đảm bảo có voices mới nhất
-        const freshVoices = this.synth.getVoices();
-        if (freshVoices.length > 0) {
-            this.voices = freshVoices;
-        }
-
+    /**
+     * Phát bằng Web Speech API (chất lượng cao, cần có voice cài đặt)
+     */
+    _speakWithWebSpeech(text, lang, voice) {
         this.utterance = new SpeechSynthesisUtterance(text);
         const langCode = this.langMap[lang] || 'vi-VN';
         this.utterance.lang = langCode;
         this.utterance.volume = 1;
 
-        // Tìm voice tốt nhất
-        let voice = this._getVoice(lang);
-        
-        // Nếu không tìm thấy, thử mở rộng tìm kiếm
-        if (!voice && this.voices && this.voices.length > 0) {
-            console.warn(`⚠️ Không tìm thấy voice cho "${lang}", đang tìm kiếm mở rộng...`);
-            
-            // Thử tìm bất kỳ voice nào có lang chứa mã ngôn ngữ
-            const langPrefix = lang.substring(0, 2);
-            voice = this.voices.find(v => v.lang.toLowerCase().includes(langPrefix));
-            
-            if (voice) {
-                console.log(`✅ Tìm thấy voice mở rộng: "${voice.name}" [${voice.lang}]`);
-            } else {
-                // Log tất cả voices để debug
-                console.warn('📋 Tất cả voices có sẵn:');
-                this.voices.forEach((v, i) => {
-                    console.log(`  ${i+1}. "${v.name}" [${v.lang}] ${v.localService ? 'local' : 'online'}`);
-                });
-            }
-        }
-
         if (voice) {
             this.utterance.voice = voice;
-            
             const name = voice.name.toLowerCase();
             const isGoogle = name.includes('google');
-            const isMicrosoftNeural = name.includes('microsoft') && (name.includes('neural') || name.includes('online') || !voice.localService);
-            
+            const isMicrosoftNeural = name.includes('microsoft') && (name.includes('neural') || !voice.localService);
+
             if (isGoogle) {
                 this.utterance.rate = (lang === 'vi') ? 0.85 : 0.9;
-                this.utterance.pitch = 1.0;
             } else if (isMicrosoftNeural || !voice.localService) {
                 this.utterance.rate = (lang === 'vi') ? 0.9 : 0.95;
-                this.utterance.pitch = 1.0;
             } else {
                 this.utterance.rate = (lang === 'vi') ? 0.75 : 0.8;
-                this.utterance.pitch = 1.05;
             }
-            
-            console.log(`🔈 Playing [${lang}] with voice: "${voice.name}" [${voice.lang}] rate=${this.utterance.rate}`);
-            
-            // Kiểm tra voice có đúng ngôn ngữ không
-            const voiceLang = voice.lang.toLowerCase().substring(0, 2);
-            const requestedLang = lang.substring(0, 2).toLowerCase();
-            if (voiceLang !== requestedLang) {
-                console.warn(`⚠️ Voice "${voice.name}" [${voice.lang}] không khớp ngôn ngữ ${lang}!`);
-                this.voiceCache = {};
-                // Vẫn phát nhưng dùng utterance.lang thay vì voice sai
-                this.utterance.voice = null;
-                this._showVoiceInstallGuide(lang);
-            }
+            this.utterance.pitch = 1.0;
+            console.log(`🎤 Voice: "${voice.name}" [${voice.lang}] rate=${this.utterance.rate}`);
         } else {
-            // Không có voice - vẫn phát bằng utterance.lang (browser sẽ cố tìm voice phù hợp)
             this.utterance.rate = 0.85;
             this.utterance.pitch = 1.0;
-            console.warn(`⚠️ Không tìm thấy voice cho ${lang}, dùng utterance.lang="${langCode}" fallback.`);
-            this._showVoiceInstallGuide(lang);
         }
 
+        // Timeout: nếu sau 3 giây không có âm thanh → chuyển sang Google TTS
+        let speechStarted = false;
+        const fallbackTimer = setTimeout(() => {
+            if (!speechStarted) {
+                console.warn('⚠️ Web Speech không phát được, chuyển sang Google TTS...');
+                this.synth.cancel();
+                this._speakWithGoogleTTS(text, lang);
+            }
+        }, 3000);
+
+        this.utterance.onstart = () => {
+            speechStarted = true;
+            clearTimeout(fallbackTimer);
+        };
+
         this.utterance.onend = () => {
+            clearTimeout(fallbackTimer);
             if (this.currentItem) {
                 this.playedPoiIds.add(this.currentItem.poiId);
                 this.cooldownMap.set(this.currentItem.poiId, Date.now());
@@ -327,16 +315,115 @@ class AudioManager {
         };
 
         this.utterance.onerror = (e) => {
-            if (e.error !== 'canceled') {
-                console.error('❌ TTS Error:', e.error);
+            clearTimeout(fallbackTimer);
+            if (e.error === 'canceled') {
+                return; // Bỏ qua vì đã xử lý ở hàm stop()
             }
-            this._playNext();
+            console.warn('❌ Web Speech lỗi:', e.error, '→ thử Google TTS...');
+            this._speakWithGoogleTTS(text, lang);
         };
 
-        // Workaround: Chrome pause bug after 15s
         this._startChromeFix();
-
         this.synth.speak(this.utterance);
+    }
+
+    /**
+     * Phát bằng Google Translate TTS (fallback, hoạt động mọi thiết bị)
+     * Chia text thành đoạn ngắn < 200 ký tự và phát tuần tự
+     */
+    _speakWithGoogleTTS(text, lang) {
+        const langCode = this.langMap[lang] || 'vi-VN';
+        const tl = langCode.split('-')[0]; // vi-VN → vi
+
+        // Chia text thành các đoạn ngắn (~190 ký tự, cắt theo câu)
+        const chunks = this._splitTextForGoogleTTS(text, 190);
+        console.log(`🔊 Google TTS: ${chunks.length} đoạn, ngôn ngữ: ${tl}`);
+
+        this._googleChunks = chunks;
+        this._googleChunkIndex = 0;
+        this._googleLang = tl;
+
+        this._playNextGoogleChunk();
+    }
+
+    _playNextGoogleChunk() {
+        if (this._googleChunkIndex >= this._googleChunks.length) {
+            // Phát xong tất cả đoạn
+            this._googleAudio = null;
+            if (this.currentItem) {
+                this.playedPoiIds.add(this.currentItem.poiId);
+                this.cooldownMap.set(this.currentItem.poiId, Date.now());
+                this._trackListen(this.currentItem.poiId);
+            }
+            this._playNext();
+            return;
+        }
+
+        const chunk = this._googleChunks[this._googleChunkIndex];
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${this._googleLang}&client=tw-ob&q=${encodeURIComponent(chunk)}`;
+
+        const audio = new Audio(url);
+        this._googleAudio = audio;
+        audio.volume = 1.0;
+
+        audio.onended = () => {
+            this._googleChunkIndex++;
+            this._playNextGoogleChunk();
+        };
+
+        audio.onerror = (e) => {
+            console.error('❌ Google TTS chunk error:', e);
+            this._googleChunkIndex++;
+            this._playNextGoogleChunk();
+        };
+
+        audio.play().catch(err => {
+            console.error('❌ Google TTS play failed:', err);
+            this._playNext();
+        });
+    }
+
+    _stopGoogleAudio() {
+        if (this._googleAudio) {
+            this._googleAudio.pause();
+            this._googleAudio.onended = null;
+            this._googleAudio.onerror = null;
+            this._googleAudio.src = '';
+            this._googleAudio = null;
+        }
+        this._googleChunks = [];
+        this._googleChunkIndex = 0;
+    }
+
+    /**
+     * Chia text thành đoạn ngắn cho Google TTS (giới hạn ~200 ký tự)
+     */
+    _splitTextForGoogleTTS(text, maxLen) {
+        if (text.length <= maxLen) return [text];
+
+        const chunks = [];
+        // Cắt theo dấu câu
+        const sentences = text.split(/(?<=[.!?。！？;；,，])\s*/);
+        let current = '';
+
+        for (const sentence of sentences) {
+            if ((current + ' ' + sentence).trim().length <= maxLen) {
+                current = (current + ' ' + sentence).trim();
+            } else {
+                if (current) chunks.push(current);
+                // Nếu câu đơn dài hơn maxLen → cắt cứng
+                if (sentence.length > maxLen) {
+                    for (let i = 0; i < sentence.length; i += maxLen) {
+                        chunks.push(sentence.substring(i, i + maxLen));
+                    }
+                    current = '';
+                } else {
+                    current = sentence;
+                }
+            }
+        }
+        if (current) chunks.push(current);
+        return chunks;
     }
 
     /**
@@ -418,12 +505,24 @@ class AudioManager {
      * Dừng hoàn toàn
      */
     stop() {
+        // Ghi lại analytics ngay trước khi dừng
+        if (this.currentItem && this.isPlaying) {
+            this._trackListen(this.currentItem.poiId);
+        }
+
         this._stopChromeFix();
+        this._stopGoogleAudio();
+        
         if (this.synth) {
+            if (this.utterance) {
+                this.utterance.onend = null;
+                this.utterance.onerror = null;
+            }
             this.synth.cancel();
         }
         this.isPlaying = false;
         this.isPaused = false;
+        // Don't clear currentItem until next play, or clear it, but _trackListen used it
         this.currentItem = null;
         this.utterance = null;
         this._notifyStateChange();
@@ -451,7 +550,17 @@ class AudioManager {
      * Track analytics cho việc nghe
      */
     async _trackListen(poiId) {
+        // Chống gửi trùng lặp event cho cùng 1 POI trong vòng 2 giây
+        if (this._lastTrackedPoi === poiId && (Date.now() - (this._lastTrackedTime || 0) < 2000)) {
+            return;
+        }
+        this._lastTrackedPoi = poiId;
+        this._lastTrackedTime = Date.now();
+
+        // Chỉ tính thời gian nếu lớn hơn 1 giây, tránh click lộn
         const duration = this.startTime ? (Date.now() - this.startTime) / 1000 : 0;
+        if (duration < 1 && !this.isPlaying) return; // Bỏ qua nếu bấm phát rồi dừng ngay
+
         try {
             await fetch('/api/analytics/event', {
                 method: 'POST',
