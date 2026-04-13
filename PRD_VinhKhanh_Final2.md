@@ -4,7 +4,7 @@
 |---|---|
 | Tên dự án | Ứng dụng Thuyết minh Đa ngôn ngữ Phố Ẩm thực Vĩnh Khánh |
 | Phiên bản | 1.0 — MVP |
-| Trạng thái | Final — Đã review kỹ thuật |
+| Trạng thái | Final |
 | Phạm vi hệ thống | Progressive Web App (Vanilla JS/HTML5/CSS3) + Web CMS (Admin) + Backend API (ASP.NET Core 10) + Database (MongoDB Atlas) |
 | Địa bàn | Phố Vĩnh Khánh, Quận 4, TP.HCM |
 | Ngôn ngữ hỗ trợ | 20 ngôn ngữ: VI, EN, JA, ZH, KO, TH, FR, ES, DE, RU, PT, IT, ID, HI, AR, MS, TL, NL, SV, PL — Admin chỉ nhập VI hoặc EN, 18 ngôn ngữ còn lại dịch tự động |
@@ -49,14 +49,14 @@
 * **CMS POI Management (High):** Quản lý Tên, tọa độ, mô tả thông tin quán.
 * **Analytics (Medium):** Ghi dấu behavior, đếm số lượt nghe hoàn thành và lưu log heatmap. Tính trung bình thời gian nghe.
 
-## 5. Technical Considerations (Đã chỉnh sửa thực tế)
+## 5. Technical Considerations
 * **Backend:** C# ASP.NET Core 10 (async), Architecture chuẩn REST.
 * **Database:** MongoDB Atlas (NoSQL Document Store).
 * **Frontend Mobile / Web CMS:** Progressive Web App (PWA) dùng Vanilla JS, CSS3, HTML5 thay cho React Native. Tận dụng Service Worker và IndexedDB lưu Offline.
 * **Bản đồ:** Leaflet.js sử dụng OpenStreetMap.
-* **Audio TTS Engine:** Client-side Window Web Speech API. Fallback sang Google Translate TTS Endpoint nếu thiết bị không có Voice pack.
+* **Audio TTS Engine:** Client-side Window Web Speech API. Fallback sang Google Translate API Endpoint nếu thiết bị không có Voice pack.
 * **Dịch tự động (Auto-Translation):** Google Translate API (`translate.googleapis.com`) client-side. Admin chỉ cần nhập tiếng Việt hoặc tiếng Anh (có 1 trong 2 là đủ), hệ thống tự dịch sang 18 ngôn ngữ còn lại khi du khách chọn, kết quả được cache trong bộ nhớ.
-* **AAC Language Detection:** Bộ nhận diện ngôn ngữ tự viết dựa trên Unicode Range + Pattern Matching, hỗ trợ 50+ ngôn ngữ (25 hệ chữ viết + 16 ngôn ngữ Latin).
+* **AAC Language Detection:** Bộ nhận diện ngôn ngữ tự viết dựa trên Unicode Range + Pattern Matching, hỗ trợ nhận diện tự động 50+ ngôn ngữ từ văn bản đầu vào.
 
 ## 6. Business Rules
 | Rule | Diễn giải |
@@ -67,7 +67,7 @@
 | BR-04 | Quét mã QR là tác vụ chủ động -> Truy cập POI và Audio luôn, không cần check dải tọa độ GPS ngoài khu vực. |
 | BR-05 | Client-side TTS: Âm thanh không được tạo dưới backend để tránh sập máy chủ. Text sẽ được Frontend gửi thẳng ra các API âm thanh. |
 | BR-06 | Khi du khách chọn ngôn ngữ chưa có sẵn trong DB (vd: Tiếng Hàn) → hệ thống tự động dịch ttsScript từ tiếng Việt sang tiếng Hàn qua Google Translate API → Cache kết quả → Phát Audio bằng đúng ngôn ngữ đã chọn. |
-| BR-07 | AAC "Nói giúp tôi" sử dụng AI nhận diện tự động ngôn ngữ từ ký tự Unicode, hỗ trợ 50+ ngôn ngữ mà không cần người dùng chọn tay. |
+| BR-07 | AAC "Nói giúp tôi" sử dụng AI nhận biết tự động hệ ngôn ngữ từ ký tự Unicode mà không cần chọn thủ công. |
 
 ---
 
@@ -79,9 +79,67 @@
 
 ---
 
-## 8. Sơ Đồ Chuỗi Xử Lý (Sequence Diagrams)
+## 8. Sơ Đồ Kiến Trúc Hệ Thống (System Architecture Diagram)
 
-### 8.1 Luồng Xử Lý Quét Mã QR (Đã Sửa Logic GPS)
+```mermaid
+graph TD
+    subgraph Client [Tầng Client - Frontend PWA & Web Admin]
+        UI[Giao diện Dùng chung HTML/CSS]
+        SW[Service Worker - Offline Cache]
+        AppJS[Logic Khách hàng - app.js]
+        AdminJS[Logic Admin - admin.js]
+        Map[Bản đồ Map Leaflet.js]
+        Audio[Bộ xử lý Audio Engine TTS]
+        QRScanner[Trình Quét Hình QR]
+        AI[AI Language/Unicode Detector]
+    end
+
+    subgraph External [Dịch vụ Bên Thứ 3 - 3rd Party API]
+        OSM[OpenStreetMap]
+        Translate[Google Translate API]
+        QRGen[QRServer API Sinh Hình Ảnh]
+    end
+
+    subgraph Backend [Tầng Backend - ASP.NET Core 10]
+        API_Auth[Auth Controller]
+        API_POI[POI Controller]
+        API_Analytics[Analytics Controller]
+        API_Tour[Tour Controller]
+    end
+
+    subgraph Database [Tầng Dữ liệu Data]
+        Mongo[(MongoDB Atlas Cloud)]
+    end
+
+    %% Mối liên kết Client - External
+    Map -->|Load Tile Map| OSM
+    Audio -->|Dịch & Fallback Giọng Đọc Google| Translate
+    AdminJS -->|Tạo mã QR Admin Print| QRGen
+    
+    %% Gọi API
+    AppJS -->|Tương Tác API Rest| Backend
+    AdminJS -->|Admin Quản Trị JSON API| Backend
+    
+    %% Mối liên kết nội bộ thiết bị
+    UI --> AppJS
+    UI --> AdminJS
+    UI --> SW
+    AppJS --> AI
+    AppJS --> Audio
+    AppJS --> QRScanner
+
+    %% Mối liên kết Backend - DB
+    API_Auth --> Mongo
+    API_POI --> Mongo
+    API_Analytics --> Mongo
+    API_Tour --> Mongo
+```
+
+---
+
+## 9. Sơ Đồ Chuỗi Xử Lý (Sequence Diagrams)
+
+### 9.1 Luồng Xử Lý Quét Mã QR
 
 ```mermaid
 sequenceDiagram
@@ -111,7 +169,7 @@ sequenceDiagram
     end
 ```
 
-### 8.2 Luồng Phát Thuyết Minh Đa Ngôn Ngữ (Có Dịch Tự Động)
+### 9.2 Luồng Phát Thuyết Minh Đa Ngôn Ngữ (Có Dịch Thuật AI Tự Động)
 
 ```mermaid
 sequenceDiagram
@@ -124,31 +182,31 @@ sequenceDiagram
 
     User->>App: Chọn ngôn ngữ (vd: Hàn Quốc) + Bấm "Nghe"
     App->>API: GET /api/poi/{id}
-    API-->>App: Trả về ttsScript (chỉ có vi/en/ja/zh)
+    API-->>App: Trả về ttsScript (chỉ có vi/en)
     
     alt Có sẵn ttsScript cho ngôn ngữ đang chọn
         App->>App: Dùng text có sẵn
-    else Chưa có (vd: ttsScript.ko không tồn tại)
+    else Chưa có bản địa hóa
         App->>GTranslate: Dịch ttsScript.vi → tiếng Hàn
         GTranslate-->>App: Trả về text đã dịch
-        App->>App: Cache kết quả dịch vào bộ nhớ
+        App->>App: Cache kết quả dịch vào bộ nhớ RAM
     end
     
     App->>BrowserTTS: Gửi Text đã dịch yêu cầu đọc
     
-    alt Thiết bị có Voice cho ngôn ngữ này
+    alt Thiết bị có Voice đọc tiếng bản địa
         BrowserTTS-->>App: Phát âm thanh thành công
         App-->>User: Nghe Audio đúng ngôn ngữ
-    else Không có Voice
-         App->>GoogleTTS: Fallback Google TTS
-         GoogleTTS-->>App: Trả về file Audio
-         App-->>User: Phát Fallback Audio
+    else Thiết bị Không có Voice TTS ngôn ngữ lạ
+         App->>GoogleTTS: Gọi GET API Fallback Audio Của Google
+         GoogleTTS-->>App: Trả về luồng tập tin MP3/Audio
+         App-->>User: Phát File Audio
     end
     
-    App->>API: Gửi Analytics poi_listen / poi_complete
+    App->>API: Gửi thông số Analytics JSON (poi_listen / poi_complete)
 ```
 
-### 8.3 Luồng Bản Đồ và Geofencing Nội Bộ (Đã Sửa Tech Stack)
+### 9.3 Luồng Tính Năng Bản Đồ và Geofencing Hàng Rào Ảo
 
 ```mermaid
 sequenceDiagram
@@ -158,34 +216,99 @@ sequenceDiagram
     participant API as Backend (ASP.NET Core)
     
     User->>App: Mở ứng dụng
-    App->>Geo: Yêu cầu quyền Vị Trí (GPS)
-    Geo-->>App: Tọa độ (Lat/Lng) liên tục mỗi 1-5s
-    App->>API: Khởi tạo GET /api/poi/all
-    API-->>App: Dữ liệu mảng các Quán ăn
+    App->>Geo: Yêu cầu quyền truy cập Vị Trí (GPS)
+    Geo-->>App: Trả về Tọa độ (Lat/Lng) liên tục mỗi 1-5s
+    App->>API: Khởi tạo dữ liệu bằng (GET /api/poi/all)
+    API-->>App: Dữ liệu mảng toàn bộ Quán ăn trên đường
     
-    loop Mỗi khi đổi vị trí
-        App->>App: Tính toán khoảng cách (Turf.js / Haversine)
-        alt Khoảng cách < Bán kính POI (50m)
-            App-->>User: Bật Popup thông báo "Bạn đang ở gần quán X, có muốn nghe không?"
+    loop Mỗi khi vị trí thay đổi (Khách di chuyển)
+        App->>App: Tính toán khoảng cách hiện tại đến các tập POI bằng Haversine formula
+        alt Khoảng cách < Bán kính POI quy định (vd: 50m)
+            App-->>User: Bật thẻ Popup trên màn hình "Nghe ngay" thông báo đã tới nơi
         end
     end
 ```
 
-### 8.4 Luồng Xác Thực Admin (Auth)
+### 9.4 Luồng Xác Thực và Quản Trị Hệ Thống (CMS Admin)
 
 ```mermaid
 sequenceDiagram
     actor Admin as Quản trị viên
     participant Web as Admin Dashboard
     participant API as AuthController (ASP.NET)
-    participant DB as MongoDB
+    participant DB as MongoDB Atlas
+    participant QRGen as QRServer API
 
-    Admin->>Web: Nhập Username/Password
-    Web->>API: POST /api/auth/login
-    API->>DB: Xác thực Hash Password
-    DB-->>API: Match
-    API-->>Web: Trả về JWT Token
-    Web->>Web: Lưu Token vào `sessionStorage`
-    Web-->>Admin: Vào bảng điều khiển (Dashboard)
+    Admin->>Web: Nhập Username/Password đăng nhập
+    Web->>API: Gửi POST Request /api/auth/login
+    API->>DB: Tìm user và So sánh Hash Password
+    DB-->>API: Match True
+    API-->>Web: Kết xuất token JWT (JSON Web Token)
+    Web->>Web: Lưu JWT vào Session Storage trình duyệt
+    Web-->>Admin: Render bảng điều khiển (Dashboard)
+    
+    Admin->>Web: Thêm POI Mới (Nhập tên quán, script thuyết minh, vị trí LatLng)
+    Web->>API: Request POST /api/poi (Có Auth Bearer Header)
+    API->>DB: Đẩy Schema mới vào kho dữ liệu
+    DB-->>Web: Trả về trạng thái Status Created
+    
+    Admin->>Web: Nhấn xem mã QRCode của quán vừa tạo
+    Web->>QRGen: Truyền URL Web App (Tham số ID) đến API Gen Hình ảnh web thứ 3
+    QRGen-->>Web: Gửi Cdn File PNG / SVG của mã phân giải
+    Web-->>Admin: Hiển thị giao diện In ấn trực tiếp Print View Modal
 ```
 
+### 9.5 Luồng Giao Tiếp Người Khuyết Tật Hỗ Trợ Đa Ngôn Ngữ (AAC) (Nhận Diện Ngôn Ngữ Thông Minh AI)
+
+```mermaid
+sequenceDiagram
+    actor User as Du khách / Người Khuyết Tật
+    participant C as Frontend (PWA App JS)
+    participant U as Unicode String Parser Math
+    participant TSS as Window Browser Web Speech API
+    participant GF as Google Translate Audio (Fallback)
+
+    User->>C: Bấm chọn các icon tình huống để nhờ giao tiếp, nói giúp với chủ quán
+    C->>U: Truyền chuỗi String văn bản nội dung hiện tại
+    U->>U: Tính toán Regex quét mảng ký tự dựa vào Cấu trúc Hệ chữ Unicode toàn cầu
+    U-->>C: Trả về Mã BCP47 chính xác tuyệt đối loại ngôn ngữ văn bản (ja, ko, th, ru, de...)
+    
+    C->>TSS: Ra lệnh gọi Engine đọc ngầm Text theo mã Code Language vừa quét được
+    
+    alt Xử Lý Native Đạt Yêu Cầu
+        TSS-->>C: Đã kích hoạt Voice
+        C-->>User: Phát loa ngoài ngôn ngữ tương thích lập tức
+    else Máy cấu hình yếu/Không Tải Voice OS
+         C->>GF: Gọi lên API dự phòng Google với String Text mã hóa URL Encode
+         GF-->>C: Generate mảng byte Audio File Buffer
+         C-->>User: Phát Audio Fallback để chủ cửa hàng nghe thấy
+    end
+```
+
+### 9.6 Luồng Xử Lý Mất Kết Nối Mạng Tạm Thời PWA (Offline Capability)
+
+```mermaid
+sequenceDiagram
+    actor User as Du Khách Nước Ngoài Sài 3G
+    participant B as Mobile Chrome/Safari
+    participant SW as Worker Đóng Ngầm (Service Worker PWA)
+    participant Cache as Network Cache Storage (Trình Duyệt)
+    participant Server as Cloud Backend ASP.NET
+
+    Note over User,Server: Luồng tải lên lần đầu (Khi còn sóng 4G/Wifi kết nối)
+    User->>B: Truy cập Domain đường link Web/App Lần đầu
+    B->>SW: Register Cài Đặt Ứng Dụng Service Worker PWA
+    SW->>Server: Kéo toàn bộ File tĩnh Asset (Font/CSS/JS/Hình nền/Audio Intro)
+    Server-->>SW: Xả Stream Payload
+    SW->>Cache: Lưu lại ghi đè vào Disk bộ nhớ lưu trữ Offline trong thiết bị
+
+    Note over User,Server: Luồng sụp ngầm (Khi Du khách thám hiểm sâu / Mất Sóng)
+    User->>B: Ấn vào Menu chức năng hoặc reload
+    B->>SW: Đang chuẩn bị gọi các HTTP Fetch qua mạng
+    SW->>Server: Kích hoạt request Ping tới Cloud
+    Server--xB: Lỗ hổng timeout kết nối API
+    
+    SW->>Cache: Fall mode - Ưu tiên truy xuất Cache Memory Local
+    Cache-->>SW: Lôi file và text lưu tạm lên lại
+    SW-->>B: Render Trả về Web DOM Component và báo lỗi Offline Đỏ góc màn hình
+```
