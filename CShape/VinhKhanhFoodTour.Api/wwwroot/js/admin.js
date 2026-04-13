@@ -285,8 +285,6 @@ function openPoiModal(poi = null) {
         document.getElementById('poi-edit-id').value = poi.id;
         document.getElementById('poi-name-vi').value = poi.name?.vi || '';
         document.getElementById('poi-name-en').value = poi.name?.en || '';
-        document.getElementById('poi-name-ja').value = poi.name?.ja || '';
-        document.getElementById('poi-name-zh').value = poi.name?.zh || '';
         document.getElementById('poi-lat').value = poi.latitude;
         document.getElementById('poi-lng').value = poi.longitude;
         document.getElementById('poi-radius').value = poi.radius;
@@ -324,9 +322,7 @@ async function savePoi(e) {
     const poi = {
         name: {
             vi: document.getElementById('poi-name-vi').value,
-            en: document.getElementById('poi-name-en').value,
-            ja: document.getElementById('poi-name-ja').value,
-            zh: document.getElementById('poi-name-zh').value
+            en: document.getElementById('poi-name-en').value
         },
         description: {
             vi: document.getElementById('poi-desc-vi').value,
@@ -548,8 +544,17 @@ async function loadTranslations() {
     }
 
     container.innerHTML = adminPois.map(poi => {
-        const langs = ['vi', 'en', 'ja', 'zh'];
-        const langNames = { vi: '🇻🇳 VI', en: '🇺🇸 EN', ja: '🇯🇵 JP', zh: '🇨🇳 ZH' };
+        const langs = ['vi', 'en', 'ja', 'zh', 'ko', 'th', 'fr', 'es', 'de', 'ru', 'pt', 'it', 'id', 'hi', 'ar', 'ms', 'tl', 'nl', 'sv', 'pl'];
+        const langNames = {
+            vi: '🇻🇳 VI', en: '🇺🇸 EN', ja: '🇯🇵 JP', zh: '🇨🇳 ZH',
+            ko: '🇰🇷 KO', th: '🇹🇭 TH', fr: '🇫🇷 FR', es: '🇪🇸 ES',
+            de: '🇩🇪 DE', ru: '🇷🇺 RU', pt: '🇧🇷 PT', it: '🇮🇹 IT',
+            id: '🇮🇩 ID', hi: '🇮🇳 HI', ar: '🇸🇦 AR', ms: '🇲🇾 MS',
+            tl: '🇵🇭 TL', nl: '🇳🇱 NL', sv: '🇸🇪 SV', pl: '🇵🇱 PL'
+        };
+        
+        // Phân tích trạng thái: có sẵn / dịch tự động
+        const coreLangs = ['vi', 'en']; // Admin chỉ nhập VI + EN, còn lại dịch tự động
         
         return `
             <div class="translation-item">
@@ -558,14 +563,22 @@ async function loadTranslations() {
                 ${langs.map(l => `
                     <div class="translation-lang">
                         <span class="translation-lang-code">${langNames[l]}</span>
-                        <span class="translation-lang-text">${poi.name?.[l] || '<em style="color:var(--danger)">Chưa dịch</em>'}</span>
+                        <span class="translation-lang-text">${
+                            poi.name?.[l] 
+                            ? poi.name[l] 
+                            : (coreLangs.includes(l) ? '<em style="color:var(--danger)">Chưa dịch</em>' : '<em style="color:var(--info)">🤖 Dịch tự động</em>')
+                        }</span>
                     </div>
                 `).join('')}
                 <div style="margin: 12px 0 8px;"><strong style="font-size: 12px; color: var(--text-muted);">Script TTS:</strong></div>
                 ${langs.map(l => `
                     <div class="translation-lang">
                         <span class="translation-lang-code">${langNames[l]}</span>
-                        <span class="translation-lang-text">${poi.ttsScript?.[l] ? '✅ Có' : '<em style="color:var(--warning)">Chưa có</em>'}</span>
+                        <span class="translation-lang-text">${
+                            poi.ttsScript?.[l] 
+                            ? '✅ Có sẵn' 
+                            : (coreLangs.includes(l) ? '<em style="color:var(--warning)">Chưa có</em>' : '<em style="color:var(--info)">🤖 Dịch tự động khi du khách chọn</em>')
+                        }</span>
                     </div>
                 `).join('')}
             </div>

@@ -20,10 +20,11 @@ class AudioManager {
         this.voicesReady = false;
 
         this.langMap = {
-            'vi': 'vi-VN',
-            'en': 'en-US',
-            'ja': 'ja-JP',
-            'zh': 'zh-CN'
+            'vi': 'vi-VN', 'en': 'en-US', 'ja': 'ja-JP', 'zh': 'zh-CN',
+            'ko': 'ko-KR', 'th': 'th-TH', 'fr': 'fr-FR', 'es': 'es-ES',
+            'de': 'de-DE', 'ru': 'ru-RU', 'pt': 'pt-BR', 'it': 'it-IT',
+            'id': 'id-ID', 'hi': 'hi-IN', 'ar': 'ar-SA', 'ms': 'ms-MY',
+            'tl': 'tl-PH', 'nl': 'nl-NL', 'sv': 'sv-SE', 'pl': 'pl-PL'
         };
 
         // Khởi tạo Speech Synthesis

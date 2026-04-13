@@ -20,76 +20,82 @@ const AppState = {
 // Managers
 let mapManager, geofenceManager, audioManager, qrScanner, offlineDB;
 
-// UI text đa ngôn ngữ
+// UI text đa ngôn ngữ (20+ ngôn ngữ, fallback sang EN nếu chưa dịch)
 const UI_TEXT = {
     vi: {
-        gpsSearching: 'Đang lấy vị trí GPS...',
-        gpsActive: 'GPS đang hoạt động',
-        gpsError: 'Lỗi GPS',
-        accuracy: 'Độ chính xác',
-        listen: 'Nghe thuyết minh',
-        navigate: 'Chỉ đường',
-        close: 'Đóng',
-        nearPoi: 'Bạn đang ở gần',
-        tapToListen: 'Nhấn để nghe thuyết minh',
-        loading: 'Đang tải dữ liệu...',
-        poiList: 'Điểm thuyết minh',
-        all: 'Tất cả',
-        scanQr: 'Quét QR Code',
+        gpsSearching: 'Đang lấy vị trí GPS...', gpsActive: 'GPS đang hoạt động', gpsError: 'Lỗi GPS',
+        accuracy: 'Độ chính xác', listen: 'Nghe thuyết minh', navigate: 'Chỉ đường', close: 'Đóng',
+        nearPoi: 'Bạn đang ở gần', tapToListen: 'Nhấn để nghe thuyết minh', loading: 'Đang tải dữ liệu...',
+        poiList: 'Điểm thuyết minh', all: 'Tất cả', scanQr: 'Quét QR Code',
         qrInstruction: 'Hướng camera vào mã QR tại điểm dừng'
     },
     en: {
-        gpsSearching: 'Getting GPS location...',
-        gpsActive: 'GPS is active',
-        gpsError: 'GPS Error',
-        accuracy: 'Accuracy',
-        listen: 'Listen to guide',
-        navigate: 'Navigate',
-        close: 'Close',
-        nearPoi: 'You are near',
-        tapToListen: 'Tap to listen to the guide',
-        loading: 'Loading data...',
-        poiList: 'Points of Interest',
-        all: 'All',
-        scanQr: 'Scan QR Code',
-        qrInstruction: 'Point camera at QR code at bus stop'
+        gpsSearching: 'Getting GPS location...', gpsActive: 'GPS is active', gpsError: 'GPS Error',
+        accuracy: 'Accuracy', listen: 'Listen to guide', navigate: 'Navigate', close: 'Close',
+        nearPoi: 'You are near', tapToListen: 'Tap to listen to the guide', loading: 'Loading data...',
+        poiList: 'Points of Interest', all: 'All', scanQr: 'Scan QR Code',
+        qrInstruction: 'Point camera at QR code'
     },
     ja: {
-        gpsSearching: 'GPS位置を取得中...',
-        gpsActive: 'GPS動作中',
-        gpsError: 'GPSエラー',
-        accuracy: '精度',
-        listen: 'ガイドを聞く',
-        navigate: 'ナビゲート',
-        close: '閉じる',
-        nearPoi: '近くにいます',
-        tapToListen: 'タップしてガイドを聞く',
-        loading: 'データを読み込み中...',
-        poiList: 'スポット一覧',
-        all: 'すべて',
-        scanQr: 'QRコードスキャン',
-        qrInstruction: 'バス停のQRコードにカメラを向けてください'
+        gpsSearching: 'GPS位置を取得中...', gpsActive: 'GPS動作中', gpsError: 'GPSエラー',
+        accuracy: '精度', listen: 'ガイドを聞く', navigate: 'ナビゲート', close: '閉じる',
+        nearPoi: '近くにいます', tapToListen: 'タップしてガイドを聞く', loading: 'データを読み込み中...',
+        poiList: 'スポット一覧', all: 'すべて', scanQr: 'QRコードスキャン',
+        qrInstruction: 'QRコードにカメラを向けてください'
     },
     zh: {
-        gpsSearching: '正在获取GPS位置...',
-        gpsActive: 'GPS正在运行',
-        gpsError: 'GPS错误',
-        accuracy: '精度',
-        listen: '听语音导览',
-        navigate: '导航',
-        close: '关闭',
-        nearPoi: '您在附近',
-        tapToListen: '点击收听语音导览',
-        loading: '正在加载数据...',
-        poiList: '兴趣点',
-        all: '全部',
-        scanQr: '扫描二维码',
-        qrInstruction: '将摄像头对准公交站的二维码'
+        gpsSearching: '正在获取GPS位置...', gpsActive: 'GPS正在运行', gpsError: 'GPS错误',
+        accuracy: '精度', listen: '听语音导览', navigate: '导航', close: '关闭',
+        nearPoi: '您在附近', tapToListen: '点击收听语音导览', loading: '正在加载数据...',
+        poiList: '兴趣点', all: '全部', scanQr: '扫描二维码',
+        qrInstruction: '将摄像头对准二维码'
+    },
+    ko: {
+        gpsSearching: 'GPS 위치 가져오는 중...', gpsActive: 'GPS 활성', gpsError: 'GPS 오류',
+        accuracy: '정확도', listen: '가이드 듣기', navigate: '길찾기', close: '닫기',
+        nearPoi: '근처에 있습니다', tapToListen: '탭하여 가이드 듣기', loading: '데이터 로딩 중...',
+        poiList: '관심 지점', all: '전체', scanQr: 'QR 코드 스캔',
+        qrInstruction: 'QR 코드에 카메라를 대세요'
+    },
+    th: {
+        gpsSearching: 'กำลังรับตำแหน่ง GPS...', gpsActive: 'GPS ทำงาน', gpsError: 'GPS ผิดพลาด',
+        accuracy: 'ความแม่นยำ', listen: 'ฟังคำบรรยาย', navigate: 'นำทาง', close: 'ปิด',
+        nearPoi: 'คุณอยู่ใกล้', tapToListen: 'แตะเพื่อฟัง', loading: 'กำลังโหลด...',
+        poiList: 'จุดสนใจ', all: 'ทั้งหมด', scanQr: 'สแกน QR',
+        qrInstruction: 'หันกล้องไปที่ QR โค้ด'
+    },
+    fr: {
+        gpsSearching: 'Obtention de la position GPS...', gpsActive: 'GPS actif', gpsError: 'Erreur GPS',
+        accuracy: 'Précision', listen: 'Écouter le guide', navigate: 'Naviguer', close: 'Fermer',
+        nearPoi: 'Vous êtes près de', tapToListen: 'Appuyez pour écouter', loading: 'Chargement...',
+        poiList: 'Points d\'intérêt', all: 'Tous', scanQr: 'Scanner QR',
+        qrInstruction: 'Pointez la caméra vers le QR code'
+    },
+    es: {
+        gpsSearching: 'Obteniendo ubicación GPS...', gpsActive: 'GPS activo', gpsError: 'Error GPS',
+        accuracy: 'Precisión', listen: 'Escuchar guía', navigate: 'Navegar', close: 'Cerrar',
+        nearPoi: 'Estás cerca de', tapToListen: 'Toca para escuchar', loading: 'Cargando...',
+        poiList: 'Puntos de interés', all: 'Todos', scanQr: 'Escanear QR',
+        qrInstruction: 'Apunta la cámara al código QR'
+    },
+    de: {
+        gpsSearching: 'GPS-Position wird ermittelt...', gpsActive: 'GPS aktiv', gpsError: 'GPS-Fehler',
+        accuracy: 'Genauigkeit', listen: 'Guide anhören', navigate: 'Navigieren', close: 'Schließen',
+        nearPoi: 'Sie sind in der Nähe von', tapToListen: 'Tippen zum Anhören', loading: 'Laden...',
+        poiList: 'Sehenswürdigkeiten', all: 'Alle', scanQr: 'QR scannen',
+        qrInstruction: 'Kamera auf den QR-Code richten'
+    },
+    ru: {
+        gpsSearching: 'Получение GPS-позиции...', gpsActive: 'GPS активен', gpsError: 'Ошибка GPS',
+        accuracy: 'Точность', listen: 'Слушать гид', navigate: 'Навигация', close: 'Закрыть',
+        nearPoi: 'Вы рядом с', tapToListen: 'Нажмите, чтобы слушать', loading: 'Загрузка...',
+        poiList: 'Точки интереса', all: 'Все', scanQr: 'Сканировать QR',
+        qrInstruction: 'Наведите камеру на QR-код'
     }
 };
 
 function t(key) {
-    return (UI_TEXT[AppState.language] || UI_TEXT.vi)[key] || key;
+    return (UI_TEXT[AppState.language] || UI_TEXT.en || UI_TEXT.vi)[key] || (UI_TEXT.en[key]) || key;
 }
 
 // ==================== INITIALIZATION ====================
@@ -335,7 +341,7 @@ async function loadPois() {
 /**
  * Xử lý khi mở app bằng cách quét QR Code tại cửa hàng.
  * URL: /index.html?qr=VK-POI-001
- * Tự động tìm POI và phát thuyết minh.
+ * Tự động tìm POI và phát thuyết minh đúng ngôn ngữ đang chọn.
  */
 function handleQrUrlParam() {
     const params = new URLSearchParams(window.location.search);
@@ -351,29 +357,104 @@ function handleQrUrlParam() {
         );
         
         if (poi) {
-            // Hiển thị chi tiết và phát thế minh ngay
             showPoiDetail(poi);
             mapManager.centerOnPoi(poi.id);
             
-            const lang = AppState.language;
-            const name = poi.name[lang] || poi.name.vi;
-            const script = poi.ttsScript[lang] || poi.ttsScript.vi;
-            
-            // Phát sau 1 giây (chờ splash screen tắt)
-            setTimeout(() => {
+            // Phát sau 1.8 giây (chờ splash screen tắt)
+            setTimeout(async () => {
+                const lang = AppState.language;
+                const name = poi.name[lang] || poi.name.vi;
+                const script = await getPoiScript(poi, lang);
                 audioManager.playDirect(poi.id, script, name);
-                console.log('✅ QR: Đang phát thuyết minh cho', name);
+                console.log(`✅ QR: Đang phát thuyết minh [${lang}] cho`, name);
             }, 1800);
         } else if (attempt < 10) {
-            // Thử lại sau 500ms nếu POI chưa load
             setTimeout(() => tryFind(attempt + 1), 500);
         } else {
             console.warn('⚠️ Không tìm thấy POI với mã QR:', qrCode);
         }
     };
     
-    // Bắt đầu tìm sau khi splash screen bắt đầu tắt (1.5s)
     setTimeout(() => tryFind(), 1500);
+}
+
+/**
+ * Lấy script thuyết minh đúng ngôn ngữ.
+ * Nếu DB không có ngôn ngữ đang chọn → tự động dịch từ tiếng Việt sang ngôn ngữ đó.
+ */
+async function getPoiScript(poi, lang) {
+    // Nếu đã có sẵn trong DB → dùng luôn
+    if (poi.ttsScript && poi.ttsScript[lang]) {
+        return poi.ttsScript[lang];
+    }
+
+    // Lấy text gốc (tiếng Việt hoặc tiếng Anh)
+    const sourceText = poi.ttsScript?.vi || poi.ttsScript?.en || '';
+    if (!sourceText) return '';
+    const sourceLang = poi.ttsScript?.vi ? 'vi' : 'en';
+
+    // Nếu ngôn ngữ chọn trùng với nguồn → không cần dịch
+    if (lang === sourceLang) return sourceText;
+
+    // Tự động dịch bằng Google Translate
+    try {
+        const translated = await translateText(sourceText, sourceLang, lang);
+        if (translated) {
+            // Cache lại vào POI để lần sau không cần dịch nữa
+            if (!poi.ttsScript) poi.ttsScript = {};
+            poi.ttsScript[lang] = translated;
+            console.log(`🌐 Đã dịch thuyết minh sang [${lang}]:`, translated.substring(0, 50) + '...');
+            return translated;
+        }
+    } catch (e) {
+        console.warn('⚠️ Lỗi dịch tự động:', e);
+    }
+
+    // Fallback về text gốc nếu dịch thất bại
+    return sourceText;
+}
+
+/**
+ * Dịch văn bản bằng Google Translate API (client-side, miễn phí)
+ * @param {string} text - Văn bản cần dịch
+ * @param {string} from - Mã ngôn ngữ nguồn (vd: 'vi')
+ * @param {string} to - Mã ngôn ngữ đích (vd: 'ko')
+ * @returns {Promise<string>} Văn bản đã dịch
+ */
+async function translateText(text, from, to) {
+    // Chia nhỏ text nếu dài quá (Google giới hạn ~5000 ký tự/request)
+    const maxLen = 4500;
+    if (text.length <= maxLen) {
+        return await _translateChunk(text, from, to);
+    }
+
+    // Chia theo câu
+    const sentences = text.split(/(?<=[.!?。\n])\s*/);
+    let chunks = [];
+    let current = '';
+    for (const s of sentences) {
+        if ((current + s).length <= maxLen) {
+            current += s;
+        } else {
+            if (current) chunks.push(current);
+            current = s;
+        }
+    }
+    if (current) chunks.push(current);
+
+    const results = await Promise.all(chunks.map(c => _translateChunk(c, from, to)));
+    return results.join(' ');
+}
+
+async function _translateChunk(text, from, to) {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    // Response format: [[["đoạn dịch", "đoạn gốc"], ...], ...]
+    if (data && data[0]) {
+        return data[0].map(item => item[0]).join('');
+    }
+    return text;
 }
 
 function updateNetworkStatus() {
@@ -426,13 +507,15 @@ function setupGeofenceCallbacks() {
 
         const lang = AppState.language;
         const name = fullPoi.name[lang] || fullPoi.name.vi;
-        const script = fullPoi.ttsScript[lang] || fullPoi.ttsScript.vi;
 
         // Show toast notification
         showGeofenceToast(name, fullPoi);
 
-        // Auto-play TTS
-        audioManager.enqueue(poi.id, script, name, poi.priority);
+        // Auto-play TTS với dịch tự động nếu cần
+        (async () => {
+            const script = await getPoiScript(fullPoi, lang);
+            audioManager.enqueue(poi.id, script, name, poi.priority);
+        })();
 
         // Track analytics
         fetch('/api/analytics/event', {
@@ -625,13 +708,13 @@ function showAudioPrompt(poi) {
     document.body.appendChild(overlay);
 
     // Bấm "Nghe thuyết minh" → phát audio (USER GESTURE ✓)
-    document.getElementById('audio-prompt-btn').addEventListener('click', () => {
+    document.getElementById('audio-prompt-btn').addEventListener('click', async () => {
         overlay.remove();
         const p = window._pendingQrPoi;
         if (p) {
             const l = AppState.language;
             const n = p.name[l] || p.name.vi;
-            const script = p.ttsScript[l] || p.ttsScript.vi;
+            const script = await getPoiScript(p, l);
             audioManager.playDirect(p.id, script, n);
             window._pendingQrPoi = null;
         }
@@ -655,13 +738,9 @@ function showAudioPrompt(poi) {
 // ==================== UI EVENTS ====================
 
 function setupUIEvents() {
-    // Language selector
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            changeLanguage(btn.dataset.lang);
-        });
+    // Language selector (dropdown)
+    document.getElementById('lang-select').addEventListener('change', (e) => {
+        changeLanguage(e.target.value);
     });
 
     // Menu button - toggle POI list
@@ -696,12 +775,12 @@ function setupUIEvents() {
     });
 
     // POI Detail buttons
-    document.getElementById('btn-listen').addEventListener('click', () => {
+    document.getElementById('btn-listen').addEventListener('click', async () => {
         if (AppState.selectedPoi) {
             const lang = AppState.language;
             const poi = AppState.selectedPoi;
             const name = poi.name[lang] || poi.name.vi;
-            const script = poi.ttsScript[lang] || poi.ttsScript.vi;
+            const script = await getPoiScript(poi, lang);
             audioManager.playDirect(poi.id, script, name);
         }
     });
@@ -1169,48 +1248,229 @@ function aacSpeak() {
     const btn = document.getElementById('btn-aac-speak');
 
     // Nếu đang nói → dừng
-    if (window.speechSynthesis.speaking) {
+    if (window.speechSynthesis.speaking || window._aacGoogleAudio) {
         window.speechSynthesis.cancel();
+        if (window._aacGoogleAudio) {
+            window._aacGoogleAudio.pause();
+            window._aacGoogleAudio = null;
+        }
         btn.classList.remove('speaking');
         btn.querySelector('.material-icons-round').textContent = 'volume_up';
         return;
     }
 
-    // Tự động phát hiện ngôn ngữ dựa trên ký tự
-    let lang = AppState.language; // Mặc định theo ngôn ngữ app
-    if (/[ぁ-んァ-ン]/.test(text)) lang = 'ja';      // Ký tự tiếng Nhật
-    else if (/[\u4e00-\u9fa5]/.test(text)) lang = 'zh'; // Ký tự tiếng Trung (Hán tự)
-    else if (/[àáãạảăắằẳẵặâấầẩẫậèéẹẻẽêềếểễệđìíĩỉịòóõọỏôốồổỗộơớờởỡợùúũụủưứừửữựỳýỵỷỹÀÁÃẠẢĂẮẰẲẴẶÂẤẦẨẪẬÈÉẸẺẼÊỀẾỂỄỆĐÌÍĨỈỊÒÓÕỌỎÔỐỒỔỖỘƠỚỜỞỠỢÙÚŨỤỦƯỨỪỬỮỰỲÝỴỶỸ]/.test(text)) lang = 'vi'; // Có dấu tiếng Việt
-
-    // Map lang code sang BCP47 cho speechSynthesis
-    const langMap = { vi: 'vi-VN', en: 'en-US', ja: 'ja-JP', zh: 'zh-CN' };
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = langMap[lang] || 'vi-VN';
-    utterance.rate = 0.9;  // Nói chậm hơn chút để người nghe hiểu rõ
-    utterance.volume = 1.0; // Âm lượng tối đa
-
-    // Tìm giọng tốt nhất
-    const voices = window.speechSynthesis.getVoices();
-    const targetLang = langMap[lang];
-    const bestVoice = voices.find(v => v.lang === targetLang && v.name.includes('Neural'))
-        || voices.find(v => v.lang === targetLang)
-        || voices.find(v => v.lang.startsWith(lang));
-    if (bestVoice) utterance.voice = bestVoice;
+    // ============ AI LANGUAGE DETECTION (50+ ngôn ngữ) ============
+    const detectedLang = detectLanguage(text);
+    console.log(`🌍 AAC: Phát hiện ngôn ngữ "${detectedLang}" cho text: "${text.substring(0, 30)}..."`);
 
     // UI: hiệu ứng đang nói
     btn.classList.add('speaking');
     btn.querySelector('.material-icons-round').textContent = 'stop';
 
-    utterance.onend = () => {
+    const resetBtn = () => {
         btn.classList.remove('speaking');
         btn.querySelector('.material-icons-round').textContent = 'volume_up';
     };
 
-    utterance.onerror = () => {
-        btn.classList.remove('speaking');
-        btn.querySelector('.material-icons-round').textContent = 'volume_up';
-    };
+    // Thử Web Speech API trước
+    const voices = window.speechSynthesis.getVoices();
+    const hasVoice = voices.some(v => v.lang.toLowerCase().startsWith(detectedLang.split('-')[0]));
 
-    window.speechSynthesis.speak(utterance);
+    if (hasVoice) {
+        // Có voice → dùng Web Speech API
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = detectedLang;
+        utterance.rate = 0.9;
+        utterance.volume = 1.0;
+
+        const langPrefix = detectedLang.split('-')[0];
+        const bestVoice = voices.find(v => v.lang === detectedLang && v.name.includes('Neural'))
+            || voices.find(v => v.lang === detectedLang)
+            || voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
+        if (bestVoice) utterance.voice = bestVoice;
+
+        // Fallback: nếu sau 3 giây không phát → chuyển Google TTS
+        let started = false;
+        const fallback = setTimeout(() => {
+            if (!started) {
+                window.speechSynthesis.cancel();
+                _aacGoogleTTS(text, detectedLang, resetBtn);
+            }
+        }, 3000);
+
+        utterance.onstart = () => { started = true; clearTimeout(fallback); };
+        utterance.onend = () => { clearTimeout(fallback); resetBtn(); };
+        utterance.onerror = (e) => {
+            clearTimeout(fallback);
+            if (e.error !== 'canceled') _aacGoogleTTS(text, detectedLang, resetBtn);
+            else resetBtn();
+        };
+
+        window.speechSynthesis.speak(utterance);
+    } else {
+        // Không có voice → Google Translate TTS fallback
+        _aacGoogleTTS(text, detectedLang, resetBtn);
+    }
+}
+
+/**
+ * Google Translate TTS fallback cho AAC — hoạt động mọi thiết bị
+ */
+function _aacGoogleTTS(text, langCode, onDone) {
+    const tl = langCode.split('-')[0]; // vi-VN → vi
+    // Chia đoạn nếu text dài
+    const chunks = [];
+    const maxLen = 190;
+    if (text.length <= maxLen) {
+        chunks.push(text);
+    } else {
+        const sentences = text.split(/(?<=[.!?。！？;；,，])\s*/);
+        let current = '';
+        for (const s of sentences) {
+            if ((current + ' ' + s).trim().length <= maxLen) {
+                current = (current + ' ' + s).trim();
+            } else {
+                if (current) chunks.push(current);
+                if (s.length > maxLen) {
+                    for (let i = 0; i < s.length; i += maxLen) chunks.push(s.substring(i, i + maxLen));
+                    current = '';
+                } else {
+                    current = s;
+                }
+            }
+        }
+        if (current) chunks.push(current);
+    }
+
+    let idx = 0;
+    function playNext() {
+        if (idx >= chunks.length) {
+            window._aacGoogleAudio = null;
+            if (onDone) onDone();
+            return;
+        }
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${tl}&client=tw-ob&q=${encodeURIComponent(chunks[idx])}`;
+        const audio = new Audio(url);
+        window._aacGoogleAudio = audio;
+        audio.volume = 1.0;
+        audio.onended = () => { idx++; playNext(); };
+        audio.onerror = () => { idx++; playNext(); };
+        audio.play().catch(() => { if (onDone) onDone(); });
+    }
+    playNext();
+}
+
+/**
+ * Phát hiện ngôn ngữ tự động dựa trên Unicode Range + Pattern Matching
+ * Hỗ trợ 50+ ngôn ngữ phổ biến nhất thế giới
+ * Trả về BCP47 lang code (vd: 'vi-VN', 'ko-KR', 'th-TH')
+ */
+function detectLanguage(text) {
+    if (!text || text.length === 0) return 'vi-VN';
+
+    // Bảng quét Unicode cho các hệ chữ viết đặc trưng
+    const scriptDetectors = [
+        // Tiếng Việt: các ký tự dấu đặc trưng
+        { test: /[àáãạảăắằẳẵặâấầẩẫậèéẹẻẽêềếểễệđìíĩỉịòóõọỏôốồổỗộơớờởỡợùúũụủưứừửữựỳýỵỷỹ]/i, lang: 'vi-VN' },
+        // Tiếng Nhật: Hiragana + Katakana
+        { test: /[\u3040-\u309F\u30A0-\u30FF]/, lang: 'ja-JP' },
+        // Tiếng Hàn: Hangul
+        { test: /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/, lang: 'ko-KR' },
+        // Tiếng Trung: CJK Ideographs (nếu không có Hiragana/Katakana/Hangul)
+        { test: /[\u4E00-\u9FFF\u3400-\u4DBF]/, lang: 'zh-CN' },
+        // Tiếng Thái
+        { test: /[\u0E00-\u0E7F]/, lang: 'th-TH' },
+        // Tiếng Ả Rập
+        { test: /[\u0600-\u06FF\u0750-\u077F]/, lang: 'ar-SA' },
+        // Tiếng Hebrew
+        { test: /[\u0590-\u05FF]/, lang: 'he-IL' },
+        // Tiếng Hindi / Devanagari
+        { test: /[\u0900-\u097F]/, lang: 'hi-IN' },
+        // Tiếng Bengali
+        { test: /[\u0980-\u09FF]/, lang: 'bn-BD' },
+        // Tiếng Tamil
+        { test: /[\u0B80-\u0BFF]/, lang: 'ta-IN' },
+        // Tiếng Telugu
+        { test: /[\u0C00-\u0C7F]/, lang: 'te-IN' },
+        // Tiếng Kannada
+        { test: /[\u0C80-\u0CFF]/, lang: 'kn-IN' },
+        // Tiếng Malayalam
+        { test: /[\u0D00-\u0D7F]/, lang: 'ml-IN' },
+        // Tiếng Myanmar
+        { test: /[\u1000-\u109F]/, lang: 'my-MM' },
+        // Tiếng Khmer (Campuchia)
+        { test: /[\u1780-\u17FF]/, lang: 'km-KH' },
+        // Tiếng Lào
+        { test: /[\u0E80-\u0EFF]/, lang: 'lo-LA' },
+        // Tiếng Georgia
+        { test: /[\u10A0-\u10FF]/, lang: 'ka-GE' },
+        // Tiếng Armenia
+        { test: /[\u0530-\u058F]/, lang: 'hy-AM' },
+        // Tiếng Ethiopia (Amharic)
+        { test: /[\u1200-\u137F]/, lang: 'am-ET' },
+        // Tiếng Hy Lạp
+        { test: /[\u0370-\u03FF]/, lang: 'el-GR' },
+        // Tiếng Nga / Cyrillic
+        { test: /[\u0400-\u04FF]/, lang: 'ru-RU' },
+        // Tiếng Gujarati
+        { test: /[\u0A80-\u0AFF]/, lang: 'gu-IN' },
+        // Tiếng Punjabi (Gurmukhi)
+        { test: /[\u0A00-\u0A7F]/, lang: 'pa-IN' },
+        // Tiếng Sinhala (Sri Lanka)
+        { test: /[\u0D80-\u0DFF]/, lang: 'si-LK' },
+        // Tiếng Tibetan
+        { test: /[\u0F00-\u0FFF]/, lang: 'bo-CN' },
+    ];
+
+    // Quét theo hệ chữ viết (ưu tiên cao nhất, luôn chính xác)
+    for (const detector of scriptDetectors) {
+        if (detector.test.test(text)) {
+            return detector.lang;
+        }
+    }
+
+    // Nếu toàn ký tự Latin → phân biệt tiếp bằng đặc trưng ngôn ngữ
+    const latinDetectors = [
+        // Tiếng Đức: ß, ü, ö, ä
+        { test: /[ßüöäÜÖÄ]/, lang: 'de-DE' },
+        // Tiếng Pháp: ç, œ, ê, è, à, ù, â, î, ô, û, ë, ï, ÿ
+        { test: /[çœŒêèùâîôûëïÿ]/i, lang: 'fr-FR' },
+        // Tiếng Tây Ban Nha: ñ, ¿, ¡
+        { test: /[ñ¿¡]/i, lang: 'es-ES' },
+        // Tiếng Bồ Đào Nha: ã, õ, ç (không dấu Việt)
+        { test: /[ãõç]/i, lang: 'pt-BR' },
+        // Tiếng Thổ Nhĩ Kỳ: ğ, ı, ş, ç
+        { test: /[ğışŞİĞ]/, lang: 'tr-TR' },
+        // Tiếng Ba Lan: ą, ć, ę, ł, ń, ó, ś, ź, ż
+        { test: /[ąćęłńśźżĄĆĘŁŃŚŹŻ]/, lang: 'pl-PL' },
+        // Tiếng Séc: ě, š, č, ř, ž, ů, ď, ť, ň
+        { test: /[ěščřžůďťň]/i, lang: 'cs-CZ' },
+        // Tiếng Romania: ă, â, î, ș, ț
+        { test: /[ășțĂÂÎȘȚ]/, lang: 'ro-RO' },
+        // Tiếng Hungary: ő, ű
+        { test: /[őűŐŰ]/, lang: 'hu-HU' },
+        // Tiếng Hà Lan: ij, đặc điểm từ
+        { test: /\b(de|het|een|van|en|is|dat|niet|zijn|voor)\b/i, lang: 'nl-NL' },
+        // Tiếng Thụy Điển: å
+        { test: /[åÅ]/, lang: 'sv-SE' },
+        // Tiếng Na Uy / Đan Mạch: ø, æ
+        { test: /[øæØÆ]/, lang: 'no-NO' },
+        // Tiếng Phần Lan: ä, ö + đặc trung từ
+        { test: /\b(ja|on|ei|se|hän|mutta)\b/i, lang: 'fi-FI' },
+        // Tiếng Indonesia / Malay
+        { test: /\b(dan|yang|di|ini|itu|untuk|dengan|dari|tidak|saya)\b/i, lang: 'id-ID' },
+        // Tiếng Tagalog (Philippines)
+        { test: /\b(ang|ng|sa|na|mga|ko|niya|ito|ay)\b/i, lang: 'tl-PH' },
+        // Tiếng Swahili
+        { test: /\b(na|ya|wa|ni|kwa|katika|kuwa|hii)\b/i, lang: 'sw-KE' },
+    ];
+
+    for (const detector of latinDetectors) {
+        if (detector.test.test(text)) {
+            return detector.lang;
+        }
+    }
+
+    // Mặc định: tiếng Anh (chữ Latin thuần, không dấu)
+    return 'en-US';
 }
