@@ -71,9 +71,11 @@
 
 ---
 
-## 7. Dữ Liệu Lịch Sử (Data Schema MongoDB)
-* **`pois`**: `id`, `name`, `category`, `latitude`, `longitude`, `radius`, `priority`, `ttsScript`, `isActive`.
-* **`analytics`**: `id`, `session_id`, `event_type` (`poi_enter`, `poi_listen`, `poi_complete`, `location_update`), `poi_id`, `duration`, `timestamp`.
+## 7. Dữ Liệu Lịch Sử (Data Schema MongoDB — 4 Collections)
+* **`pois`**: `id`, `name` (đa ngôn ngữ), `description` (đa ngôn ngữ), `category`, `latitude`, `longitude`, `radius`, `priority`, `ttsScript` (đa ngôn ngữ), `qrCode`, `address`, `openingHours`, `priceRange`, `isActive`, `createdAt`.
+* **`analytics`**: `id`, `sessionId`, `eventType` (`poi_enter`, `poi_listen`, `poi_complete`, `qr_scan`, `location_update`), `poiId`, `duration`, `latitude`, `longitude`, `timestamp`.
+* **`tours`**: `id`, `name` (đa ngôn ngữ), `description` (đa ngôn ngữ), `poiIds` (danh sách POI theo thứ tự), `estimatedDuration` (phút), `estimatedDistance` (km), `isActive`, `createdAt`.
+* **`users`**: `id`, `username`, `passwordHash`, `role` (`admin`, `editor`), `createdAt`.
 
 ---
 
