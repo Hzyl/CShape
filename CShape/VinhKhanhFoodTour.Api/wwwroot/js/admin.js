@@ -224,7 +224,9 @@ async function renderQrForCurrentModal() {
     if (!qrCode) return;
 
     const appOrigin = getQrAppOrigin();
-    const appUrl = `${appOrigin}/index.html?qr=${encodeURIComponent(qrCode)}`;
+    const selectedLang = document.getElementById('qr-lang-select')?.value;
+    const langParam = selectedLang ? `&lang=${selectedLang}` : '';
+    const appUrl = `${appOrigin}/index.html?qr=${encodeURIComponent(qrCode)}${langParam}`;
     document.getElementById('qr-poi-code').textContent = 'Đường dẫn: ' + appUrl;
     modal.dataset.qrUrl = appUrl;
     updateQrOriginPanel(appOrigin);
@@ -327,7 +329,7 @@ async function loadDashboardData() {
         // Update stat cards
         document.getElementById('stat-pois').textContent = adminPois.length;
         document.getElementById('stat-sessions').textContent = stats.uniqueSessions || 0;
-        document.getElementById('stat-listens').textContent = stats.eventCounts?.poi_listen || 0;
+        document.getElementById('stat-listens').textContent = (stats.eventCounts?.poi_enter || 0) + (stats.eventCounts?.qr_scan || 0) + (stats.eventCounts?.poi_listen || 0);
         document.getElementById('stat-qr').textContent = stats.eventCounts?.qr_scan || 0;
 
         // Render top POIs chart

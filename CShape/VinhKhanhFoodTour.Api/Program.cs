@@ -356,8 +356,9 @@ static void MapDemoApi(WebApplication app)
     {
         if (!AdminTokenHelper.IsAuthorized(request)) return Results.Unauthorized();
         var safeLimit = Math.Clamp(limit, 1, 50);
+        var listenTypes = new HashSet<string> { "poi_enter", "qr_scan", "poi_listen" };
         var stats = analyticsEvents
-            .Where(e => e.EventType == "poi_listen" && !string.IsNullOrWhiteSpace(e.PoiId))
+            .Where(e => listenTypes.Contains(e.EventType ?? "") && !string.IsNullOrWhiteSpace(e.PoiId))
             .GroupBy(e => e.PoiId!)
             .Select(g =>
             {
@@ -399,6 +400,36 @@ static void MapDemoApi(WebApplication app)
         if (!AdminTokenHelper.IsAuthorized(request)) return Results.Unauthorized();
         var safeLimit = Math.Clamp(limit, 1, 200);
         return Results.Ok(analyticsEvents.TakeLast(safeLimit).Reverse());
+    });
+
+    // === TTS Proxy — giải quyết CORS trên mobile ===
+    app.MapGet("/api/tts", async (string text, string lang) =>
+    {
+        if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(lang))
+            return Results.BadRequest("Missing text or lang");
+
+        // Giới hạn text 500 ký tự để tránh lạm dụng
+        var safeText = text.Length > 500 ? text[..500] : text;
+        var tl = lang.Length > 2 ? lang[..2] : lang;
+        var url = $"https://translate.google.com/translate_tts?ie=UTF-8&tl={tl}&client=tw-ob&q={Uri.EscapeDataString(safeText)}";
+
+        using var http = new HttpClient();
+        http.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0");
+        http.DefaultRequestHeaders.Add("Referer", "https://translate.google.com/");
+
+        try
+        {
+            var response = await http.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+                return Results.StatusCode((int)response.StatusCode);
+
+            var audioBytes = await response.Content.ReadAsByteArrayAsync();
+            return Results.File(audioBytes, "audio/mpeg");
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"TTS proxy error: {ex.Message}");
+        }
     });
 }
 

@@ -9,9 +9,13 @@ window.APP_SESSION_ID = 'session_' + Date.now() + '_' + Math.random().toString(3
 // Auth token key
 const AUTH_TOKEN_KEY = 'vinhkhanh_token';
 
+const initialParams = new URLSearchParams(window.location.search);
+const initialLang = initialParams.get('lang') || localStorage.getItem('vinhkhanh_lang') || 'vi';
+console.log(`🌐 Initial language: [${initialLang}] (URL param: ${initialParams.get('lang')}, localStorage: ${localStorage.getItem('vinhkhanh_lang')})`);
+
 // State
 const AppState = {
-    language: 'vi',
+    language: initialLang,
     pois: [],
     selectedPoi: null,
     isGpsActive: false
@@ -502,6 +506,18 @@ async function initApp() {
 
     // Load POI data
     await loadPois();
+
+    // Đồng bộ ngôn ngữ từ URL param (?lang=ko) hoặc localStorage
+    // Phải gọi SAU loadPois() để POI data đã sẵn sàng cho việc dịch
+    const langSelect = document.getElementById('lang-select');
+    if (langSelect && langSelect.value !== AppState.language) {
+        langSelect.value = AppState.language;
+    }
+    audioManager.setLanguage(AppState.language);
+    if (AppState.language !== 'vi') {
+        // Dịch toàn bộ UI + POI names sang ngôn ngữ đã chọn
+        await changeLanguage(AppState.language);
+    }
 
     // Start GPS tracking — thử auto, nếu fail thì hiện nút bấm cho user
     requestGpsWithFallback();
@@ -994,6 +1010,13 @@ async function showAudioPrompt(poi) {
     const listenText = await getUiText('listen', lang);
     const skipText = await getUiText('skip', lang);
 
+    // ⚡ PRE-TRANSLATE script TRƯỚC khi user bấm
+    // Nếu không làm bước này, click handler gọi await getPoiScript → mất user gesture → mobile chặn audio
+    const preScript = await getPoiScript(poi, lang);
+    window._pendingQrScript = preScript;
+    window._pendingQrName = name;
+    console.log(`🎯 Pre-translated script for [${lang}]:`, preScript.substring(0, 60) + '...');
+
     const overlay = document.createElement('div');
     overlay.id = 'audio-prompt-overlay';
     overlay.style.cssText = `
@@ -1036,16 +1059,22 @@ async function showAudioPrompt(poi) {
 
     document.body.appendChild(overlay);
 
-    // Bấm "Nghe thuyết minh" → phát audio (USER GESTURE ✓)
-    document.getElementById('audio-prompt-btn').addEventListener('click', async () => {
+    // Bấm "Nghe thuyết minh" → phát audio NGAY (USER GESTURE ✓)
+    // KHÔNG gọi await ở đây để giữ user gesture context trên mobile
+    document.getElementById('audio-prompt-btn').addEventListener('click', () => {
+        audioManager.unlockAudio(); // Mở khoá Media trên mobile trong user-gesture
         overlay.remove();
         const p = window._pendingQrPoi;
         if (p) {
             const l = AppState.language;
-            const n = await getLocalizedPoiText(p, 'name', l);
-            const script = await getPoiScript(p, l);
+            const script = window._pendingQrScript || '';
+            const n = window._pendingQrName || '';
+            console.log(`🎯 Playing audio [${l}]: ${script.substring(0, 60)}...`);
+            audioManager.setLanguage(l);
             audioManager.playDirect(p.id, script, n);
             window._pendingQrPoi = null;
+            window._pendingQrScript = null;
+            window._pendingQrName = null;
         }
     });
 
@@ -1053,6 +1082,8 @@ async function showAudioPrompt(poi) {
     document.getElementById('audio-prompt-close').addEventListener('click', () => {
         overlay.remove();
         window._pendingQrPoi = null;
+        window._pendingQrScript = null;
+        window._pendingQrName = null;
     });
 
     // Bấm ngoài cũng đóng
@@ -1060,6 +1091,8 @@ async function showAudioPrompt(poi) {
         if (e.target === overlay) {
             overlay.remove();
             window._pendingQrPoi = null;
+            window._pendingQrScript = null;
+            window._pendingQrName = null;
         }
     });
 }
@@ -1177,6 +1210,7 @@ async function testCurrentLanguageVoice() {
 
 async function changeLanguage(lang) {
     AppState.language = lang;
+    localStorage.setItem('vinhkhanh_lang', lang);
     showTranslationStatus(t('translating'));
     try {
         const select = document.getElementById('lang-select');
@@ -1291,7 +1325,7 @@ async function showPoiDetail(poi) {
     // Set QR code ngay trong bottom sheet
     // QR encode URL → khi du khách quét bằng camera sẽ mở app và tự phát thuyết minh
     const qrCode = poi.qrCode || poi.id;
-    const qrUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
+    const qrUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
     const qrImg = document.getElementById('detail-qr-img');
     if (qrImg) {
         qrImg.alt = `QR Code - ${name}`;
@@ -1407,7 +1441,7 @@ async function showPoiQr(poi) {
     const qrCode = poi.qrCode || poi.id;
 
     // URL mà QR sẽ encode: mở app và tự phát thuyết minh
-    const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
+    const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
 
     document.getElementById('poi-qr-name').textContent = name;
     setQrImage(document.getElementById('poi-qr-img'), appUrl, 400);
@@ -1489,7 +1523,7 @@ async function openQrLightbox() {
     const lang = AppState.language;
     const name = await getLocalizedPoiText(poi, 'name', lang);
     const qrCode = poi.qrCode || poi.id;
-    const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
+    const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
 
     document.getElementById('qr-lightbox-name').textContent = name;
     setQrImage(document.getElementById('qr-lightbox-img'), appUrl, 480);

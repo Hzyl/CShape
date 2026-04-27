@@ -340,6 +340,22 @@
             </div>
             <div class="modal-body" style="text-align: center;">
                 <h3 id="qr-poi-name" style="margin-bottom: 15px;">Tên POI</h3>
+                <div style="margin-bottom: 15px; text-align: left;">
+                    <label for="qr-lang-select"
+                        style="font-size: 14px; color: var(--text-muted); margin-bottom: 5px; display: block; font-weight: 500;">🌐
+                        Ngôn ngữ QR (Tùy chọn):</label>
+                    <select id="qr-lang-select" onchange="renderQrForCurrentModal()"
+                        style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-primary); font-size: 14px;">
+                        <option value="">-- Mặc định hệ thống --</option>
+                        <option value="vi">Tiếng Việt (VI)</option>
+                        <option value="en">Tiếng Anh (EN)</option>
+                        <option value="ko">Tiếng Hàn (KO)</option>
+                        <option value="zh">Tiếng Trung (ZH)</option>
+                        <option value="ja">Tiếng Nhật (JA)</option>
+                        <option value="fr">Tiếng Pháp (FR)</option>
+                        <option value="ru">Tiếng Nga (RU)</option>
+                    </select>
+                </div>
                 <div id="qr-image-container"
                     style="background: white; padding: 20px; border-radius: 10px; display: inline-block;">
                     <!-- QR Image will be injected here -->
@@ -376,7 +392,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
-    <script src="/js/admin.js?v=15"></script>
+    <script src="/js/admin.js?v=17"></script>
 </body>
 
 </html>

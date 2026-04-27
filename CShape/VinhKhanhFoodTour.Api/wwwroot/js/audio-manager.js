@@ -19,6 +19,10 @@ class AudioManager {
         this.voiceCache = {}; // Cache voice đã chọn cho mỗi ngôn ngữ
         this.voicesReady = false;
 
+        // Dùng chun 1 Audio object để dễ dàng Safari/Chrome unlock
+        this._googleAudio = new Audio();
+        this._audioUnlocked = false;
+
         this.langMap = {
             'vi': 'vi-VN', 'en': 'en-US', 'ja': 'ja-JP', 'zh': 'zh-CN',
             'ko': 'ko-KR', 'th': 'th-TH', 'fr': 'fr-FR', 'es': 'es-ES',
@@ -32,16 +36,16 @@ class AudioManager {
 
         // Khởi tạo Speech Synthesis
         this.synth = window.speechSynthesis;
-        
+
         if (this.synth) {
             // Dừng mọi audio cũ khi khởi tạo
             this.synth.cancel();
-            
+
             this.synth.onvoiceschanged = () => {
                 this._loadVoices();
             };
             this._loadVoices();
-            
+
             // Retry load voices vì Chrome cần thời gian load online voices
             setTimeout(() => this._loadVoices(), 500);
             setTimeout(() => this._loadVoices(), 2000);
@@ -60,22 +64,22 @@ class AudioManager {
     _loadVoices() {
         const newVoices = this.synth.getVoices();
         if (newVoices.length === 0) return;
-        
+
         // Chỉ update nếu có voices mới
         if (newVoices.length !== (this.voices || []).length) {
             this.voices = newVoices;
             this.voiceCache = {}; // Clear cache khi voices thay đổi
             this.voicesReady = true;
-            
+
             console.log(`🔊 ${this.voices.length} voices loaded`);
-            
+
             // Log tất cả Vietnamese voices
             const viVoices = this.voices.filter(v => v.lang.startsWith('vi'));
             if (viVoices.length > 0) {
                 console.log('🇻🇳 Vietnamese voices:');
                 viVoices.forEach((v, i) => {
                     const type = v.localService ? 'LOCAL' : 'ONLINE';
-                    console.log(`  ${i+1}. "${v.name}" [${v.lang}] (${type})`);
+                    console.log(`  ${i + 1}. "${v.name}" [${v.lang}] (${type})`);
                 });
             } else {
                 console.warn('⚠️ Không tìm thấy giọng tiếng Việt!');
@@ -92,20 +96,20 @@ class AudioManager {
         if (this.voiceCache[lang]) {
             return this.voiceCache[lang];
         }
-        
+
         const langCode = this.langMap[lang] || 'vi-VN';
         const voices = this.voices || [];
         if (voices.length === 0) return null;
-        
+
         // Tìm candidates - mở rộng matching
         let candidates = voices.filter(v => v.lang === langCode);
-        
+
         // Fallback: tìm theo prefix (vi -> vi-VN, vi-VI, etc.)
         if (candidates.length === 0) {
             const prefix = lang.substring(0, 2).toLowerCase();
             candidates = voices.filter(v => v.lang.toLowerCase().startsWith(prefix));
         }
-        
+
         // Fallback 2: tìm theo tên voice có chứa ngôn ngữ
         if (candidates.length === 0) {
             const langNames = {
@@ -121,14 +125,14 @@ class AudioManager {
                 return names.some(n => vname.includes(n));
             });
         }
-        
+
         if (candidates.length === 0) return null; // KHÔNG cache null để retry được
-        
+
         // Chấm điểm
         const scored = candidates.map(v => {
             let score = 0;
             const name = v.name.toLowerCase();
-            
+
             if (!v.localService) score += 100;
             if (name.includes('google')) score += 80;
             if (name.includes('microsoft') && !v.localService) score += 60;
@@ -142,18 +146,18 @@ class AudioManager {
             if (name.includes('edge')) score += 20;
             if (name.includes('espeak')) score -= 50;
             if (name.includes('mbrola')) score -= 40;
-            
+
             return { voice: v, score, name: v.name, local: v.localService };
         });
-        
+
         scored.sort((a, b) => b.score - a.score);
-        
+
         const best = scored[0];
         console.log(`🎤 Selected ${lang} voice: "${best.name}" [${best.voice.lang}] (score: ${best.score}, ${best.local ? 'local' : 'online'})`);
         if (scored.length > 1) {
             console.log(`   Alternatives: ${scored.slice(1, 3).map(s => `"${s.name}" (${s.score})`).join(', ')}`);
         }
-        
+
         // Cache kết quả (chỉ cache khi tìm được)
         this.voiceCache[lang] = best.voice;
         return best.voice;
@@ -178,7 +182,7 @@ class AudioManager {
         }
 
         // Kiểm tra trùng lặp trong queue
-        if (this.queue.some(item => item.poiId === poiId) || 
+        if (this.queue.some(item => item.poiId === poiId) ||
             (this.currentItem && this.currentItem.poiId === poiId)) {
             console.log(`🔄 POI ${poiId} đã có trong hàng chờ`);
             return false;
@@ -252,6 +256,7 @@ class AudioManager {
 
         const voice = this._getVoice(lang);
         const langPrefix = lang.substring(0, 2).toLowerCase();
+        // Kiểm tra xem trình duyệt có sắn voice không
         const hasVoice = voice || (this.voices || []).some(v => v.lang.toLowerCase().startsWith(langPrefix));
 
         if (this.preferGoogleTts.has(lang)) {
@@ -260,13 +265,13 @@ class AudioManager {
             return;
         }
 
-        // Nếu có voice → dùng Web Speech API
+        // Ưu tiên Web Speech API nếu thiết bị có voice
         if (hasVoice && this.synth) {
-            console.log('🔈 Dùng Web Speech API');
+            console.log(`🔈 Thử Web Speech API cho [${lang}]${voice ? ` (voice: ${voice.name})` : ''}`);
             this._speakWithWebSpeech(text, lang, voice);
         } else {
-            // Fallback → Google Translate TTS (hoạt động mọi thiết bị)
-            console.log('🔈 Fallback sang Google Translate TTS');
+            // Không có voice cài báo sẵn → NGAY LẬP TỨC dùng Google TTS (tránh chờ timeout 3s sẽ mất user gesture trên mobile)
+            console.log('🔈 Không có voice hệ thống, fallback sang Google Translate TTS lập tức');
             this._speakWithGoogleTTS(text, lang);
         }
     }
@@ -376,24 +381,23 @@ class AudioManager {
         }
 
         const chunk = this._googleChunks[this._googleChunkIndex];
-        const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${this._googleLang}&client=tw-ob&q=${encodeURIComponent(chunk)}`;
+        const url = `/api/tts?lang=${encodeURIComponent(this._googleLang)}&text=${encodeURIComponent(chunk)}`;
 
-        const audio = new Audio(url);
-        this._googleAudio = audio;
-        audio.volume = 1.0;
+        this._googleAudio.src = url;
+        this._googleAudio.volume = 1.0;
 
-        audio.onended = () => {
+        this._googleAudio.onended = () => {
             this._googleChunkIndex++;
             this._playNextGoogleChunk();
         };
 
-        audio.onerror = (e) => {
+        this._googleAudio.onerror = (e) => {
             console.error('❌ Google TTS chunk error:', e);
             this._googleChunkIndex++;
             this._playNextGoogleChunk();
         };
 
-        audio.play().catch(err => {
+        this._googleAudio.play().catch(err => {
             console.error('❌ Google TTS play failed:', err);
             this._playNext();
         });
@@ -405,7 +409,6 @@ class AudioManager {
             this._googleAudio.onended = null;
             this._googleAudio.onerror = null;
             this._googleAudio.src = '';
-            this._googleAudio = null;
         }
         this._googleChunks = [];
         this._googleChunkIndex = 0;
@@ -449,9 +452,9 @@ class AudioManager {
         // Chỉ hiện 1 lần
         if (this._guideShown) return;
         this._guideShown = true;
-        
+
         const langName = { vi: 'Tiếng Việt', en: 'English', ja: '日本語', zh: '中文' }[lang] || lang;
-        
+
         const guide = document.createElement('div');
         guide.className = 'voice-install-guide';
         guide.innerHTML = `
@@ -506,7 +509,7 @@ class AudioManager {
      */
     togglePlayPause() {
         if (!this.synth) return;
-        
+
         if (this.isPaused) {
             this.synth.resume();
             this.isPaused = false;
@@ -515,6 +518,21 @@ class AudioManager {
             this.isPaused = true;
         }
         this._notifyStateChange();
+    }
+
+    /**
+     * Mobile Audio Unlocker (gọi trong user gesture)
+     */
+    unlockAudio() {
+        if (this._audioUnlocked) return;
+        this._audioUnlocked = true;
+        if (this._googleAudio) {
+            this._googleAudio.volume = 0;
+            this._googleAudio.play().catch(() => { });
+            this._googleAudio.pause();
+            this._googleAudio.volume = 1;
+            this._googleAudio.src = '';
+        }
     }
 
     /**
@@ -528,7 +546,7 @@ class AudioManager {
 
         this._stopChromeFix();
         this._stopGoogleAudio();
-        
+
         if (this.synth) {
             if (this.utterance) {
                 this.utterance.onend = null;
