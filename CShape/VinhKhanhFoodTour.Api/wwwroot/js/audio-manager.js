@@ -27,6 +27,9 @@ class AudioManager {
             'tl': 'tl-PH', 'nl': 'nl-NL', 'sv': 'sv-SE', 'pl': 'pl-PL'
         };
 
+        // Một số browser báo có voice nhưng không phát ổn định; các ngôn ngữ này ưu tiên Google TTS fallback.
+        this.preferGoogleTts = new Set(['sv']);
+
         // Khởi tạo Speech Synthesis
         this.synth = window.speechSynthesis;
         
@@ -109,7 +112,8 @@ class AudioManager {
                 'vi': ['vietnam', 'tiếng việt', 'vietnamese'],
                 'en': ['english'],
                 'ja': ['japan', '日本語', 'japanese'],
-                'zh': ['chinese', '中文', 'mandarin']
+                'zh': ['chinese', '中文', 'mandarin'],
+                'sv': ['swedish', 'svenska', 'sweden', 'sverige']
             };
             const names = langNames[lang] || [];
             candidates = voices.filter(v => {
@@ -250,6 +254,12 @@ class AudioManager {
         const langPrefix = lang.substring(0, 2).toLowerCase();
         const hasVoice = voice || (this.voices || []).some(v => v.lang.toLowerCase().startsWith(langPrefix));
 
+        if (this.preferGoogleTts.has(lang)) {
+            console.log(`🔈 ${lang} ưu tiên Google Translate TTS để tránh lỗi thiếu voice hệ điều hành`);
+            this._speakWithGoogleTTS(text, lang);
+            return;
+        }
+
         // Nếu có voice → dùng Web Speech API
         if (hasVoice && this.synth) {
             console.log('🔈 Dùng Web Speech API');
@@ -338,6 +348,11 @@ class AudioManager {
 
         // Chia text thành các đoạn ngắn (~190 ký tự, cắt theo câu)
         const chunks = this._splitTextForGoogleTTS(text, 190);
+        if (chunks.length === 0) {
+            console.warn('⚠️ Không có text để phát TTS');
+            this._playNext();
+            return;
+        }
         console.log(`🔊 Google TTS: ${chunks.length} đoạn, ngôn ngữ: ${tl}`);
 
         this._googleChunks = chunks;

@@ -121,6 +121,9 @@
                         <option value="sv">🇸🇪 SV</option>
                         <option value="pl">🇵🇱 PL</option>
                     </select>
+                    <button class="lang-test-btn" id="btn-test-tts" title="Test giọng đọc ngôn ngữ đang chọn">
+                        <span class="material-icons-round">record_voice_over</span>
+                    </button>
                 </div>
                 <button class="icon-btn" id="btn-qr" title="Quét QR Code">
                     <span class="material-icons-round">qr_code_scanner</span>
@@ -136,6 +139,16 @@
             <span class="material-icons-round gps-icon">gps_fixed</span>
             <span class="gps-text" id="gps-text">Đang lấy vị trí GPS...</span>
             <div class="gps-accuracy" id="gps-accuracy"></div>
+        </div>
+
+        <div class="gps-reality-hint hidden" id="gps-reality-hint">
+            <span class="material-icons-round">info</span>
+            <span id="gps-reality-text">GPS trong phố nhỏ có thể lệch; nếu chưa bắt đúng vị trí, hãy quét QR tại điểm dừng.</span>
+        </div>
+
+        <div class="translation-status hidden" id="translation-status">
+            <span class="material-icons-round">translate</span>
+            <span id="translation-status-text">Đang dịch giao diện...</span>
         </div>
 
         <!-- Audio Player Bar -->
@@ -343,12 +356,13 @@
     <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="/js/offline-db.js"></script>
-    <script src="/js/audio-manager.js"></script>
-    <script src="/js/map.js"></script>
-    <script src="/js/geofence.js"></script>
-    <script src="/js/qr-scanner.js"></script>
-    <script src="/js/app.js"></script>
+    <script src="/js/audio-manager.js?v=11"></script>
+    <script src="/js/map.js?v=11"></script>
+    <script src="/js/geofence.js?v=11"></script>
+    <script src="/js/qr-scanner.js?v=11"></script>
+    <script src="/js/app.js?v=11"></script>
 
     <!-- Service Worker Registration -->
     <script>

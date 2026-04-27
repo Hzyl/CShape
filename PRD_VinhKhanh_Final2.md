@@ -17,7 +17,7 @@
 
 ## 2. Goals
 ### Business Goals
-* Đảm bảo audio phát tự động trong vòng ≤3 giây khi kích hoạt qua GPS hoặc QR code.
+* Đảm bảo POI được mở trong vòng ≤3 giây khi kích hoạt qua GPS hoặc QR code; audio phát ngay sau user gesture nếu mobile browser chặn autoplay.
 * Hỗ trợ đầy đủ ngôn ngữ với hệ thống fallback qua Google Translate TTS nếu thiết bị không có sẵn giọng đọc.
 * CMS quản lý POI, audio, analytics không cần kỹ năng lập trình cho admin.
 * Báo cáo heatmap, bảng xếp hạng POI phổ biến.
@@ -32,6 +32,8 @@
 * Không tích hợp thanh toán hoặc mua bán trong phiên bản này.
 * Không gửi push notification cho người dùng cuối qua server.
 * Không yêu cầu tạo tài khoản cho người dùng cuối (du khách).
+* Không cam kết dịch máy chính xác 100% như biên dịch viên; bản dịch runtime dùng để hỗ trợ trải nghiệm MVP.
+* Không cam kết GPS chính xác tuyệt đối trong hẻm/phố đông nhà cao tầng; QR là luồng kích hoạt ổn định hơn khi GPS sai lệch.
 
 ## 3. User Stories (Câu chuyện người dùng)
 **Persona 1 — Du khách (End User)**
@@ -39,13 +41,13 @@
 * Sử dụng bảng AAC "Nói giúp tôi" để giao tiếp bằng tiếng bản địa với chủ quán.
 
 **Persona 2 — Admin (Quản trị viên)**
-* Đăng nhập CMS bảo mật bằng JWT.
+* Đăng nhập CMS bằng Bearer token ký HMAC server-side.
 * Quản lý CRUD thông tin POI, tạo mã QR, theo dõi Analytics tải heatmap và danh sách quán hot.
 
 ## 4. Functional Requirements
-* **Authentication & Authorization (High):** JWT-based authentication cho Admin.
+* **Authentication & Authorization (High):** Admin đăng nhập nhận Bearer token ký HMAC; API quản trị kiểm tra token trước CRUD/Analytics.
 * **Geofencing/GPS (High):** Bắt GPS liên tục. Overlapping POI: chọn ưu tiên khoảng cách gần.
-* **QR Code Scanner (High):** Quét mã QR lấy POI Id -> Lấy dữ liệu và Phát Audio ngay lập tức.
+* **QR Code Scanner (High):** Quét mã QR lấy URL/POI code -> mở POI -> hiện prompt nghe để phát audio đúng chính sách trình duyệt mobile.
 * **CMS POI Management (High):** Quản lý Tên, tọa độ, mô tả thông tin quán.
 * **Analytics (Medium):** Ghi dấu behavior, đếm số lượt nghe hoàn thành và lưu log heatmap. Tính trung bình thời gian nghe.
 
@@ -58,6 +60,15 @@
 * **Dịch tự động (Auto-Translation):** Google Translate API (`translate.googleapis.com`) client-side. Admin chỉ cần nhập tiếng Việt hoặc tiếng Anh (có 1 trong 2 là đủ), hệ thống tự dịch sang 18 ngôn ngữ còn lại khi du khách chọn, kết quả được cache trong bộ nhớ.
 * **AAC Language Detection:** Bộ nhận diện ngôn ngữ tự viết dựa trên Unicode Range + Pattern Matching, hỗ trợ nhận diện tự động 50+ ngôn ngữ từ văn bản đầu vào.
 * **LAN Demo:** Backend bind `0.0.0.0:5000`; máy chạy demo dùng `localhost`, còn điện thoại/giảng viên cùng WiFi dùng `http://<IP-LAN-của-máy>:5000`. Admin QR modal lấy `/api/system/network` để ưu tiên sinh QR bằng IP LAN thay vì `localhost`.
+* **Bảo mật cấu hình:** Không lưu mật khẩu MongoDB trong `appsettings.json`; demo dùng `appsettings.Local.json` hoặc biến môi trường `MongoDB__ConnectionString`. Nếu chưa có MongoDB, backend chạy demo API in-memory để không trắng màn hình khi bảo vệ.
+
+### 5.1 Language & Translation Strategy (Dễ giải thích khi demo)
+* **Ngôn ngữ nguồn cố định:** Admin/CMS chỉ cần nhập nội dung tiếng Việt (`vi`) hoặc tiếng Anh (`en`) cho `name`, `description`, `ttsScript`. Nếu có cả hai thì hệ thống ưu tiên `vi`; nếu thiếu `vi` thì dùng `en`.
+* **Ngôn ngữ hiển thị:** Dropdown vẫn hỗ trợ 20 ngôn ngữ cho du khách. `vi` và `en` hiển thị trực tiếp từ source text; 18 ngôn ngữ còn lại được dịch tự động ở Frontend khi user chọn.
+* **Runtime translation:** Frontend gọi Google Translate endpoint client-side để dịch UI label, tên/mô tả POI và script thuyết minh từ `vi/en` sang ngôn ngữ đích.
+* **Cache client-side:** Kết quả dịch được lưu trong bộ nhớ runtime và `localStorage` của trình duyệt để đổi qua lại ngôn ngữ nhanh hơn, hạn chế gọi dịch lặp khi reload demo.
+* **TTS:** Text sau khi chọn/dịch được đưa vào Web Speech API; nếu thiết bị không có voice phù hợp thì fallback sang Google Translate TTS audio.
+* **Fallback khi lỗi mạng/dịch:** Nếu chưa dịch được, UI/POI không để trống mà fallback về source `vi/en` để demo vẫn chạy ổn định.
 
 ## 6. Business Rules
 | Rule | Diễn giải |
@@ -67,14 +78,32 @@
 | BR-03 | Chỉ Track lượt nghe (Analytics) khi audio phát END hoặc khi người dùng tác động nút STOP. |
 | BR-04 | Quét mã QR là tác vụ chủ động -> Truy cập POI và Audio luôn, không cần check dải tọa độ GPS ngoài khu vực. |
 | BR-05 | Client-side TTS: Âm thanh không được tạo dưới backend để tránh sập máy chủ. Text sẽ được Frontend gửi thẳng ra các API âm thanh. |
-| BR-06 | Khi du khách chọn ngôn ngữ chưa có sẵn trong DB (vd: Tiếng Hàn) → hệ thống tự động dịch ttsScript từ tiếng Việt sang tiếng Hàn qua Google Translate API → Cache kết quả → Phát Audio bằng đúng ngôn ngữ đã chọn. |
+| BR-06 | Khi du khách chọn ngôn ngữ không phải `vi/en` (vd: Tiếng Hàn) → hệ thống lấy source `vi`, nếu thiếu thì lấy `en` → dịch qua Google Translate API → cache kết quả → render UI/POI và phát audio bằng ngôn ngữ đã chọn. |
 | BR-07 | AAC "Nói giúp tôi" sử dụng AI nhận biết tự động hệ ngôn ngữ từ ký tự Unicode mà không cần chọn thủ công. |
 | BR-08 | QR dùng trong demo LAN phải encode URL đầy đủ dạng `http://<IP-LAN>:5000/index.html?qr=<POI_CODE>`; không dùng `localhost` vì điện thoại sẽ hiểu là chính điện thoại. |
+| BR-09 | Nếu MongoDB/API chưa sẵn sàng khi demo, frontend dùng dữ liệu POI mẫu để vẫn trình bày được bản đồ, đổi ngôn ngữ, QR và TTS. |
+| BR-10 | Nếu Google Translate/TTS không khả dụng, app fallback về source `vi/en` và thông báo trạng thái thay vì để giao diện rỗng. |
+| BR-11 | QR in tại quán encode URL đầy đủ `/index.html?qr=<POI_CODE>`; app cũng hỗ trợ QR chỉ chứa POI code để dễ test. |
+| BR-12 | GPS/geofence là gợi ý tự động; khi GPS lỗi hoặc lệch, UI nhắc dùng QR tại điểm dừng vì đây là luồng ổn định hơn trong phố ẩm thực. |
+
+## 6.1 Acceptance Criteria Cho Demo
+* Đổi `VI ↔ EN` phải cập nhật UI ngay, không gọi dịch.
+* Đổi sang `JA/KO/SV/PL` phải cập nhật label chính; nếu mạng/dịch lỗi thì fallback `VI/EN` nhưng app không crash.
+* Nút test TTS cạnh dropdown phát câu mẫu theo ngôn ngữ đang chọn; riêng `SV` ưu tiên Google TTS fallback vì nhiều máy thiếu Swedish voice.
+* Mở app khi chưa cấu hình MongoDB vẫn có POI demo để trình bày bản đồ, danh sách, chi tiết, QR và audio.
+* README không chứa password thật; port demo thống nhất là `http://localhost:5000`.
+
+## 6.2 Giới Hạn MVP & Hướng Nâng Cấp
+* Google Translate/TTS client-side phù hợp demo học thuật; triển khai production nên dùng API chính thức hoặc backend proxy để kiểm soát quota, log lỗi và bảo mật.
+* GPS/geofence chỉ nên xem là gợi ý tự động; QR dán tại quán là luồng thực tế nhất cho phố ẩm thực.
+* Mobile browser chặn autoplay audio; app cần prompt/nút nghe để có user gesture.
+* AAC Unicode detection là heuristic theo hệ chữ, không phải mô hình AI đảm bảo phân loại chính xác mọi ngôn ngữ Latin.
+* Nâng cấp tiếp theo: translation cache IndexedDB, dashboard chart analytics, xuất QR PDF để in, HTTPS/public hosting, và biên tập nội dung thuyết minh thật cho từng quán.
 
 ---
 
 ## 7. Dữ Liệu Lịch Sử (Data Schema MongoDB — 4 Collections)
-* **`pois`**: `id`, `name` (đa ngôn ngữ), `description` (đa ngôn ngữ), `category`, `latitude`, `longitude`, `radius`, `priority`, `ttsScript` (đa ngôn ngữ), `qrCode`, `address`, `openingHours`, `priceRange`, `isActive`, `createdAt`.
+* **`pois`**: `id`, `name` (`vi/en` source, có thể còn seed fallback), `description` (`vi/en` source), `category`, `latitude`, `longitude`, `radius`, `priority`, `ttsScript` (`vi/en` source), `qrCode`, `address`, `openingHours`, `priceRange`, `isActive`, `createdAt`.
 * **`analytics`**: `id`, `sessionId`, `eventType` (`poi_enter`, `poi_listen`, `poi_complete`, `qr_scan`, `location_update`), `poiId`, `duration`, `latitude`, `longitude`, `timestamp`.
 * **`tours`**: `id`, `name` (đa ngôn ngữ), `description` (đa ngôn ngữ), `poiIds` (danh sách POI theo thứ tự), `estimatedDuration` (phút), `estimatedDistance` (km), `isActive`, `createdAt`.
 * **`users`**: `id`, `username`, `passwordHash`, `role` (`admin`, `editor`), `createdAt`.
@@ -99,7 +128,7 @@ graph TD
     subgraph External [Dịch vụ Bên Thứ 3 - 3rd Party API]
         OSM[OpenStreetMap]
         Translate[Google Translate API]
-        QRGen[QRServer API Sinh Hình Ảnh]
+        QRGen[QR Server Fallback]
     end
 
     subgraph Backend [Tầng Backend - ASP.NET Core 10]
@@ -116,7 +145,7 @@ graph TD
     %% Mối liên kết Client - External
     Map -->|Load Tile Map| OSM
     Audio -->|Dịch & Fallback Giọng Đọc Google| Translate
-    AdminJS -->|Tạo mã QR Admin Print| QRGen
+    AdminJS -->|Tạo QR local bằng thư viện qrcode; lỗi mới fallback| QRGen
     
     %% Gọi API
     AppJS -->|Tương Tác API Rest| Backend
@@ -154,24 +183,30 @@ sequenceDiagram
     User->>App: Chọn tính năng Quét QR
     App->>Scanner: Mở Camera
     User->>Scanner: Quét mã QR tại quán
-    Scanner-->>App: Trả về mã chuỗi QR (chứa POI ID)
+    Scanner-->>App: Trả về chuỗi QR (URL có ?qr=... hoặc POI code)
+    App->>App: handleQrCode() trích xuất POI code
     
-    App->>API: GET /api/poi/{id}
-    API->>DB: Truy vấn dữ liệu POI
-    DB-->>API: Trả về document
+    App->>App: Tìm trong AppState.pois/offline cache trước
+    alt Chưa có trong cache
+        App->>API: GET /api/poi/qr/{qrCode}
+        API->>DB: Truy vấn dữ liệu POI theo qrCode
+        DB-->>API: Trả về document
+    end
     
     alt Lỗi không có dữ liệu
-        API-->>App: Trả về lỗi 404
-        App-->>User: Hiện thông báo: "QR không tìm thấy!"
+        API-->>App: Trả về lỗi 404 hoặc cache không có POI
+        App-->>User: Hiện toast: "QR không tìm thấy"
     else Thành công
-        API-->>App: Dữ liệu JSON quán ăn hợp lệ
-        App-->>User: Hiện thông tin quán
-        App->>App: Đẩy dữ liệu vào Audio Manager
-        App-->>User: Phát Audio đọc giới thiệu
+        API-->>App: Dữ liệu JSON quán ăn hợp lệ nếu cần
+        App-->>User: Hiện chi tiết POI và căn bản đồ
+        App-->>User: Hiện prompt "Nghe thuyết minh"
+        User->>App: Bấm nghe
+        App->>App: getPoiScript() lấy/dịch script theo ngôn ngữ hiện tại
+        App->>App: audioManager.playDirect()
     end
 ```
 
-### 9.2 Luồng Phát Thuyết Minh Đa Ngôn Ngữ (Có Dịch Thuật AI Tự Động)
+### 9.2 Luồng Đổi Ngôn Ngữ, Dịch Runtime và Phát Thuyết Minh
 
 ```mermaid
 sequenceDiagram
@@ -182,31 +217,34 @@ sequenceDiagram
     participant BrowserTTS as Window Web Speech API
     participant GoogleTTS as Google Translate TTS (Fallback)
 
-    User->>App: Chọn ngôn ngữ (vd: Hàn Quốc) + Bấm "Nghe"
-    App->>API: GET /api/poi/{id}
-    API-->>App: Trả về ttsScript (chỉ có vi/en)
-    
-    alt Có sẵn ttsScript cho ngôn ngữ đang chọn
-        App->>App: Dùng text có sẵn
-    else Chưa có bản địa hóa
-        App->>GTranslate: Dịch ttsScript.vi → tiếng Hàn
+    User->>App: Chọn ngôn ngữ trên dropdown (vd: Korean)
+    App->>App: Kiểm tra targetLang có phải vi/en không
+
+    alt targetLang là vi hoặc en
+        App->>App: Dùng trực tiếp UI label + POI name/description + ttsScript source
+    else targetLang là ngôn ngữ khác
+        App->>App: Chọn sourceLang ưu tiên vi, nếu thiếu thì en
+        App->>GTranslate: Dịch UI label + POI text + ttsScript từ sourceLang sang targetLang
         GTranslate-->>App: Trả về text đã dịch
-        App->>App: Cache kết quả dịch vào bộ nhớ RAM
+        App->>App: Cache runtime theo key sourceLang->targetLang
     end
-    
-    App->>BrowserTTS: Gửi Text đã dịch yêu cầu đọc
-    
+
+    App->>App: Render lại giao diện, danh sách POI, chi tiết POI, QR/AAC label
+    User->>App: Bấm "Nghe thuyết minh" hoặc quét QR/GPS kích hoạt POI
+    App->>API: Ghi analytics nếu có mạng
+    App->>BrowserTTS: Gửi ttsScript source/dịch để đọc
+
     alt Thiết bị có Voice đọc tiếng bản địa
         BrowserTTS-->>App: Phát âm thanh thành công
         App-->>User: Nghe Audio đúng ngôn ngữ
-    else Thiết bị Không có Voice TTS ngôn ngữ lạ
-         App->>GoogleTTS: Gọi GET API Fallback Audio Của Google
-         GoogleTTS-->>App: Trả về luồng tập tin MP3/Audio
-         App-->>User: Phát File Audio
+    else Thiết bị không có Voice TTS ngôn ngữ đó
+        App->>GoogleTTS: Gọi Google Translate TTS fallback
+        GoogleTTS-->>App: Trả về luồng audio
+        App-->>User: Phát audio fallback
     end
-    
-    App->>API: Gửi thông số Analytics JSON (poi_listen / poi_complete)
 ```
+
+**Điểm cần nhớ khi bảo vệ:** Backend chỉ lưu source text `vi/en`; logic dịch nằm trong `app.js` ở các hàm `isSourceLanguage()`, `getSourceLanguage()`, `translateWithCache()`, `getLocalizedPoiText()`, `applyUILanguage()`.
 
 ### 9.3 Luồng Tính Năng Bản Đồ và Geofencing Hàng Rào Ảo
 

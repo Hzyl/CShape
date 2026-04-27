@@ -7,6 +7,7 @@ class QRScannerManager {
         this.scanner = null;
         this.isScanning = false;
         this.onQRDetected = null; // Callback khi quét thành công
+        this.onError = null; // Callback khi không mở được camera
     }
 
     /**
@@ -32,7 +33,14 @@ class QRScannerManager {
             this.isScanning = true;
         } catch (err) {
             console.error('❌ Không thể khởi động camera:', err);
-            alert('Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập.');
+            const message = 'Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập.';
+            if (this.onError) {
+                this.onError(message, err);
+            } else {
+                window.dispatchEvent(new CustomEvent('qr-scanner-error', {
+                    detail: { message, error: err?.message || String(err) }
+                }));
+            }
         }
     }
 
