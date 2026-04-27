@@ -11,172 +11,6 @@ const QR_ORIGIN_KEY = 'vinhkhanh_qr_origin';
 let qrNetworkInfo = null;
 let qrNetworkInfoPromise = null;
 
-function getQrServerUrl(data, size) {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}`;
-}
-
-function isLoopbackHost(hostname = window.location.hostname) {
-    return ['localhost', '127.0.0.1', '::1', '0.0.0.0'].includes(hostname.toLowerCase());
-}
-
-function normalizeOrigin(origin) {
-    const trimmed = String(origin || '').trim();
-    if (!trimmed) return '';
-
-    const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
-    try {
-        return new URL(candidate).origin;
-    } catch {
-        return '';
-    }
-}
-
-async function getQrNetworkInfo() {
-    if (qrNetworkInfo) return qrNetworkInfo;
-
-    if (!qrNetworkInfoPromise) {
-        qrNetworkInfoPromise = fetch('/api/system/network', { cache: 'no-store' })
-            .then(res => res.ok ? res.json() : null)
-            .then(data => {
-                const lanOrigins = Array.isArray(data?.lanOrigins)
-                    ? data.lanOrigins.map(normalizeOrigin).filter(Boolean)
-                    : [];
-
-                qrNetworkInfo = {
-                    currentOrigin: normalizeOrigin(data?.currentOrigin || window.location.origin),
-                    preferredOrigin: normalizeOrigin(data?.preferredOrigin || lanOrigins[0] || ''),
-                    lanOrigins
-                };
-                return qrNetworkInfo;
-            })
-            .catch(error => {
-                console.warn('Không lấy được IP LAN từ backend:', error);
-                qrNetworkInfo = {
-                    currentOrigin: window.location.origin,
-                    preferredOrigin: '',
-                    lanOrigins: []
-                };
-                return qrNetworkInfo;
-            });
-    }
-
-    return qrNetworkInfoPromise;
-}
-
-function getNetworkLanOrigin() {
-    const origin = normalizeOrigin(qrNetworkInfo?.preferredOrigin || qrNetworkInfo?.lanOrigins?.[0] || '');
-    if (!origin) return '';
-
-    try {
-        return isLoopbackHost(new URL(origin).hostname) ? '' : origin;
-    } catch {
-        return '';
-    }
-}
-
-function getQrAppOrigin() {
-    const savedOrigin = normalizeOrigin(localStorage.getItem(QR_ORIGIN_KEY) || '');
-    if (savedOrigin) return savedOrigin;
-
-    const lanOrigin = getNetworkLanOrigin();
-    if (isLoopbackHost() && lanOrigin) return lanOrigin;
-
-    return window.location.origin;
-}
-
-function getSuggestedLanOrigin() {
-    if (qrNetworkInfo?.lanOrigins?.length) {
-        return qrNetworkInfo.lanOrigins.join(' hoặc ');
-    }
-
-    const port = window.location.port || '5000';
-    return `http://<IP-LAN-của-máy>:${port}`;
-}
-
-function updateQrOriginPanel(appOrigin) {
-    const input = document.getElementById('qr-origin-input');
-    const suggest = document.getElementById('qr-origin-suggest');
-    const panel = document.getElementById('qr-lan-warning');
-    const status = document.getElementById('qr-origin-status');
-    const savedOrigin = normalizeOrigin(localStorage.getItem(QR_ORIGIN_KEY) || '');
-    const networkLanOrigin = getNetworkLanOrigin();
-
-    if (input) input.value = appOrigin;
-    if (suggest) suggest.textContent = getSuggestedLanOrigin();
-    panel?.classList.remove('hidden');
-
-    if (!status) return;
-    if (savedOrigin) {
-        status.textContent = `Đang dùng URL LAN bạn nhập thủ công: ${savedOrigin}`;
-    } else if (isLoopbackHost() && networkLanOrigin) {
-        status.textContent = `Admin đang mở bằng localhost, nhưng QR đã tự dùng IP LAN: ${networkLanOrigin}`;
-    } else if (isLoopbackHost()) {
-        status.textContent = 'Chưa lấy được IP LAN tự động. Nhập IP LAN của máy chạy demo để QR mở được trên điện thoại.';
-    } else {
-        status.textContent = `Admin đang mở bằng LAN/host thật, QR dùng origin hiện tại: ${appOrigin}`;
-    }
-}
-
-async function renderQrImage(container, data, size = 300) {
-    container.innerHTML = '';
-    const img = document.createElement('img');
-    img.alt = 'QR Code';
-    img.style.width = '250px';
-    img.style.height = '250px';
-    img.style.display = 'block';
-    img.style.margin = '0 auto';
-
-    try {
-        if (window.QRCode?.toDataURL) {
-            img.src = await window.QRCode.toDataURL(data, {
-                width: size,
-                margin: 1,
-                errorCorrectionLevel: 'M'
-            });
-        } else {
-            img.src = getQrServerUrl(data, size);
-        }
-    } catch (error) {
-        console.warn('Không tạo QR local được, fallback QR server:', error);
-        img.src = getQrServerUrl(data, size);
-    }
-
-    img.onerror = () => {
-        container.innerHTML = `<p style="color:#111;max-width:260px;word-break:break-all;">${data}</p>`;
-    };
-    container.appendChild(img);
-}
-
-async function renderQrForCurrentModal() {
-    const modal = document.getElementById('qr-view-modal');
-    const qrCode = modal.dataset.qrCode;
-    if (!qrCode) return;
-
-    const appOrigin = getQrAppOrigin();
-    const appUrl = `${appOrigin}/index.html?qr=${encodeURIComponent(qrCode)}`;
-    document.getElementById('qr-poi-code').textContent = 'Đường dẫn: ' + appUrl;
-    modal.dataset.qrUrl = appUrl;
-    updateQrOriginPanel(appOrigin);
-    await renderQrImage(document.getElementById('qr-image-container'), appUrl, 300);
-}
-
-async function saveQrOriginOverride() {
-    const input = document.getElementById('qr-origin-input');
-    const origin = normalizeOrigin(input?.value || '');
-    if (!origin) {
-        alert('URL LAN không hợp lệ. Ví dụ: http://192.168.1.20:5000');
-        return;
-    }
-
-    localStorage.setItem(QR_ORIGIN_KEY, origin);
-    await renderQrForCurrentModal();
-}
-
-async function clearQrOriginOverride() {
-    localStorage.removeItem(QR_ORIGIN_KEY);
-    await renderQrForCurrentModal();
-}
-
 function escapeHtml(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -231,7 +65,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         adminToken = data.token;
         sessionStorage.setItem('adminToken', adminToken);
         sessionStorage.setItem('adminUser', data.username);
-        
+
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('admin-app').classList.remove('hidden');
         document.querySelector('.admin-user').textContent = `👤 ${data.username}`;
@@ -448,10 +282,10 @@ async function renderQr(container, data, size = 300) {
 function switchPage(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    
+
     document.getElementById(`page-${page}`).classList.add('active');
     document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
-    
+
     const titles = {
         dashboard: 'Dashboard',
         pois: 'Quản lý POI',
@@ -517,7 +351,7 @@ function renderTopPoisChart(topPois) {
     }
 
     const maxCount = Math.max(...topPois.map(p => p.listenCount));
-    
+
     container.innerHTML = `<div class="bar-chart">${topPois.map(p => {
         const poi = adminPois.find(ap => ap.id === p.poiId);
         const name = poi?.name?.vi || p.poiId;
@@ -564,7 +398,7 @@ function renderRecentEvents(events) {
 
 async function initHeatmap() {
     const container = document.getElementById('heatmap-container');
-    
+
     if (!heatmapMap) {
         heatmapMap = L.map(container, {
             center: [10.7570, 106.6950],
@@ -590,7 +424,7 @@ async function initHeatmap() {
     try {
         const res = await apiFetch('/api/analytics/heatmap');
         const points = await res.json();
-        
+
         points.forEach(p => {
             L.circle([p.latitude, p.longitude], {
                 radius: 15 + p.intensity * 5,
@@ -637,7 +471,7 @@ async function loadPoisTable() {
                         <span class="material-icons-round" style="font-size: 16px">edit</span>
                     </button>
                     <button class="btn btn-ghost btn-sm" onclick="togglePoiStatus('${poi.id}')" title="${poi.isActive ? 'Khóa (Ẩn)' : 'Mở khóa (Hiện)'}">
-                        <span class="material-icons-round" style="font-size: 16px" style="color: ${poi.isActive ? 'var(--warning)' : 'var(--success)'}">${poi.isActive ? 'lock' : 'lock_open'}</span>
+                        <span class="material-icons-round" style="font-size: 16px; color: ${poi.isActive ? 'var(--warning)' : 'var(--success)'}">${poi.isActive ? 'lock' : 'lock_open'}</span>
                     </button>
                     <button class="btn btn-danger btn-sm" onclick="deletePoi('${poi.id}')" title="Xóa">
                         <span class="material-icons-round" style="font-size: 16px">delete</span>
@@ -653,7 +487,7 @@ async function loadPoisTable() {
 function openPoiModal(poi = null) {
     document.getElementById('poi-modal').classList.remove('hidden');
     document.getElementById('poi-modal-title').textContent = poi ? 'Sửa POI' : 'Thêm POI mới';
-    
+
     if (poi) {
         document.getElementById('poi-edit-id').value = poi.id;
         document.getElementById('poi-name-vi').value = poi.name?.vi || '';
@@ -690,7 +524,7 @@ function editPoi(poiId) {
 
 async function savePoi(e) {
     e.preventDefault();
-    
+
     const editId = document.getElementById('poi-edit-id').value;
     const poi = {
         name: {
@@ -720,7 +554,7 @@ async function savePoi(e) {
     try {
         const url = editId ? `/api/poi/${editId}` : '/api/poi';
         const method = editId ? 'PUT' : 'POST';
-        
+
         const res = await apiFetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
@@ -790,7 +624,7 @@ async function loadTours() {
         adminTours = adminTours.map(t => ({ ...t, id: t.id || t._id }));
 
         const container = document.getElementById('tours-list');
-        
+
         if (adminTours.length === 0) {
             container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 40px;">Chưa có tour nào</p>';
             return;
@@ -825,7 +659,7 @@ async function deleteTour(tourId) {
     try {
         await apiFetch(`/api/tour/${tourId}`, { method: 'DELETE' });
         loadTours();
-    } catch (e) {}
+    } catch (e) { }
 }
 
 // ==================== ANALYTICS ====================
@@ -907,13 +741,13 @@ async function loadAnalyticsDetail() {
 
 async function loadTranslations() {
     const container = document.getElementById('translations-list');
-    
+
     if (adminPois.length === 0) {
         try {
             const res = await apiFetch('/api/poi/all');
             adminPois = await res.json();
             adminPois = adminPois.map(p => ({ ...p, id: p.id || p._id }));
-        } catch (e) {}
+        } catch (e) { }
     }
 
     container.innerHTML = adminPois.map(poi => {
@@ -925,7 +759,7 @@ async function loadTranslations() {
             id: '🇮🇩 ID', hi: '🇮🇳 HI', ar: '🇸🇦 AR', ms: '🇲🇾 MS',
             tl: '🇵🇭 TL', nl: '🇳🇱 NL', sv: '🇸🇪 SV', pl: '🇵🇱 PL'
         };
-        
+
         // Phân tích trạng thái: VI/EN là nguồn chính; ngôn ngữ khác dịch runtime.
         const coreLangs = ['vi', 'en']; // Admin chỉ nhập VI + EN, còn lại dịch tự động
         const nameValue = (lang) => {
@@ -948,7 +782,7 @@ async function loadTranslations() {
                 ? '<em style="color:var(--warning)">Có seed/fallback, app vẫn ưu tiên VI/EN</em>'
                 : '<em style="color:var(--info)">🤖 Dịch tự động khi du khách chọn</em>';
         };
-        
+
         return `
             <div class="translation-item">
                 <h4>📍 ${escapeHtml(poi.name?.vi || poi.name?.en || 'POI')}</h4>
@@ -980,14 +814,14 @@ async function viewQr(poiId) {
     const poi = adminPois.find(p => p.id === poiId);
     if (!poi) return;
     await getQrNetworkInfo();
-    
+
     // Mã QR encode URL đầy đủ: khi quét bằng camera sẽ mở app và tự phát thuyết minh
     const qrCode = poi.qrCode || poi.id;
     const name = poi.name?.vi || 'Điểm Thuyết Minh';
     const modal = document.getElementById('qr-view-modal');
 
     document.getElementById('qr-poi-name').textContent = name;
-    
+
     // Lưu để dùng khi in
     modal.dataset.poiName = name;
     modal.dataset.qrCode = qrCode;
@@ -1004,7 +838,7 @@ function printQr() {
     const container = document.getElementById('qr-image-container').innerHTML;
     const name = document.getElementById('qr-poi-name').textContent;
     const code = document.getElementById('qr-poi-code').textContent;
-    
+
     const printWindow = window.open('', '', 'height=600,width=800');
     // Mở một cửa sổ mới để in
     printWindow.document.write('<html><head><title>In QR Code</title>');
@@ -1018,7 +852,7 @@ function printQr() {
     printWindow.document.write('</body></html>');
     printWindow.document.close();
     printWindow.focus();
-    
+
     // Đợi ảnh load xong mới in
     printWindow.setTimeout(() => {
         printWindow.print();

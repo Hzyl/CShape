@@ -245,8 +245,6 @@ sequenceDiagram
     end
 ```
 
-**Điểm cần nhớ khi bảo vệ:** Backend chỉ lưu source text `vi/en`; logic dịch nằm trong `app.js` ở các hàm `isSourceLanguage()`, `getSourceLanguage()`, `translateWithCache()`, `getLocalizedPoiText()`, `applyUILanguage()`.
-
 ### 9.3 Luồng Tính Năng Bản Đồ và Geofencing Hàng Rào Ảo
 
 ```mermaid
