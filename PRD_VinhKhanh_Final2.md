@@ -59,7 +59,7 @@
 * **Audio TTS Engine:** Client-side Window Web Speech API. Fallback sang Google Translate API Endpoint nếu thiết bị không có Voice pack.
 * **Dịch tự động (Auto-Translation):** Google Translate API (`translate.googleapis.com`) client-side. Admin chỉ cần nhập tiếng Việt hoặc tiếng Anh (có 1 trong 2 là đủ), hệ thống tự dịch sang 18 ngôn ngữ còn lại khi du khách chọn, kết quả được cache trong bộ nhớ.
 * **AAC Language Detection:** Bộ nhận diện ngôn ngữ tự viết dựa trên Unicode Range + Pattern Matching, hỗ trợ nhận diện tự động 50+ ngôn ngữ từ văn bản đầu vào.
-* **LAN Demo:** Backend bind `0.0.0.0:5000`; máy chạy demo dùng `localhost`, còn điện thoại/giảng viên cùng WiFi dùng `http://<IP-LAN-của-máy>:5000`. Admin QR modal lấy `/api/system/network` để ưu tiên sinh QR bằng IP LAN thay vì `localhost`.
+* **LAN Demo:** Backend bind `0.0.0.0:5000` (HTTP) và `0.0.0.0:5001` (HTTPS); máy chạy demo dùng `http://localhost:5000`, còn điện thoại/giảng viên cùng WiFi sẽ tự động được chuyển hướng sang `https://<IP-LAN-của-máy>:5001` để đảm bảo GPS và Audio hoạt động. Admin QR modal lấy `/api/system/network` để ưu tiên sinh QR bằng HTTPS LAN IP.
 * **Bảo mật cấu hình:** Không lưu mật khẩu MongoDB trong `appsettings.json`; demo dùng `appsettings.Local.json` hoặc biến môi trường `MongoDB__ConnectionString`. Nếu chưa có MongoDB, backend chạy demo API in-memory để không trắng màn hình khi bảo vệ.
 
 ### 5.1 Language & Translation Strategy (Dễ giải thích khi demo)
@@ -80,7 +80,7 @@
 | BR-05 | Client-side TTS: Âm thanh không được tạo dưới backend để tránh sập máy chủ. Text sẽ được Frontend gửi thẳng ra các API âm thanh. |
 | BR-06 | Khi du khách chọn ngôn ngữ không phải `vi/en` (vd: Tiếng Hàn) → hệ thống lấy source `vi`, nếu thiếu thì lấy `en` → dịch qua Google Translate API → cache kết quả → render UI/POI và phát audio bằng ngôn ngữ đã chọn. |
 | BR-07 | AAC "Nói giúp tôi" sử dụng AI nhận biết tự động hệ ngôn ngữ từ ký tự Unicode mà không cần chọn thủ công. |
-| BR-08 | QR dùng trong demo LAN phải encode URL đầy đủ dạng `http://<IP-LAN>:5000/index.html?qr=<POI_CODE>`; không dùng `localhost` vì điện thoại sẽ hiểu là chính điện thoại. |
+| BR-08 | QR dùng trong demo LAN phải encode URL đầy đủ dạng `https://<IP-LAN>:5001/index.html?qr=<POI_CODE>`; kết nối từ HTTPS là bắt buộc để Mobile không chặn GPS. Thống kê qr_scan sẽ hoạt động cho cả QR scan trong app lẫn app Camera hệ thống. |
 | BR-09 | Nếu MongoDB/API chưa sẵn sàng khi demo, frontend dùng dữ liệu POI mẫu để vẫn trình bày được bản đồ, đổi ngôn ngữ, QR và TTS. |
 | BR-10 | Nếu Google Translate/TTS không khả dụng, app fallback về source `vi/en` và thông báo trạng thái thay vì để giao diện rỗng. |
 | BR-11 | QR in tại quán encode URL đầy đủ `/index.html?qr=<POI_CODE>`; app cũng hỗ trợ QR chỉ chứa POI code để dễ test. |
@@ -199,6 +199,7 @@ sequenceDiagram
     else Thành công
         API-->>App: Dữ liệu JSON quán ăn hợp lệ nếu cần
         App-->>User: Hiện chi tiết POI và căn bản đồ
+        App->>API: POST /api/analytics/event (eventType: qr_scan)
         App-->>User: Hiện prompt "Nghe thuyết minh"
         User->>App: Bấm nghe
         App->>App: getPoiScript() lấy/dịch script theo ngôn ngữ hiện tại
@@ -275,9 +276,9 @@ sequenceDiagram
 sequenceDiagram
     actor Admin as Quản trị viên
     participant Web as Admin Dashboard
-    participant API as Backend API (ASP.NET)
+    participant API as Backend API
     participant DB as MongoDB Atlas
-    participant QRGen as QR Local Lib / QRServer Fallback
+    participant QRGen as QR Local Lib
 
     Admin->>Web: Nhập Username/Password đăng nhập
     Web->>API: Gửi POST Request /api/auth/login
@@ -297,11 +298,11 @@ sequenceDiagram
     API-->>Web: Trả preferredOrigin + danh sách lanOrigins
     alt Admin đang mở bằng localhost
         Web->>Web: Dùng preferredOrigin LAN cho QR
-    else Admin đang mở bằng IP LAN/host thật
+    else Admin đang mở bằng IP LAN
         Web->>Web: Dùng window.location.origin
     end
-    Web->>QRGen: Tạo QR từ URL http://LAN_IP:5000/index.html?qr=POI_CODE
-    QRGen-->>Web: Trả data URL hình QR; lỗi mới dùng QRServer fallback
+    Web->>QRGen: Tạo hình ảnh QR từ URL đầy đủ
+    QRGen-->>Web: Trả data URL hình QR
     Web-->>Admin: Hiển thị giao diện In ấn trực tiếp Print View Modal
 ```
 

@@ -18,7 +18,7 @@ class QRScannerManager {
 
         try {
             this.scanner = new Html5Qrcode(containerId);
-            
+
             await this.scanner.start(
                 { facingMode: 'environment' }, // Camera sau
                 {
@@ -64,20 +64,12 @@ class QRScannerManager {
      */
     _onScanSuccess(decodedText) {
         console.log('✅ QR Detected:', decodedText);
-        
+
         // Dừng scan
         this.stop();
 
-        // Track analytics
-        fetch('/api/analytics/event', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                eventType: 'qr_scan',
-                sessionId: window.APP_SESSION_ID || 'unknown',
-                poiId: decodedText
-            })
-        }).catch(() => {});
+        // Analytics tracking chuyển sang handleQrCode() trong app.js
+        // để thống nhất cả in-app scanner lẫn external QR app
 
         // Callback
         if (this.onQRDetected) {

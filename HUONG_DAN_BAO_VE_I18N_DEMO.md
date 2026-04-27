@@ -357,7 +357,7 @@ audioManager.playDirect(...)
 
 Giải thích:
 
-> Khi quét QR, app hỗ trợ cả QR chứa URL `/index.html?qr=<POI_CODE>` và QR chỉ chứa mã POI. `handleQrCode()` trích xuất mã, tìm trong dữ liệu local/offline trước, nếu chưa có thì gọi `/api/poi/qr/{qrCode}`. Nếu tìm thấy, app mở chi tiết POI và yêu cầu user bấm nghe để tránh mobile chặn autoplay. Nếu không tìm thấy hoặc camera lỗi, app dùng `showAppMessage()` thay vì `alert()` để demo nhìn chuyên nghiệp hơn.
+> Khi quét QR, app hỗ trợ cả QR chứa URL `/index.html?qr=<POI_CODE>` (điện thoại quét bên ngoài) và QR chỉ chứa mã POI (quét bằng in-app scanner). `handleQrCode()` trích xuất mã, tìm trong dữ liệu local/offline trước, nếu chưa có thì gọi `/api/poi/qr/{qrCode}`. App sẽ gửi event `qr_scan` tới API Analytics cho cả hai trường hợp. Nếu tìm thấy POI, app mở chi tiết và yêu cầu user bấm nghe để tránh mobile chặn autoplay. Nếu không tìm thấy hoặc camera lỗi, app dùng `showAppMessage()` thay vì `alert()` để demo nhìn chuyên nghiệp hơn. Mọi truy cập vào QR URL (LAN IP) bằng `http://` đều được tự động chuyển hướng sang `https://` để đảm bảo trình duyệt cấp quyền GPS.
 
 ### GPS / Geofence
 
@@ -450,7 +450,7 @@ Câu trả lời:
 
 ### Hỏi: “QR có giống thực tế không?”
 
-> Có. QR in ra từ Admin encode URL đầy đủ `/index.html?qr=<POI_CODE>`, nên du khách có thể quét bằng camera điện thoại để mở app đúng điểm. Scanner trong app cũng đọc được QR đó; nếu camera browser không cấp quyền thì app báo toast và vẫn cho dùng camera hệ thống.
+> Có. QR in ra từ Admin encode URL đầy đủ HTTPS `https://<LAN-IP>:5001/index.html?qr=<POI_CODE>`, nên du khách có thể quét bằng camera điện thoại để mở app đúng điểm. Khi mở bằng app camera, backend tự động lấy thống kê `qr_scan` tương tự như lúc sài in-app scanner. Scanner trong app cũng đọc được QR đó; nếu camera browser không cấp quyền thì app báo toast và vẫn cho dùng camera hệ thống. Khi du khách lỡ vào bằng link HTTP, server middleware và client-side redirect sẽ ép sang HTTPS vì GPS buộc phải chạy trên kết nối HTTPS bảo mật.
 
 ---
 

@@ -11,7 +11,8 @@ builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, relo
 var configuredUrls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? builder.Configuration["urls"];
 if (string.IsNullOrWhiteSpace(configuredUrls))
 {
-    builder.WebHost.UseUrls("http://0.0.0.0:5000");
+    // HTTP:5000 + HTTPS:5001 — HTTPS bắt buộc để GPS hoạt động trên điện thoại qua LAN
+    builder.WebHost.UseUrls("http://0.0.0.0:5000", "https://0.0.0.0:5001");
 }
 
 // Add controllers
@@ -67,6 +68,28 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAll");
 
+// HTTPS redirect cho điện thoại/LAN — GPS + Audio yêu cầu HTTPS
+// Localhost HTTP vẫn hoạt động bình thường (dev convenience)
+app.Use(async (context, next) =>
+{
+    var request = context.Request;
+    if (request.Scheme == "http" && !IsLocalhostRequest(request))
+    {
+        // Redirect HTTP → HTTPS cho LAN clients (điện thoại quét QR)
+        var (_, httpsPort) = GetDemoPorts(app.Configuration);
+        var httpsUrl = $"https://{request.Host.Host}:{httpsPort}{request.Path}{request.QueryString}";
+        context.Response.Redirect(httpsUrl, permanent: false);
+        return;
+    }
+    await next();
+});
+
+static bool IsLocalhostRequest(HttpRequest request)
+{
+    var host = request.Host.Host;
+    return host == "localhost" || host == "127.0.0.1" || host == "::1";
+}
+
 app.UseStaticFiles();
 
 // Route "/" → tự động redirect sang /index.html
@@ -78,11 +101,13 @@ app.MapGet("/", context =>
 
 app.MapGet("/api/system/network", (HttpRequest request) =>
 {
-    var port = request.Host.Port ?? GetDemoPort(app.Configuration);
-    var scheme = request.Scheme;
-    var currentOrigin = $"{scheme}://{request.Host.Value}";
-    var lanOrigins = GetLanIpAddresses()
-        .Select(ip => $"{scheme}://{ip}:{port}")
+    var (httpPort, httpsPort) = GetDemoPorts(app.Configuration);
+    var currentOrigin = $"{request.Scheme}://{request.Host.Value}";
+    var lanIps = GetLanIpAddresses();
+    
+    // Ưu tiên HTTPS cho GPS
+    var lanOrigins = lanIps
+        .Select(ip => $"https://{ip}:{httpsPort}")
         .Distinct()
         .ToList();
     var preferredOrigin = lanOrigins.FirstOrDefault() ?? currentOrigin;
@@ -94,8 +119,9 @@ app.MapGet("/api/system/network", (HttpRequest request) =>
         lanOrigins,
         userAppUrl = $"{preferredOrigin}/index.html",
         adminUrl = $"{preferredOrigin}/admin.html",
-        port,
-        note = "Dùng userAppUrl/adminUrl cho điện thoại hoặc máy giảng viên cùng WiFi/LAN."
+        httpPort,
+        httpsPort,
+        note = "⚠️ Điện thoại PHẢI dùng HTTPS (https://...) để GPS hoạt động. Nếu trình duyệt cảnh báo chứng chỉ, bấm 'Advanced' → 'Proceed'."
     });
 });
 
@@ -145,37 +171,49 @@ else
     Console.WriteLine("📌 Frontend vẫn chạy bằng demo fallback để phục vụ bảo vệ/demo.");
 }
 
+var (consoleHttpPort, consoleHttpsPort) = GetDemoPorts(app.Configuration);
+var lanIpsForConsole = GetLanIpAddresses();
+
 Console.WriteLine();
 Console.WriteLine("🍜 Ứng dụng Thuyết Minh Phố Ẩm Thực Vĩnh Khánh đã khởi động!");
-Console.WriteLine("📱 User App máy chạy:  http://localhost:5000/index.html");
-Console.WriteLine("⚙️  Admin CMS máy chạy: http://localhost:5000/admin.html");
-var demoPort = GetDemoPort(app.Configuration);
-var lanOriginsForConsole = GetLanIpAddresses().Select(ip => $"http://{ip}:{demoPort}").ToList();
-if (lanOriginsForConsole.Count > 0)
+Console.WriteLine();
+Console.WriteLine("═══════════════════════════════════════════════════════");
+Console.WriteLine("  📱 Trên máy này (localhost):");
+Console.WriteLine($"     • User App:  https://localhost:{consoleHttpsPort}/index.html");
+Console.WriteLine($"     • Admin CMS: https://localhost:{consoleHttpsPort}/admin.html");
+Console.WriteLine($"     • (HTTP)     http://localhost:{consoleHttpPort}/index.html");
+Console.WriteLine("═══════════════════════════════════════════════════════");
+
+if (lanIpsForConsole.Count > 0)
 {
-    Console.WriteLine("🌐 Demo LAN cho điện thoại/giảng viên cùng WiFi:");
-    foreach (var origin in lanOriginsForConsole)
+    Console.WriteLine();
+    Console.WriteLine("  📱 Điện thoại/giảng viên cùng WiFi (PHẢI dùng HTTPS cho GPS):");
+    foreach (var ip in lanIpsForConsole)
     {
-        Console.WriteLine($"   • User App:  {origin}/index.html");
-        Console.WriteLine($"   • Admin CMS: {origin}/admin.html");
+        Console.WriteLine($"     ✅ User App:  https://{ip}:{consoleHttpsPort}/index.html");
+        Console.WriteLine($"     ✅ Admin CMS: https://{ip}:{consoleHttpsPort}/admin.html");
     }
+    Console.WriteLine();
+    Console.WriteLine("  ⚠️  Trình duyệt sẽ cảnh báo chứng chỉ (do dev cert) → Bấm 'Advanced' → 'Proceed' để tiếp tục.");
+    Console.WriteLine($"  📌 Nhớ mở firewall cho port {consoleHttpsPort} (HTTPS) và {consoleHttpPort} (HTTP).");
 }
 else
 {
-    Console.WriteLine("🌐 Demo LAN: http://<IP-LAN-của-máy>:5000/index.html");
+    Console.WriteLine("  🌐 Demo LAN: https://<IP-LAN>:{consoleHttpsPort}/index.html");
 }
-Console.WriteLine("📌 Nếu điện thoại không mở được: kiểm tra cùng WiFi và cho phép firewall port 5000.");
-Console.WriteLine("📡 OpenAPI: http://localhost:5000/openapi/v1.json");
+Console.WriteLine("═══════════════════════════════════════════════════════");
+Console.WriteLine($"  📡 OpenAPI: http://localhost:{consoleHttpPort}/openapi/v1.json");
 Console.WriteLine();
 
 app.Run();
 
-static int GetDemoPort(IConfiguration configuration)
+static (int httpPort, int httpsPort) GetDemoPorts(IConfiguration configuration)
 {
     var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS")
         ?? configuration["urls"]
-        ?? "http://0.0.0.0:5000";
+        ?? "http://0.0.0.0:5000;https://0.0.0.0:5001";
 
+    int httpPort = 5000, httpsPort = 5001;
     foreach (var part in urls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
     {
         var normalized = part.Replace("0.0.0.0", "127.0.0.1", StringComparison.OrdinalIgnoreCase)
@@ -183,11 +221,12 @@ static int GetDemoPort(IConfiguration configuration)
             .Replace("+", "127.0.0.1", StringComparison.OrdinalIgnoreCase);
         if (Uri.TryCreate(normalized, UriKind.Absolute, out var uri) && uri.Port > 0)
         {
-            return uri.Port;
+            if (uri.Scheme == "https") httpsPort = uri.Port;
+            else httpPort = uri.Port;
         }
     }
 
-    return 5000;
+    return (httpPort, httpsPort);
 }
 
 static List<string> GetLanIpAddresses()

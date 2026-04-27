@@ -59,150 +59,6 @@ const UI_TEXT = {
         aacPlaceholder: 'Type what you want to say...', commonPhrases: '💬 Common phrases:', speak: 'Play', myLocation: 'My location',
         translating: 'Translating interface...', translationFallback: 'Translation unavailable, showing VI/EN temporarily', testVoice: 'This is a voice test for the selected language.',
         seafood: 'Seafood', hotpot: 'Hotpot', streetFood: 'Street food', snack: 'Snack', landmark: 'Landmark'
-    },
-    ja: {
-        gpsSearching: 'GPS位置を取得中...', gpsActive: 'GPS動作中', gpsError: 'GPSエラー',
-        accuracy: '精度', listen: 'ガイドを聞く', navigate: 'ナビゲート', close: '閉じる',
-        nearPoi: '近くにいます', tapToListen: 'タップしてガイドを聞く', loading: 'データを読み込み中...',
-        poiList: 'スポット一覧', all: 'すべて', scanQr: 'QRコードスキャン',
-        qrInstruction: 'QRコードにカメラを向けてください',
-        seafood: 'シーフード', hotpot: '鍋', streetFood: '屋台', snack: 'スナック', landmark: 'ランドマーク'
-    },
-    zh: {
-        gpsSearching: '正在获取GPS位置...', gpsActive: 'GPS正在运行', gpsError: 'GPS错误',
-        accuracy: '精度', listen: '听语音导览', navigate: '导航', close: '关闭',
-        nearPoi: '您在附近', tapToListen: '点击收听语音导览', loading: '正在加载数据...',
-        poiList: '兴趣点', all: '全部', scanQr: '扫描二维码',
-        qrInstruction: '将摄像头对准二维码',
-        seafood: '海鲜', hotpot: '火锅', streetFood: '街头美食', snack: '小吃', landmark: '地标'
-    },
-    ko: {
-        gpsSearching: 'GPS 위치 가져오는 중...', gpsActive: 'GPS 활성', gpsError: 'GPS 오류',
-        accuracy: '정확도', listen: '가이드 듣기', navigate: '길찾기', close: '닫기',
-        nearPoi: '근처에 있습니다', tapToListen: '탭하여 가이드 듣기', loading: '데이터 로딩 중...',
-        poiList: '관심 지점', all: '전체', scanQr: 'QR 코드 스캔',
-        qrInstruction: 'QR 코드에 카메라를 대세요',
-        seafood: '해산물', hotpot: '전골', streetFood: '길거리 음식', snack: '간식', landmark: '랜드마크'
-    },
-    th: {
-        gpsSearching: 'กำลังรับตำแหน่ง GPS...', gpsActive: 'GPS ทำงาน', gpsError: 'GPS ผิดพลาด',
-        accuracy: 'ความแม่นยำ', listen: 'ฟังคำบรรยาย', navigate: 'นำทาง', close: 'ปิด',
-        nearPoi: 'คุณอยู่ใกล้', tapToListen: 'แตะเพื่อฟัง', loading: 'กำลังโหลด...',
-        poiList: 'จุดสนใจ', all: 'ทั้งหมด', scanQr: 'สแกน QR',
-        qrInstruction: 'หันกล้องไปที่ QR โค้ด',
-        seafood: 'อาหารทะเล', hotpot: 'หม้อ', streetFood: 'อาหารริมทาง', snack: 'ขนม', landmark: 'สถานที่สำคัญ'
-    },
-    fr: {
-        gpsSearching: 'Obtention de la position GPS...', gpsActive: 'GPS actif', gpsError: 'Erreur GPS',
-        accuracy: 'Précision', listen: 'Écouter le guide', navigate: 'Naviguer', close: 'Fermer',
-        nearPoi: 'Vous êtes près de', tapToListen: 'Appuyez pour écouter', loading: 'Chargement...',
-        poiList: 'Points d\'intérêt', all: 'Tous', scanQr: 'Scanner QR',
-        qrInstruction: 'Pointez la caméra vers le QR code',
-        seafood: 'Fruits de mer', hotpot: 'Fondue', streetFood: 'Street food', snack: 'Snack', landmark: 'Monument'
-    },
-    es: {
-        gpsSearching: 'Obteniendo ubicación GPS...', gpsActive: 'GPS activo', gpsError: 'Error GPS',
-        accuracy: 'Precisión', listen: 'Escuchar guía', navigate: 'Navegar', close: 'Cerrar',
-        nearPoi: 'Estás cerca de', tapToListen: 'Toca para escuchar', loading: 'Cargando...',
-        poiList: 'Puntos de interés', all: 'Todos', scanQr: 'Escanear QR',
-        qrInstruction: 'Apunta la cámara al código QR',
-        seafood: 'Mariscos', hotpot: 'Fondue', streetFood: 'Comida callejera', snack: 'Snack', landmark: 'Monumento'
-    },
-    de: {
-        gpsSearching: 'GPS-Position wird ermittelt...', gpsActive: 'GPS aktiv', gpsError: 'GPS-Fehler',
-        accuracy: 'Genauigkeit', listen: 'Guide anhören', navigate: 'Navigieren', close: 'Schließen',
-        nearPoi: 'Sie sind in der Nähe von', tapToListen: 'Tippen zum Anhören', loading: 'Laden...',
-        poiList: 'Sehenswürdigkeiten', all: 'Alle', scanQr: 'QR scannen',
-        qrInstruction: 'Kamera auf den QR-Code richten',
-        seafood: 'Meeresfrüchte', hotpot: 'Eintopf', streetFood: 'Straßenessen', snack: 'Snack', landmark: 'Wahrzeichen'
-    },
-    ru: {
-        gpsSearching: 'Получение GPS-позиции...', gpsActive: 'GPS активен', gpsError: 'Ошибка GPS',
-        accuracy: 'Точность', listen: 'Слушать гид', navigate: 'Навигация', close: 'Закрыть',
-        nearPoi: 'Вы рядом с', tapToListen: 'Нажмите, чтобы слушать', loading: 'Загрузка...',
-        poiList: 'Точки интереса', all: 'Все', scanQr: 'Сканировать QR',
-        qrInstruction: 'Наведите камеру на QR-код',
-        seafood: 'Морепродукты', hotpot: 'Фондю', streetFood: 'Уличная еда', snack: 'Закуски', landmark: 'Достопримечательность'
-    },
-    pt: {
-        gpsSearching: 'Obtendo localização GPS...', gpsActive: 'GPS ativo', gpsError: 'Erro GPS',
-        accuracy: 'Precisão', listen: 'Ouvir guia', navigate: 'Navegar', close: 'Fechar',
-        nearPoi: 'Você está perto de', tapToListen: 'Toque para ouvir', loading: 'Carregando...',
-        poiList: 'Pontos de interesse', all: 'Todos', scanQr: 'Escanear QR',
-        qrInstruction: 'Aponte a câmera para o QR code',
-        seafood: 'Frutos do mar', hotpot: 'Panela quente', streetFood: 'Comida de rua', snack: 'Lanche', landmark: 'Marco'
-    },
-    it: {
-        gpsSearching: 'Ottenimento posizione GPS...', gpsActive: 'GPS attivo', gpsError: 'Errore GPS',
-        accuracy: 'Precisione', listen: 'Ascolta guida', navigate: 'Naviga', close: 'Chiudi',
-        nearPoi: 'Sei vicino a', tapToListen: 'Tocca per ascoltare', loading: 'Caricamento...',
-        poiList: 'Punti di interesse', all: 'Tutti', scanQr: 'Scansiona QR',
-        qrInstruction: 'Punta la fotocamera sul QR code',
-        seafood: 'Frutti di mare', hotpot: 'Pentola calda', streetFood: 'Street food', snack: 'Spuntino', landmark: 'Monumento'
-    },
-    id: {
-        gpsSearching: 'Mendapatkan lokasi GPS...', gpsActive: 'GPS aktif', gpsError: 'GPS Error',
-        accuracy: 'Akurasi', listen: 'Dengarkan panduan', navigate: 'Navigasi', close: 'Tutup',
-        nearPoi: 'Anda dekat dengan', tapToListen: 'Ketuk untuk mendengarkan', loading: 'Memuat...',
-        poiList: 'Tempat menarik', all: 'Semua', scanQr: 'Pindai QR',
-        qrInstruction: 'Arahkan kamera ke kode QR',
-        seafood: 'Makanan laut', hotpot: 'Sup panas', streetFood: 'Jajanan', snack: 'Camilan', landmark: 'Landmark'
-    },
-    hi: {
-        gpsSearching: 'GPS स्थान प्राप्त हो रहा है...', gpsActive: 'GPS सक्रिय', gpsError: 'GPS त्रुटि',
-        accuracy: 'सटीकता', listen: 'गाइड सुनें', navigate: 'नेविगेट', close: 'बंद करें',
-        nearPoi: 'आप पास में हैं', tapToListen: 'सुनने के लिए टैप करें', loading: 'लोड हो रहा है...',
-        poiList: 'रुचि के स्थान', all: 'सभी', scanQr: 'QR स्कैन',
-        qrInstruction: 'QR कोड पर कैमरा रखें',
-        seafood: 'सीफूड', hotpot: 'हॉटपॉट', streetFood: 'स्ट्रीट फूड', snack: 'स्नैक', landmark: 'लैंडमार्क'
-    },
-    ar: {
-        gpsSearching: 'جارٍ الحصول على موقع GPS...', gpsActive: 'GPS نشط', gpsError: 'خطأ GPS',
-        accuracy: 'الدقة', listen: 'استمع للدليل', navigate: 'التنقل', close: 'إغلاق',
-        nearPoi: 'أنت بالقرب من', tapToListen: 'اضغط للاستماع', loading: 'جارٍ التحميل...',
-        poiList: 'نقاط الاهتمام', all: 'الكل', scanQr: 'مسح QR',
-        qrInstruction: 'وجه الكاميرا نحو رمز QR',
-        seafood: 'مأكولات بحرية', hotpot: 'قدر ساخن', streetFood: 'أكل شارع', snack: 'وجبة خفيفة', landmark: 'معلم'
-    },
-    ms: {
-        gpsSearching: 'Mendapatkan lokasi GPS...', gpsActive: 'GPS aktif', gpsError: 'Ralat GPS',
-        accuracy: 'Ketepatan', listen: 'Dengar panduan', navigate: 'Navigasi', close: 'Tutup',
-        nearPoi: 'Anda berhampiran', tapToListen: 'Ketik untuk dengar', loading: 'Memuatkan...',
-        poiList: 'Tempat menarik', all: 'Semua', scanQr: 'Imbas QR',
-        qrInstruction: 'Halakan kamera ke kod QR',
-        seafood: 'Makanan laut', hotpot: 'Periuk panas', streetFood: 'Makanan jalanan', snack: 'Snek', landmark: 'Mercu tanda'
-    },
-    tl: {
-        gpsSearching: 'Kinukuha ang GPS...', gpsActive: 'GPS aktibo', gpsError: 'GPS Error',
-        accuracy: 'Katumpakan', listen: 'Makinig sa gabay', navigate: 'Mag-navigate', close: 'Isara',
-        nearPoi: 'Malapit ka sa', tapToListen: 'I-tap para makinig', loading: 'Naglo-load...',
-        poiList: 'Mga lugar', all: 'Lahat', scanQr: 'I-scan ang QR',
-        qrInstruction: 'Itutok ang camera sa QR code',
-        seafood: 'Seafood', hotpot: 'Hotpot', streetFood: 'Street food', snack: 'Meryenda', landmark: 'Landmark'
-    },
-    nl: {
-        gpsSearching: 'GPS-positie ophalen...', gpsActive: 'GPS actief', gpsError: 'GPS-fout',
-        accuracy: 'Nauwkeurigheid', listen: 'Luister naar gids', navigate: 'Navigeren', close: 'Sluiten',
-        nearPoi: 'U bent in de buurt van', tapToListen: 'Tik om te luisteren', loading: 'Laden...',
-        poiList: 'Bezienswaardigheden', all: 'Alle', scanQr: 'QR scannen',
-        qrInstruction: 'Richt de camera op de QR-code',
-        seafood: 'Zeevruchten', hotpot: 'Stoofpot', streetFood: 'Straatvoedsel', snack: 'Snack', landmark: 'Bezienswaardigheid'
-    },
-    sv: {
-        gpsSearching: 'Hämtar GPS-position...', gpsActive: 'GPS aktiv', gpsError: 'GPS-fel',
-        accuracy: 'Noggrannhet', listen: 'Lyssna på guide', navigate: 'Navigera', close: 'Stäng',
-        nearPoi: 'Du är nära', tapToListen: 'Tryck för att lyssna', loading: 'Laddar...',
-        poiList: 'Sevärdheter', all: 'Alla', scanQr: 'Skanna QR',
-        qrInstruction: 'Rikta kameran mot QR-koden',
-        seafood: 'Skaldjur', hotpot: 'Gryta', streetFood: 'Gatumat', snack: 'Snacks', landmark: 'Landmärke'
-    },
-    pl: {
-        gpsSearching: 'Pobieranie pozycji GPS...', gpsActive: 'GPS aktywny', gpsError: 'Błąd GPS',
-        accuracy: 'Dokładność', listen: 'Słuchaj przewodnika', navigate: 'Nawiguj', close: 'Zamknij',
-        nearPoi: 'Jesteś blisko', tapToListen: 'Dotknij, aby słuchać', loading: 'Ładowanie...',
-        poiList: 'Punkty zainteresowania', all: 'Wszystkie', scanQr: 'Skanuj QR',
-        qrInstruction: 'Skieruj kamerę na kod QR',
-        seafood: 'Owoce morza', hotpot: 'Kociołek', streetFood: 'Street food', snack: 'Przekąska', landmark: 'Zabytek'
     }
 };
 
@@ -505,12 +361,12 @@ function cleanUrlParams(removeKeys) {
 /** Hiển thị form đăng nhập và xử lý submit */
 function setupLoginForm() {
     const loginScreen = document.getElementById('login-screen');
-    const loginForm   = document.getElementById('login-form');
-    const loginBtn    = document.getElementById('login-btn');
-    const loginError  = document.getElementById('login-error');
-    const togglePw    = document.getElementById('toggle-pw');
-    const pwInput     = document.getElementById('login-password');
-    const pwIcon      = document.getElementById('toggle-pw-icon');
+    const loginForm = document.getElementById('login-form');
+    const loginBtn = document.getElementById('login-btn');
+    const loginError = document.getElementById('login-error');
+    const togglePw = document.getElementById('toggle-pw');
+    const pwInput = document.getElementById('login-password');
+    const pwIcon = document.getElementById('toggle-pw-icon');
 
     // Toggle hiện/ẩn mật khẩu
     togglePw.addEventListener('click', () => {
@@ -630,7 +486,7 @@ async function initApp() {
 async function loadPois() {
     try {
         updateSplashStatus(t('loading'));
-        
+
         let pois = [];
         let isOffline = !navigator.onLine;
 
@@ -640,10 +496,10 @@ async function loadPois() {
                 const response = await fetch('/api/poi', { signal: AbortSignal.timeout(5000) });
                 if (response.ok) {
                     pois = await response.json();
-                    
+
                     // Normalize id field
                     pois = pois.map(p => ({ ...p, id: p.id || p._id }));
-                    
+
                     // Save to IndexedDB for offline
                     await offlineDB.savePois(pois);
                 } else {
@@ -825,7 +681,7 @@ async function _translateChunk(text, from, to) {
 function updateNetworkStatus() {
     const banner = document.getElementById('offline-banner');
     if (!banner) return;
-    
+
     if (!navigator.onLine) {
         banner.classList.remove('hidden');
         const text = banner.querySelector('span:last-child');
@@ -847,12 +703,12 @@ function updateSplashStatus(text) {
 function setupGeofenceCallbacks() {
     geofenceManager.onLocationUpdate = (lat, lng, accuracy) => {
         mapManager.updateUserLocation(lat, lng, accuracy);
-        
+
         // Update GPS status bar
         const gpsBar = document.getElementById('gps-status');
         const gpsText = document.getElementById('gps-text');
         const gpsAccuracy = document.getElementById('gps-accuracy');
-        
+
         gpsBar.classList.add('active');
         gpsText.textContent = t('gpsActive');
         gpsAccuracy.textContent = `${t('accuracy')}: ±${Math.round(accuracy)}m`;
@@ -862,7 +718,7 @@ function setupGeofenceCallbacks() {
 
     geofenceManager.onPoiEnter = (poi, distance) => {
         console.log(`📍 Entered POI: ${poi.name.vi} (${Math.round(distance)}m)`);
-        
+
         // Tìm full POI data
         const fullPoi = AppState.pois.find(p => p.id === poi.id);
         if (!fullPoi) return;
@@ -896,12 +752,12 @@ function setupGeofenceCallbacks() {
                 latitude: geofenceManager.currentPosition?.lat,
                 longitude: geofenceManager.currentPosition?.lng
             })
-        }).catch(() => {});
+        }).catch(() => { });
     };
 
     geofenceManager.onClosestPoi = (poi, distance) => {
         mapManager.highlightClosest(poi.id);
-        
+
         // Update distance trong POI list
         updatePoiDistances();
     };
@@ -948,12 +804,12 @@ function setupAudioCallbacks() {
             playerBar.classList.remove('hidden');
             fabStop.classList.remove('hidden');
             titleEl.textContent = state.currentItem?.title || '';
-            
+
             // Đẩy bottom-sheet lên trên khi audio bar xuất hiện (56px = chiều cao audio bar)
             if (bottomSheet && !bottomSheet.classList.contains('hidden')) {
                 bottomSheet.style.paddingBottom = '60px';
             }
-            
+
             if (state.isPaused) {
                 playBtn.querySelector('.material-icons-round').textContent = 'play_arrow';
                 waveEl?.classList.add('paused');
@@ -1006,7 +862,7 @@ async function handleQrCode(rawQrCode) {
     console.log('🔍 Looking up POI for QR:', qrCode);
 
     // Bước 1: Tìm trong dữ liệu đã load (nhanh, hoạt động offline)
-    let poi = AppState.pois.find(p => 
+    let poi = AppState.pois.find(p =>
         (p.qrCode && p.qrCode === qrCode) || p.id === qrCode
     );
 
@@ -1036,6 +892,21 @@ async function handleQrCode(rawQrCode) {
     // Show detail + center map
     showPoiDetail(poi);
     mapManager.centerOnPoi(poi.id);
+
+    // 📊 Track qr_scan analytics — hoạt động cho CẢ scan từ app QR điện thoại lẫn QR scanner trong web
+    const scanSource = new URLSearchParams(window.location.search).has('qr') ? 'external_qr_app' : 'in_app_scanner';
+    fetch('/api/analytics/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            eventType: 'qr_scan',
+            poiId: poi.id,
+            sessionId: window.APP_SESSION_ID || 'unknown',
+            latitude: geofenceManager.currentPosition?.lat,
+            longitude: geofenceManager.currentPosition?.lng
+        })
+    }).catch(() => { });
+    console.log(`📊 QR scan tracked: ${qrCode} (source: ${scanSource})`);
 
     // Lưu POI pending để nút nghe có thể phát
     window._pendingQrPoi = poi;
@@ -1254,12 +1125,12 @@ async function changeLanguage(lang) {
         mapManager.updateLanguage(AppState.pois, lang);
         renderPoiList(AppState.pois);
         await applyUILanguage(lang);
-        
+
         // Re-sync audio player bar
         if (audioManager.onStateChange) {
             audioManager.onStateChange(audioManager.getState ? audioManager.getState() : { isPlaying: false, isPaused: false });
         }
-        
+
         // Update detail if open
         if (AppState.selectedPoi) {
             await showPoiDetail(AppState.selectedPoi);
@@ -1415,7 +1286,7 @@ function showGeofenceToast(poiName, poi) {
     }
     title.textContent = `${t('nearPoi')}: ${poiName}`;
     message.textContent = t('tapToListen');
-    
+
     toast.classList.remove('hidden');
     toast.classList.remove('fade-out');
 
@@ -1470,13 +1341,13 @@ async function showPoiQr(poi) {
     const lang = AppState.language;
     const name = await getLocalizedPoiText(poi, 'name', lang);
     const qrCode = poi.qrCode || poi.id;
-    
+
     // URL mà QR sẽ encode: mở app và tự phát thuyết minh
     const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
-    
+
     document.getElementById('poi-qr-name').textContent = name;
     setQrImage(document.getElementById('poi-qr-img'), appUrl, 400);
-    
+
     document.getElementById('poi-qr-modal').classList.remove('hidden');
 }
 
@@ -1492,25 +1363,25 @@ function closePoiQrModal() {
  * - Kéo xuống đủ mạnh: đóng bottom sheet
  */
 function setupBottomSheetDrag() {
-    const sheet  = document.getElementById('poi-detail');
+    const sheet = document.getElementById('poi-detail');
     const handle = document.getElementById('sheet-handle');
     if (!handle || !sheet) return;
 
-    let startY     = 0;
-    let startH     = 0;
-    let dragging   = false;
+    let startY = 0;
+    let startH = 0;
+    let dragging = false;
 
     const onStart = (y) => {
         dragging = true;
-        startY   = y;
-        startH   = sheet.getBoundingClientRect().height;
+        startY = y;
+        startH = sheet.getBoundingClientRect().height;
         sheet.style.transition = 'none';
     };
 
     const onMove = (y) => {
         if (!dragging) return;
-        const delta  = startY - y;           // dương = kéo lên
-        const newH   = Math.min(Math.max(startH + delta, 60), window.innerHeight * 0.82);
+        const delta = startY - y;           // dương = kéo lên
+        const newH = Math.min(Math.max(startH + delta, 60), window.innerHeight * 0.82);
         sheet.style.maxHeight = newH + 'px';
     };
 
@@ -1536,13 +1407,13 @@ function setupBottomSheetDrag() {
 
     // Touch
     handle.addEventListener('touchstart', (e) => onStart(e.touches[0].clientY), { passive: true });
-    handle.addEventListener('touchmove',  (e) => { e.preventDefault(); onMove(e.touches[0].clientY); }, { passive: false });
-    handle.addEventListener('touchend',   (e) => onEnd(e.changedTouches[0].clientY));
+    handle.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e.touches[0].clientY); }, { passive: false });
+    handle.addEventListener('touchend', (e) => onEnd(e.changedTouches[0].clientY));
 
     // Mouse (để test trên PC)
     handle.addEventListener('mousedown', (e) => { e.preventDefault(); onStart(e.clientY); });
     window.addEventListener('mousemove', (e) => onMove(e.clientY));
-    window.addEventListener('mouseup',   (e) => onEnd(e.clientY));
+    window.addEventListener('mouseup', (e) => onEnd(e.clientY));
 }
 
 // ==================== QR LIGHTBOX ====================
@@ -1551,8 +1422,8 @@ async function openQrLightbox() {
     const poi = AppState.selectedPoi;
     if (!poi) return;
 
-    const lang  = AppState.language;
-    const name  = await getLocalizedPoiText(poi, 'name', lang);
+    const lang = AppState.language;
+    const name = await getLocalizedPoiText(poi, 'name', lang);
     const qrCode = poi.qrCode || poi.id;
     const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
 
@@ -1605,42 +1476,6 @@ const AAC_PHRASES = {
         'Wait a moment',
         'I can\'t eat spicy food',
         'To go please'
-    ],
-    ja: [
-        'こんにちは！',
-        'ありがとう！',
-        'メニューを見せてください',
-        'お会計お願いします',
-        '水をください',
-        '辛くしないで',
-        '少し辛くして',
-        '氷を追加して',
-        'おいしい！',
-        '海鮮アレルギーです',
-        'トイレはどこですか？',
-        'いくらですか？',
-        'もう一つください',
-        'ちょっと待ってください',
-        '辛い物は食べられません',
-        'テイクアウトお願いします'
-    ],
-    zh: [
-        '你好！',
-        '谢谢！',
-        '请给我看菜单',
-        '请结账',
-        '请给我一杯水',
-        '不要辣',
-        '微辣',
-        '多加冰',
-        '好吃！',
-        '我对海鲜过敏',
-        '洗手间在哪里？',
-        '多少钱？',
-        '再来一份',
-        '等一下',
-        '我不能吃辣',
-        '打包带走'
     ]
 };
 
