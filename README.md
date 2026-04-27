@@ -67,19 +67,23 @@ Vĩnh Khánh Food Tour là một ứng dụng Web Tiến Tiến (Progressive Web
    }
    ```
 
-2. **Khởi Chạy Máy Chủ Backend API:**
-   Mở ứng dụng terminal/command line trỏ đường dẫn tại vị trí chứa code (`.csproj`) và nạp lệnh:
+2. **Khởi Chạy Máy Chủ Backend API / LAN Demo:**
+   Mở terminal tại thư mục dự án và chạy:
    ```bash
-   dotnet run
+   dotnet run --project CShape/VinhKhanhFoodTour.Api/VinhKhanhFoodTour.Api.csproj
    ```
+   App bind mặc định `0.0.0.0:5000`, nên máy khác cùng WiFi/LAN có thể truy cập bằng IP LAN của máy chạy demo.
 
 3. **Truy Cập Ứng Dụng:**
-   - Phiên bản PWA Khách Hàng: Truy cập `http://localhost:5033/index.html` (Hoặc lấy Local IP WiFi dán vào điện thoại để test PWA).
-   - Trang Điều hành CMS: Truy cập `http://localhost:5033/admin.html`
+   - Trên máy chạy demo: `http://localhost:5000/index.html` và `http://localhost:5000/admin.html`
+   - Trên điện thoại/máy giảng viên cùng WiFi: `http://<IP-LAN-của-máy>:5000/index.html`
+   - Trang Admin LAN: `http://<IP-LAN-của-máy>:5000/admin.html`
+   - Xem IP LAN app tự nhận tại `http://localhost:5000/api/system/network`
    - Tài khoản Admin cấp sẵn mặc định: `admin` / `admin123`
+   - Khi mở QR trong Admin, QR sẽ ưu tiên sinh link LAN để điện thoại quét mở được; nếu máy có nhiều card mạng, nhập đúng `http://192.168.x.x:5000` vào ô LAN origin trong modal QR.
 
 ### 💡 Lưu ý về HTTPS và Phân quyền Máy ảnh Thực tế
-Quét mã QR (Camera API) và chế độ PWA Install bắt buộc chạy trên nền tảng **bảo mật HTTPS (Secure context)**. Nếu test bằng localhost máy tính, nó được mặc nhiên bỏ qua chuẩn này. Thế nhưng khi chạy qua IP điện thoại LAN mạng Wifi (ví dụ: `http://192.168.1.5:5033`), bạn cần cấu hình lại cho phép Insecure Origins trên Chrome để cấp quyền dùng Mic & Camera.
+Luồng thực tế khi demo QR là dùng camera mặc định của điện thoại quét mã QR đã in/dán, QR mở thẳng URL `http://<IP-LAN>:5000/index.html?qr=...`; luồng này không cần Web Camera API trong app. Riêng nút “Quét QR” bên trong web app dùng Camera API, nên khi chạy qua LAN dạng HTTP một số trình duyệt sẽ chặn camera; muốn demo nút này cần HTTPS hoặc bật Insecure Origins cho địa chỉ `http://<IP-LAN>:5000` trên Chrome.
 
 ## 📁 Cấu Trúc Thư Mục Hệ Thống (Folder Structure)
 

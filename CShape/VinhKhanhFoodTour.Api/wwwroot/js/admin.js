@@ -7,6 +7,175 @@ let adminToken = sessionStorage.getItem('adminToken') || '';
 let adminPois = [];
 let adminTours = [];
 let heatmapMap = null;
+const QR_ORIGIN_KEY = 'vinhkhanh_qr_origin';
+let qrNetworkInfo = null;
+let qrNetworkInfoPromise = null;
+
+function getQrServerUrl(data, size) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}`;
+}
+
+function isLoopbackHost(hostname = window.location.hostname) {
+    return ['localhost', '127.0.0.1', '::1', '0.0.0.0'].includes(hostname.toLowerCase());
+}
+
+function normalizeOrigin(origin) {
+    const trimmed = String(origin || '').trim();
+    if (!trimmed) return '';
+
+    const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+    try {
+        return new URL(candidate).origin;
+    } catch {
+        return '';
+    }
+}
+
+async function getQrNetworkInfo() {
+    if (qrNetworkInfo) return qrNetworkInfo;
+
+    if (!qrNetworkInfoPromise) {
+        qrNetworkInfoPromise = fetch('/api/system/network', { cache: 'no-store' })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                const lanOrigins = Array.isArray(data?.lanOrigins)
+                    ? data.lanOrigins.map(normalizeOrigin).filter(Boolean)
+                    : [];
+
+                qrNetworkInfo = {
+                    currentOrigin: normalizeOrigin(data?.currentOrigin || window.location.origin),
+                    preferredOrigin: normalizeOrigin(data?.preferredOrigin || lanOrigins[0] || ''),
+                    lanOrigins
+                };
+                return qrNetworkInfo;
+            })
+            .catch(error => {
+                console.warn('Không lấy được IP LAN từ backend:', error);
+                qrNetworkInfo = {
+                    currentOrigin: window.location.origin,
+                    preferredOrigin: '',
+                    lanOrigins: []
+                };
+                return qrNetworkInfo;
+            });
+    }
+
+    return qrNetworkInfoPromise;
+}
+
+function getNetworkLanOrigin() {
+    const origin = normalizeOrigin(qrNetworkInfo?.preferredOrigin || qrNetworkInfo?.lanOrigins?.[0] || '');
+    if (!origin) return '';
+
+    try {
+        return isLoopbackHost(new URL(origin).hostname) ? '' : origin;
+    } catch {
+        return '';
+    }
+}
+
+function getQrAppOrigin() {
+    const savedOrigin = normalizeOrigin(localStorage.getItem(QR_ORIGIN_KEY) || '');
+    if (savedOrigin) return savedOrigin;
+
+    const lanOrigin = getNetworkLanOrigin();
+    if (isLoopbackHost() && lanOrigin) return lanOrigin;
+
+    return window.location.origin;
+}
+
+function getSuggestedLanOrigin() {
+    if (qrNetworkInfo?.lanOrigins?.length) {
+        return qrNetworkInfo.lanOrigins.join(' hoặc ');
+    }
+
+    const port = window.location.port || '5000';
+    return `http://<IP-LAN-của-máy>:${port}`;
+}
+
+function updateQrOriginPanel(appOrigin) {
+    const input = document.getElementById('qr-origin-input');
+    const suggest = document.getElementById('qr-origin-suggest');
+    const panel = document.getElementById('qr-lan-warning');
+    const status = document.getElementById('qr-origin-status');
+    const savedOrigin = normalizeOrigin(localStorage.getItem(QR_ORIGIN_KEY) || '');
+    const networkLanOrigin = getNetworkLanOrigin();
+
+    if (input) input.value = appOrigin;
+    if (suggest) suggest.textContent = getSuggestedLanOrigin();
+    panel?.classList.remove('hidden');
+
+    if (!status) return;
+    if (savedOrigin) {
+        status.textContent = `Đang dùng URL LAN bạn nhập thủ công: ${savedOrigin}`;
+    } else if (isLoopbackHost() && networkLanOrigin) {
+        status.textContent = `Admin đang mở bằng localhost, nhưng QR đã tự dùng IP LAN: ${networkLanOrigin}`;
+    } else if (isLoopbackHost()) {
+        status.textContent = 'Chưa lấy được IP LAN tự động. Nhập IP LAN của máy chạy demo để QR mở được trên điện thoại.';
+    } else {
+        status.textContent = `Admin đang mở bằng LAN/host thật, QR dùng origin hiện tại: ${appOrigin}`;
+    }
+}
+
+async function renderQrImage(container, data, size = 300) {
+    container.innerHTML = '';
+    const img = document.createElement('img');
+    img.alt = 'QR Code';
+    img.style.width = '250px';
+    img.style.height = '250px';
+    img.style.display = 'block';
+    img.style.margin = '0 auto';
+
+    try {
+        if (window.QRCode?.toDataURL) {
+            img.src = await window.QRCode.toDataURL(data, {
+                width: size,
+                margin: 1,
+                errorCorrectionLevel: 'M'
+            });
+        } else {
+            img.src = getQrServerUrl(data, size);
+        }
+    } catch (error) {
+        console.warn('Không tạo QR local được, fallback QR server:', error);
+        img.src = getQrServerUrl(data, size);
+    }
+
+    img.onerror = () => {
+        container.innerHTML = `<p style="color:#111;max-width:260px;word-break:break-all;">${data}</p>`;
+    };
+    container.appendChild(img);
+}
+
+async function renderQrForCurrentModal() {
+    const modal = document.getElementById('qr-view-modal');
+    const qrCode = modal.dataset.qrCode;
+    if (!qrCode) return;
+
+    const appOrigin = getQrAppOrigin();
+    const appUrl = `${appOrigin}/index.html?qr=${encodeURIComponent(qrCode)}`;
+    document.getElementById('qr-poi-code').textContent = 'Đường dẫn: ' + appUrl;
+    modal.dataset.qrUrl = appUrl;
+    updateQrOriginPanel(appOrigin);
+    await renderQrImage(document.getElementById('qr-image-container'), appUrl, 300);
+}
+
+async function saveQrOriginOverride() {
+    const input = document.getElementById('qr-origin-input');
+    const origin = normalizeOrigin(input?.value || '');
+    if (!origin) {
+        alert('URL LAN không hợp lệ. Ví dụ: http://192.168.1.20:5000');
+        return;
+    }
+
+    localStorage.setItem(QR_ORIGIN_KEY, origin);
+    await renderQrForCurrentModal();
+}
+
+async function clearQrOriginOverride() {
+    localStorage.removeItem(QR_ORIGIN_KEY);
+    await renderQrForCurrentModal();
+}
 
 // Auto-login nếu đã có token từ phiên trước
 document.addEventListener('DOMContentLoaded', async () => {
@@ -588,25 +757,24 @@ async function loadTranslations() {
 
 // ==================== QR VIEWER ====================
 
-function viewQr(poiId) {
+async function viewQr(poiId) {
     const poi = adminPois.find(p => p.id === poiId);
     if (!poi) return;
+    await getQrNetworkInfo();
     
     // Mã QR encode URL đầy đủ: khi quét bằng camera sẽ mở app và tự phát thuyết minh
     const qrCode = poi.qrCode || poi.id;
-    const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
     const name = poi.name?.vi || 'Điểm Thuyết Minh';
+    const modal = document.getElementById('qr-view-modal');
 
     document.getElementById('qr-poi-name').textContent = name;
-    document.getElementById('qr-poi-code').textContent = 'Đường dẫn: ' + appUrl;
-    
-    const container = document.getElementById('qr-image-container');
-    container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(appUrl)}" alt="QR Code" style="width: 250px; height: 250px; display: block; margin: 0 auto;">`;
     
     // Lưu để dùng khi in
-    document.getElementById('qr-view-modal').dataset.poiName = name;
-    document.getElementById('qr-view-modal').dataset.qrUrl = appUrl;
-    document.getElementById('qr-view-modal').classList.remove('hidden');
+    modal.dataset.poiName = name;
+    modal.dataset.qrCode = qrCode;
+    modal.classList.remove('hidden');
+
+    await renderQrForCurrentModal();
 }
 
 function closeQrViewModal() {

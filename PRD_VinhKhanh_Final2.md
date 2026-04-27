@@ -57,6 +57,7 @@
 * **Audio TTS Engine:** Client-side Window Web Speech API. Fallback sang Google Translate API Endpoint nếu thiết bị không có Voice pack.
 * **Dịch tự động (Auto-Translation):** Google Translate API (`translate.googleapis.com`) client-side. Admin chỉ cần nhập tiếng Việt hoặc tiếng Anh (có 1 trong 2 là đủ), hệ thống tự dịch sang 18 ngôn ngữ còn lại khi du khách chọn, kết quả được cache trong bộ nhớ.
 * **AAC Language Detection:** Bộ nhận diện ngôn ngữ tự viết dựa trên Unicode Range + Pattern Matching, hỗ trợ nhận diện tự động 50+ ngôn ngữ từ văn bản đầu vào.
+* **LAN Demo:** Backend bind `0.0.0.0:5000`; máy chạy demo dùng `localhost`, còn điện thoại/giảng viên cùng WiFi dùng `http://<IP-LAN-của-máy>:5000`. Admin QR modal lấy `/api/system/network` để ưu tiên sinh QR bằng IP LAN thay vì `localhost`.
 
 ## 6. Business Rules
 | Rule | Diễn giải |
@@ -68,6 +69,7 @@
 | BR-05 | Client-side TTS: Âm thanh không được tạo dưới backend để tránh sập máy chủ. Text sẽ được Frontend gửi thẳng ra các API âm thanh. |
 | BR-06 | Khi du khách chọn ngôn ngữ chưa có sẵn trong DB (vd: Tiếng Hàn) → hệ thống tự động dịch ttsScript từ tiếng Việt sang tiếng Hàn qua Google Translate API → Cache kết quả → Phát Audio bằng đúng ngôn ngữ đã chọn. |
 | BR-07 | AAC "Nói giúp tôi" sử dụng AI nhận biết tự động hệ ngôn ngữ từ ký tự Unicode mà không cần chọn thủ công. |
+| BR-08 | QR dùng trong demo LAN phải encode URL đầy đủ dạng `http://<IP-LAN>:5000/index.html?qr=<POI_CODE>`; không dùng `localhost` vì điện thoại sẽ hiểu là chính điện thoại. |
 
 ---
 
@@ -235,16 +237,16 @@ sequenceDiagram
 sequenceDiagram
     actor Admin as Quản trị viên
     participant Web as Admin Dashboard
-    participant API as AuthController (ASP.NET)
+    participant API as Backend API (ASP.NET)
     participant DB as MongoDB Atlas
-    participant QRGen as QRServer API
+    participant QRGen as QR Local Lib / QRServer Fallback
 
     Admin->>Web: Nhập Username/Password đăng nhập
     Web->>API: Gửi POST Request /api/auth/login
     API->>DB: Tìm user và So sánh Hash Password
     DB-->>API: Match True
-    API-->>Web: Kết xuất token JWT (JSON Web Token)
-    Web->>Web: Lưu JWT vào Session Storage trình duyệt
+    API-->>Web: Kết xuất Bearer token ký HMAC
+    Web->>Web: Lưu token vào Session Storage trình duyệt
     Web-->>Admin: Render bảng điều khiển (Dashboard)
     
     Admin->>Web: Thêm POI Mới (Nhập tên quán, script thuyết minh, vị trí LatLng)
@@ -253,8 +255,15 @@ sequenceDiagram
     DB-->>Web: Trả về trạng thái Status Created
     
     Admin->>Web: Nhấn xem mã QRCode của quán vừa tạo
-    Web->>QRGen: Truyền URL Web App (Tham số ID) đến API Gen Hình ảnh web thứ 3
-    QRGen-->>Web: Gửi Cdn File PNG / SVG của mã phân giải
+    Web->>API: GET /api/system/network để lấy IP LAN
+    API-->>Web: Trả preferredOrigin + danh sách lanOrigins
+    alt Admin đang mở bằng localhost
+        Web->>Web: Dùng preferredOrigin LAN cho QR
+    else Admin đang mở bằng IP LAN/host thật
+        Web->>Web: Dùng window.location.origin
+    end
+    Web->>QRGen: Tạo QR từ URL http://LAN_IP:5000/index.html?qr=POI_CODE
+    QRGen-->>Web: Trả data URL hình QR; lỗi mới dùng QRServer fallback
     Web-->>Admin: Hiển thị giao diện In ấn trực tiếp Print View Modal
 ```
 

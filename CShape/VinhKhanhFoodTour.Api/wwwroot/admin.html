@@ -344,6 +344,21 @@
                     <!-- QR Image will be injected here -->
                 </div>
                 <p id="qr-poi-code" style="margin-top: 15px; font-weight: bold; color: var(--primary);"></p>
+                <div id="qr-lan-warning" class="hidden"
+                    style="margin-top: 12px; padding: 12px; border-radius: 10px; background: rgba(255, 193, 7, 0.10); border: 1px solid rgba(255, 193, 7, 0.35); text-align: left;">
+                    <p id="qr-origin-status" style="margin-bottom: 8px; font-size: 13px; color: var(--warning); font-weight: 700;">
+                        Demo bằng điện thoại qua WiFi/LAN: QR phải dùng IP LAN, không dùng localhost.
+                    </p>
+                    <p style="margin-bottom: 8px; font-size: 12px; color: var(--text-muted);">
+                        App sẽ tự lấy IP LAN từ backend nếu có. Nếu điện thoại không mở được, nhập LAN origin dạng <code id="qr-origin-suggest">http://192.168.x.x:5000</code>.
+                    </p>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input id="qr-origin-input" type="text" placeholder="http://192.168.1.20:5000"
+                            style="flex:1; min-width:0; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg-input); color:var(--text-primary);">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="saveQrOriginOverride()">Dùng URL này</button>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="clearQrOriginOverride()">Reset</button>
+                    </div>
+                </div>
                 <p style="margin-top: 10px; font-size: 14px; color: var(--text-muted);">In mã QR này dán tại địa điểm để
                     du khách quét nghe thuyết minh.</p>
             </div>
@@ -355,7 +370,8 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="/js/admin.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="/js/admin.js?v=lan-demo"></script>
 </body>
 
 </html>
