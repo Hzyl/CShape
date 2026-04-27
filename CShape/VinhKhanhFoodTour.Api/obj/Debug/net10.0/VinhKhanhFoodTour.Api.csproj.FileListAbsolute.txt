@@ -131,7 +131,6 @@ C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\rjimswa.dswa
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\rjsmrazor.dswa.cache.json
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\scopedcss\bundle\VinhKhanhFoodTour.Api.styles.css
-C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\aqrd07cyao-{0}-6rewg7fl6b-6rewg7fl6b.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\yibqkgqpds-{0}-xtp8kcaah1-xtp8kcaah1.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\njenbhd3fc-{0}-km0jvu47s9-km0jvu47s9.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\staticwebassets.build.json
@@ -146,14 +145,15 @@ C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\VinhKhanhFoo
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\VinhKhanhFoodTour.Api.genruntimeconfig.cache
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\ref\VinhKhanhFoodTour.Api.dll
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\bin\Debug\net10.0\appsettings.Local.example.json
-C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\4xgwugjcc3-{0}-jcbh96b9ri-jcbh96b9ri.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\itw980ajgp-{0}-5ti4h4d631-5ti4h4d631.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\5gdq717894-{0}-7cz5tcf08u-7cz5tcf08u.gz
-C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\s2cghosk5k-{0}-5agkao8c2y-5agkao8c2y.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\qr6gmyu489-{0}-0aix2d7hsa-0aix2d7hsa.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\rnpchgx4g6-{0}-a43whjpwls-a43whjpwls.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\zvrh7qfpo8-{0}-y5uve2znv7-y5uve2znv7.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\bin\Debug\net10.0\appsettings.Local.json
-C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\vkibfw8zvp-{0}-g019bx1b8z-g019bx1b8z.gz
-C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\wngmoel4jr-{0}-pvo2gdy7l8-pvo2gdy7l8.gz
 C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\t60wupxpsj-{0}-lnjsrd3o2z-lnjsrd3o2z.gz
+C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\vkibfw8zvp-{0}-x5cmmwovit-x5cmmwovit.gz
+C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\wngmoel4jr-{0}-ubqlx8tez9-ubqlx8tez9.gz
+C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\aqrd07cyao-{0}-e7lkodiqku-e7lkodiqku.gz
+C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\4xgwugjcc3-{0}-c9b1eruict-c9b1eruict.gz
+C:\Users\ASUS\CShape\CShape\VinhKhanhFoodTour.Api\obj\Debug\net10.0\compressed\s2cghosk5k-{0}-vkc0k1bkgy-vkc0k1bkgy.gz

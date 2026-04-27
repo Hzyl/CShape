@@ -420,6 +420,60 @@ function setupLoginForm() {
     });
 }
 
+/** Thử bật GPS tự động; nếu trình duyệt chặn thì hiện nút để user bấm (user gesture) */
+function requestGpsWithFallback() {
+    if (!navigator.geolocation) {
+        showGpsTapToEnable('Trình duyệt không hỗ trợ GPS');
+        return;
+    }
+
+    // Thử getCurrentPosition trước để trigger permission prompt
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            // GPS OK → bật watchPosition tracking bình thường
+            console.log('✅ GPS permission granted, starting tracking...');
+            geofenceManager.startTracking();
+        },
+        (error) => {
+            if (error.code === error.PERMISSION_DENIED) {
+                // User từ chối hoặc browser chặn do thiếu user gesture
+                showGpsTapToEnable('Bấm để bật GPS');
+            } else {
+                // Lỗi khác (timeout, position unavailable) → vẫn thử tracking
+                console.warn('⚠️ GPS initial error, trying watchPosition anyway:', error.message);
+                geofenceManager.startTracking();
+            }
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+}
+
+/** Hiện nút "Bấm để bật GPS" trên thanh GPS status bar */
+function showGpsTapToEnable(message) {
+    const gpsBar = document.getElementById('gps-status');
+    const gpsText = document.getElementById('gps-text');
+    const icon = gpsBar.querySelector('.gps-icon');
+
+    gpsBar.classList.remove('active');
+    gpsBar.style.cursor = 'pointer';
+    gpsBar.style.background = 'linear-gradient(135deg, #FF6B35, #FF8F00)';
+    gpsText.textContent = message;
+    icon.textContent = 'touch_app';
+
+    // Khi user bấm → retry GPS với user gesture context
+    const tapHandler = () => {
+        gpsBar.removeEventListener('click', tapHandler);
+        gpsBar.style.cursor = '';
+        gpsBar.style.background = '';
+        gpsText.textContent = t('gpsSearching');
+        icon.textContent = 'gps_not_fixed';
+
+        // Retry GPS — lần này có user gesture nên browser sẽ hiện prompt
+        geofenceManager.startTracking();
+    };
+    gpsBar.addEventListener('click', tapHandler);
+}
+
 /** Khởi tạo toàn bộ app sau khi đăng nhập thành công */
 async function initApp() {
     audioManager = new AudioManager();
@@ -449,8 +503,8 @@ async function initApp() {
     // Load POI data
     await loadPois();
 
-    // Start GPS tracking
-    geofenceManager.startTracking();
+    // Start GPS tracking — thử auto, nếu fail thì hiện nút bấm cho user
+    requestGpsWithFallback();
 
     // Hide splash screen
     setTimeout(() => {
@@ -523,12 +577,22 @@ async function loadPois() {
             }
         }
 
+        // Lấy lượt nghe từ analytics để ưu tiên geofence overlap
+        try {
+            const topRes = await fetch('/api/analytics/top-pois?limit=50', { signal: AbortSignal.timeout(3000) });
+            if (topRes.ok) {
+                const topPois = await topRes.json();
+                const listenMap = new Map(topPois.map(tp => [tp.poiId, tp.listenCount || 0]));
+                pois.forEach(p => { p.listenCount = listenMap.get(p.id) || 0; });
+            }
+        } catch { /* Không có analytics → listenCount = 0, dùng priority fallback */ }
+
         AppState.pois = pois;
 
         // Add POIs to map
         mapManager.addPois(pois, AppState.language);
 
-        // Setup geofence
+        // Setup geofence (truyền cả listenCount để ưu tiên POI phổ biến khi overlap)
         geofenceManager.setPois(pois);
 
         // Render POI list

@@ -445,23 +445,47 @@ async function initHeatmap() {
 
 async function loadPoisTable() {
     try {
-        const res = await apiFetch('/api/poi/all');
-        adminPois = await res.json();
+        const [poisRes, topPoisRes] = await Promise.all([
+            apiFetch('/api/poi/all'),
+            apiFetch('/api/analytics/top-pois?limit=50')
+        ]);
+        adminPois = await poisRes.json();
         adminPois = adminPois.map(p => ({ ...p, id: p.id || p._id }));
+
+        // Gắn lượt nghe thực tế từ analytics
+        let listenMap = new Map();
+        try {
+            const topPois = await topPoisRes.json();
+            listenMap = new Map(topPois.map(tp => [tp.poiId, tp.listenCount || 0]));
+        } catch { }
+        adminPois.forEach(p => { p.listenCount = listenMap.get(p.id) || 0; });
+
+        // Tính thứ hạng ưu tiên theo lượt nghe (nhiều nhất = hạng 1)
+        const sorted = [...adminPois].sort((a, b) => b.listenCount - a.listenCount);
+        const rankMap = new Map();
+        sorted.forEach((p, i) => rankMap.set(p.id, i + 1));
 
         const tbody = document.getElementById('poi-table-body');
         const categoryColors = {
             seafood: '#00BCD4', hotpot: '#FF5722', snack: '#E91E63',
             street_food: '#FF9800', landmark: '#9C27B0'
         };
+        const rankBadge = (rank) => {
+            if (rank === 1) return '🥇 1';
+            if (rank === 2) return '🥈 2';
+            if (rank === 3) return '🥉 3';
+            return `#${rank}`;
+        };
 
-        tbody.innerHTML = adminPois.map(poi => `
+        tbody.innerHTML = adminPois.map(poi => {
+            const rank = rankMap.get(poi.id);
+            return `
             <tr>
                 <td><strong>${poi.name?.vi || '—'}</strong></td>
                 <td><span class="category-badge" style="background: ${categoryColors[poi.category]}20; color: ${categoryColors[poi.category]}">${poi.category}</span></td>
                 <td style="font-size: 12px; color: var(--text-muted)">${poi.latitude?.toFixed(4)}, ${poi.longitude?.toFixed(4)}</td>
                 <td>${poi.radius}m</td>
-                <td>${poi.priority}</td>
+                <td><span style="font-weight: 600; color: ${rank <= 3 ? 'var(--primary)' : 'var(--text-muted)'}" title="🎧 ${poi.listenCount} lượt nghe">${rankBadge(rank)}</span></td>
                 <td><span class="status-badge ${poi.isActive ? 'active' : 'inactive'}">${poi.isActive ? 'Hoạt động' : 'Ẩn'}</span></td>
                 <td class="actions">
                     <button class="btn btn-primary btn-sm" onclick="viewQr('${poi.id}')" title="Hiển thị mã QR">
@@ -478,7 +502,7 @@ async function loadPoisTable() {
                     </button>
                 </td>
             </tr>
-        `).join('');
+        `}).join('');
     } catch (err) {
         console.error('Load POIs error:', err);
     }
@@ -510,7 +534,12 @@ function openPoiModal(poi = null) {
         document.getElementById('poi-edit-id').value = '';
         document.getElementById('poi-radius').value = 50;
         document.getElementById('poi-priority').value = 5;
+        // Tự sinh mã QR: VK-POI-XXX
+        document.getElementById('poi-qrcode').value = `VK-POI-${String(Date.now()).slice(-4)}${String(Math.floor(Math.random() * 900) + 100)}`;
     }
+
+    // QR là readonly — admin không cần nhập tay
+    document.getElementById('poi-qrcode').readOnly = true;
 }
 
 function closePoiModal() {
@@ -548,7 +577,7 @@ async function savePoi(e) {
         address: document.getElementById('poi-address').value,
         openingHours: document.getElementById('poi-hours').value,
         priceRange: document.getElementById('poi-price').value,
-        isActive: true
+        isActive: editId ? (adminPois.find(p => p.id === editId)?.isActive ?? true) : true
     };
 
     try {
@@ -594,8 +623,9 @@ async function togglePoiStatus(poiId) {
     const actionText = poi.isActive ? 'khóa (ẩn)' : 'mở khóa (hiện)';
     if (!confirm(`Bạn có chắc muốn ${actionText} điểm thuyết minh "${poi.name?.vi || poiId}" không?`)) return;
 
-    // Toggle trạng thái
-    const updatedPoi = { ...poi, isActive: !poi.isActive };
+    // Toggle trạng thái — loại bỏ field client-only (listenCount) trước khi gửi lên server
+    const { listenCount, ...cleanPoi } = poi;
+    const updatedPoi = { ...cleanPoi, isActive: !poi.isActive };
 
     try {
         const res = await apiFetch(`/api/poi/${poiId}`, {
@@ -605,10 +635,11 @@ async function togglePoiStatus(poiId) {
         });
 
         if (res.ok || res.status === 204) {
-            loadPoisTable();
+            await loadPoisTable();
             alert(`Đã ${actionText} POI thành công!`);
         } else {
-            alert('Lỗi khi cập nhật trạng thái POI');
+            const errText = await res.text().catch(() => '');
+            alert(`Lỗi khi cập nhật trạng thái POI: ${res.status} ${errText}`);
         }
     } catch (err) {
         alert('Lỗi: ' + err.message);

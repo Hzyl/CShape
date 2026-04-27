@@ -10,7 +10,7 @@ class GeofenceManager {
         this.enteredPois = new Set(); // POIs user đang ở trong vùng
         this.cooldownMap = new Map(); // Cooldown để chống spam
         this.cooldownDuration = 30000; // 30s cooldown
-        
+
         // Callbacks
         this.onLocationUpdate = null;
         this.onPoiEnter = null;
@@ -35,6 +35,7 @@ class GeofenceManager {
             lng: p.longitude,
             radius: p.radius,
             priority: p.priority,
+            listenCount: p.listenCount || 0,
             name: p.name
         }));
     }
@@ -103,9 +104,13 @@ class GeofenceManager {
     }
 
     /**
-     * Kiểm tra user đã vào/ra vùng geofence chưa
+     * Kiểm tra user đã vào/ra vùng geofence chưa.
+     * Khi vào nhiều vùng cùng lúc → chỉ trigger POI có priority cao nhất (số nhỏ nhất).
+     * Các POI còn lại sẽ đợi trong hàng chờ audio (enqueue với priority thấp hơn).
      */
     _checkGeofences(lat, lng) {
+        const newlyEntered = [];
+
         this.pois.forEach(poi => {
             const distance = this._calculateDistance(lat, lng, poi.lat, poi.lng);
             const isInside = distance <= poi.radius;
@@ -114,24 +119,29 @@ class GeofenceManager {
             if (isInside && !wasInside) {
                 // User VỪA ĐI VÀO vùng geofence
                 this.enteredPois.add(poi.id);
-                
-                // Kiểm tra cooldown
+
                 if (!this._isInCooldown(poi.id)) {
                     this.cooldownMap.set(poi.id, Date.now());
-                    
-                    if (this.onPoiEnter) {
-                        this.onPoiEnter(poi, distance);
-                    }
+                    newlyEntered.push({ poi, distance });
                 }
             } else if (!isInside && wasInside) {
                 // User VỪA ĐI RA khỏi vùng geofence
                 this.enteredPois.delete(poi.id);
-                
+
                 if (this.onPoiExit) {
                     this.onPoiExit(poi);
                 }
             }
         });
+
+        // Sắp xếp: POI nghe nhiều nhất → ưu tiên cao nhất
+        // Nếu listenCount bằng nhau → priority nhỏ hơn ưu tiên hơn → gần hơn ưu tiên hơn
+        if (newlyEntered.length > 0 && this.onPoiEnter) {
+            newlyEntered.sort((a, b) => (b.poi.listenCount - a.poi.listenCount) || (a.poi.priority - b.poi.priority) || (a.distance - b.distance));
+            newlyEntered.forEach(({ poi, distance }) => {
+                this.onPoiEnter(poi, distance);
+            });
+        }
     }
 
     /**
@@ -171,8 +181,8 @@ class GeofenceManager {
         const dLat = this._toRad(lat2 - lat1);
         const dLng = this._toRad(lng2 - lng1);
         const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos(this._toRad(lat1)) * Math.cos(this._toRad(lat2)) *
-                  Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            Math.cos(this._toRad(lat1)) * Math.cos(this._toRad(lat2)) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     }
@@ -218,7 +228,7 @@ class GeofenceManager {
                     latitude: lat,
                     longitude: lng
                 })
-            }).catch(() => {});
+            }).catch(() => { });
         }
     }
 
