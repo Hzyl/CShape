@@ -27,6 +27,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpGet("all")]
         public async Task<ActionResult<List<Poi>>> GetAllAdmin()
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             var pois = await _poiService.GetAllAsync();
             return Ok(pois);
         }
@@ -53,6 +54,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<Poi>> Create([FromBody] Poi poi)
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             var created = await _poiService.CreateAsync(poi);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
@@ -61,6 +63,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(string id, [FromBody] Poi poi)
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             poi.Id = id;
             var result = await _poiService.UpdateAsync(id, poi);
             if (!result) return NotFound();
@@ -71,6 +74,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             var result = await _poiService.DeleteAsync(id);
             if (!result) return NotFound();
             return NoContent();

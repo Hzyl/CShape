@@ -27,6 +27,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpGet("top-pois")]
         public async Task<ActionResult<List<PoiStats>>> GetTopPois([FromQuery] int limit = 10)
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             var stats = await _analyticsService.GetTopPoiStatsAsync(limit);
             return Ok(stats);
         }
@@ -35,6 +36,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpGet("heatmap")]
         public async Task<ActionResult<List<HeatmapPoint>>> GetHeatmap()
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             var data = await _analyticsService.GetHeatmapDataAsync();
             return Ok(data);
         }
@@ -43,6 +45,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpGet("stats")]
         public async Task<ActionResult> GetStats()
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             var eventCounts = await _analyticsService.GetEventCountsAsync();
             var uniqueSessions = await _analyticsService.GetUniqueSessionsAsync();
 
@@ -58,6 +61,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpGet("recent")]
         public async Task<ActionResult<List<AnalyticsEvent>>> GetRecent([FromQuery] int limit = 50)
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             var events = await _analyticsService.GetRecentEventsAsync(limit);
             return Ok(events);
         }

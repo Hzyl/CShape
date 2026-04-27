@@ -65,7 +65,7 @@ class MapManager {
      */
     addPoiMarker(poi, lang = 'vi') {
         const emoji = this.categoryEmoji[poi.category] || '📍';
-        const name = poi.name[lang] || poi.name['vi'] || 'Không tên';
+        const name = poi.name[lang] || poi.name.vi || poi.name.en || 'Không tên';
 
         const icon = L.divIcon({
             className: 'custom-marker-wrapper',
@@ -152,7 +152,9 @@ class MapManager {
     centerOnUser() {
         if (this.userMarker) {
             this.map.setView(this.userMarker.getLatLng(), 17, { animate: true });
+            return true;
         }
+        return false;
     }
 
     /**
@@ -205,7 +207,7 @@ class MapManager {
         pois.forEach(poi => {
             const marker = this.poiMarkers[poi.id];
             if (marker) {
-                const name = poi.name[lang] || poi.name['vi'] || '';
+                const name = poi.name[lang] || poi.name.vi || poi.name.en || '';
                 marker.unbindTooltip();
                 marker.bindTooltip(name, {
                     direction: 'top',

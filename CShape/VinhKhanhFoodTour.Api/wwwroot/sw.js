@@ -4,20 +4,23 @@
  * Khi offline → phục vụ từ cache
  */
 
-const CACHE_NAME = 'vinhkhanh-v6';
-const API_CACHE = 'vinhkhanh-api-v6';
-const TILE_CACHE = 'vinhkhanh-tiles-v6';
+const CACHE_NAME = 'vinhkhanh-v11';
+const API_CACHE = 'vinhkhanh-api-v11';
+const TILE_CACHE = 'vinhkhanh-tiles-v11';
 
 // Static assets cần pre-cache
 const PRECACHE_ASSETS = [
     '/',
     '/index.html',
+    '/admin.html',
     '/css/app.css',
-    '/js/app.js',
-    '/js/audio-manager.js',
-    '/js/map.js',
-    '/js/geofence.js',
-    '/js/qr-scanner.js',
+    '/css/admin.css',
+    '/js/app.js?v=11',
+    '/js/admin.js?v=11',
+    '/js/audio-manager.js?v=11',
+    '/js/map.js?v=11',
+    '/js/geofence.js?v=11',
+    '/js/qr-scanner.js?v=11',
     '/js/offline-db.js',
     '/manifest.json'
 ];
@@ -26,8 +29,10 @@ const PRECACHE_ASSETS = [
 const CDN_URLS = [
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+    'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
+    'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
     'https://fonts.googleapis.com/icon?family=Material+Icons+Round',
-    'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'
+    'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap'
 ];
 
 // ==================== INSTALL ====================
@@ -146,7 +151,8 @@ self.addEventListener('fetch', (event) => {
     if (url.hostname !== location.hostname && 
         (url.hostname.includes('unpkg.com') || 
          url.hostname.includes('googleapis.com') ||
-         url.hostname.includes('gstatic.com'))) {
+         url.hostname.includes('gstatic.com') ||
+         url.hostname.includes('jsdelivr.net'))) {
         event.respondWith(cacheFirst(event.request, CACHE_NAME));
         return;
     }

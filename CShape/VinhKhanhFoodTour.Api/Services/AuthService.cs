@@ -24,9 +24,7 @@ namespace VinhKhanhFoodTour.Api.Services
 
             if (user == null) return null;
 
-            // Token đơn giản (trong dự án thực tế nên dùng JWT)
-            var token = Convert.ToBase64String(Encoding.UTF8.GetBytes(
-                $"{user.Username}:{user.Role}:{DateTime.UtcNow.Ticks}"));
+            var token = AdminTokenHelper.CreateToken(user.Username, user.Role);
 
             return new LoginResponse
             {

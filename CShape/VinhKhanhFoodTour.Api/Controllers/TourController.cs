@@ -18,6 +18,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpGet]
         public async Task<ActionResult<List<Tour>>> GetAll()
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             var tours = await _tourService.GetAllAsync();
             return Ok(tours);
         }
@@ -25,6 +26,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Tour>> GetById(string id)
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             var tour = await _tourService.GetByIdAsync(id);
             if (tour == null) return NotFound();
             return Ok(tour);
@@ -33,6 +35,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<Tour>> Create([FromBody] Tour tour)
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             var created = await _tourService.CreateAsync(tour);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
@@ -40,6 +43,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(string id, [FromBody] Tour tour)
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             tour.Id = id;
             var result = await _tourService.UpdateAsync(id, tour);
             if (!result) return NotFound();
@@ -49,6 +53,7 @@ namespace VinhKhanhFoodTour.Api.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
+            if (!AdminTokenHelper.IsAuthorized(Request)) return Unauthorized();
             var result = await _tourService.DeleteAsync(id);
             if (!result) return NotFound();
             return NoContent();

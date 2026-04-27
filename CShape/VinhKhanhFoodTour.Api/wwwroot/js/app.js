@@ -24,18 +24,40 @@ let mapManager, geofenceManager, audioManager, qrScanner, offlineDB;
 const UI_TEXT = {
     vi: {
         gpsSearching: 'Đang lấy vị trí GPS...', gpsActive: 'GPS đang hoạt động', gpsError: 'Lỗi GPS',
+        gpsRealityHint: 'GPS trong phố nhỏ có thể lệch; nếu chưa bắt đúng vị trí, hãy quét QR tại điểm dừng.',
         accuracy: 'Độ chính xác', listen: 'Nghe thuyết minh', navigate: 'Chỉ đường', close: 'Đóng',
         nearPoi: 'Bạn đang ở gần', tapToListen: 'Nhấn để nghe thuyết minh', loading: 'Đang tải dữ liệu...',
         poiList: 'Điểm thuyết minh', all: 'Tất cả', scanQr: 'Quét QR Code',
-        qrInstruction: 'Hướng camera vào mã QR tại điểm dừng',
+        qrInstruction: 'Hướng camera vào mã QR tại điểm dừng', qrPlaceTitle: 'Mã QR Địa Điểm',
+        qrListenHint: 'Quét để nghe thuyết minh', qrPoiHint: 'Du khách quét mã này để nghe thuyết minh',
+        qrNotFoundTitle: 'Không tìm thấy điểm QR',
+        qrNotFoundMessage: 'Mã QR này chưa khớp với điểm thuyết minh nào. Vui lòng kiểm tra lại mã hoặc chọn điểm trên bản đồ.',
+        cameraErrorTitle: 'Không mở được camera',
+        cameraErrorMessage: 'Trình duyệt chưa được cấp quyền camera hoặc thiết bị không hỗ trợ. Bạn vẫn có thể quét bằng camera hệ thống để mở link QR.',
+        audioPrompt: 'Bấm nút bên dưới để nghe thuyết minh', skip: 'Bỏ qua', nowPlaying: 'Đang phát...',
+        offline: 'Đang offline — Dữ liệu từ bộ nhớ cache', offlineLoading: 'Đang tải dữ liệu offline...',
+        connectionError: 'Lỗi kết nối. Đang thử lại...', speakForMe: 'Nói giúp tôi', aacHint: 'Gõ nội dung bạn muốn nói, điện thoại sẽ đọc to giúp bạn',
+        aacPlaceholder: 'Nhập nội dung muốn nói...', commonPhrases: '💬 Câu mẫu thường dùng:', speak: 'Phát', myLocation: 'Vị trí của tôi',
+        translating: 'Đang dịch giao diện...', translationFallback: 'Không dịch được, hiển thị VI/EN tạm thời', testVoice: 'Đây là bản kiểm tra giọng đọc cho ngôn ngữ đang chọn.',
         seafood: 'Hải sản', hotpot: 'Lẩu', streetFood: 'Đường phố', snack: 'Ăn vặt', landmark: 'Địa danh'
     },
     en: {
         gpsSearching: 'Getting GPS location...', gpsActive: 'GPS is active', gpsError: 'GPS Error',
+        gpsRealityHint: 'GPS can drift in narrow food streets; if location is inaccurate, scan the QR code at the stop.',
         accuracy: 'Accuracy', listen: 'Listen to guide', navigate: 'Navigate', close: 'Close',
         nearPoi: 'You are near', tapToListen: 'Tap to listen to the guide', loading: 'Loading data...',
         poiList: 'Points of Interest', all: 'All', scanQr: 'Scan QR Code',
-        qrInstruction: 'Point camera at QR code',
+        qrInstruction: 'Point the camera at the QR code at the stop', qrPlaceTitle: 'Place QR Code',
+        qrListenHint: 'Scan to listen to the guide', qrPoiHint: 'Visitors scan this code to listen to the guide',
+        qrNotFoundTitle: 'QR stop not found',
+        qrNotFoundMessage: 'This QR code does not match any guide stop yet. Please check the code or choose a stop on the map.',
+        cameraErrorTitle: 'Camera unavailable',
+        cameraErrorMessage: 'The browser has no camera permission or this device does not support it. You can still scan the printed QR with the system camera to open the link.',
+        audioPrompt: 'Tap the button below to listen to the guide', skip: 'Skip', nowPlaying: 'Now playing...',
+        offline: 'Offline — using cached data', offlineLoading: 'Loading offline data...',
+        connectionError: 'Connection error. Retrying...', speakForMe: 'Speak for me', aacHint: 'Type what you want to say and the phone will read it aloud',
+        aacPlaceholder: 'Type what you want to say...', commonPhrases: '💬 Common phrases:', speak: 'Play', myLocation: 'My location',
+        translating: 'Translating interface...', translationFallback: 'Translation unavailable, showing VI/EN temporarily', testVoice: 'This is a voice test for the selected language.',
         seafood: 'Seafood', hotpot: 'Hotpot', streetFood: 'Street food', snack: 'Snack', landmark: 'Landmark'
     },
     ja: {
@@ -184,8 +206,261 @@ const UI_TEXT = {
     }
 };
 
+const SOURCE_LANGUAGES = ['vi', 'en'];
+const SOURCE_LANGUAGE_PRIORITY = ['vi', 'en'];
+const TRANSLATION_CACHE_KEY = 'vinhkhanh_translation_cache_v1';
+const UI_SOURCE_TEXT = {
+    vi: UI_TEXT.vi,
+    en: UI_TEXT.en
+};
+const runtimeTranslationCache = new Map();
+
+loadPersistentTranslationCache();
+
+function isSourceLanguage(lang) {
+    return SOURCE_LANGUAGES.includes(lang);
+}
+
+function getSourceLanguage(textMap) {
+    if (!textMap) return 'vi';
+    for (const lang of SOURCE_LANGUAGE_PRIORITY) {
+        if (textMap[lang]) return lang;
+    }
+    return Object.keys(textMap).find(lang => textMap[lang]) || 'vi';
+}
+
+function getSourceText(textMap) {
+    const sourceLang = getSourceLanguage(textMap);
+    return {
+        lang: sourceLang,
+        text: textMap?.[sourceLang] || ''
+    };
+}
+
+function getTranslationCacheKey(scope, id, from, to) {
+    return `${scope}:${id}:${from}->${to}`;
+}
+
 function t(key) {
-    return (UI_TEXT[AppState.language] || UI_TEXT.en || UI_TEXT.vi)[key] || (UI_TEXT.en[key]) || key;
+    const lang = AppState.language;
+    if (isSourceLanguage(lang)) {
+        return UI_SOURCE_TEXT[lang]?.[key] || UI_SOURCE_TEXT.en[key] || UI_SOURCE_TEXT.vi[key] || key;
+    }
+
+    const sourceLang = getSourceLanguage({ vi: UI_SOURCE_TEXT.vi[key], en: UI_SOURCE_TEXT.en[key] });
+    const cacheKey = getTranslationCacheKey('ui', key, sourceLang, lang);
+    return runtimeTranslationCache.get(cacheKey) || UI_SOURCE_TEXT.en[key] || UI_SOURCE_TEXT.vi[key] || key;
+}
+
+async function getUiText(key, lang = AppState.language) {
+    if (isSourceLanguage(lang)) {
+        return UI_SOURCE_TEXT[lang]?.[key] || UI_SOURCE_TEXT.en[key] || UI_SOURCE_TEXT.vi[key] || key;
+    }
+
+    const { lang: sourceLang, text: sourceText } = getSourceText({
+        vi: UI_SOURCE_TEXT.vi[key],
+        en: UI_SOURCE_TEXT.en[key]
+    });
+    return await translateWithCache('ui', key, sourceText || key, sourceLang, lang);
+}
+
+async function translateWithCache(scope, id, text, from, to) {
+    if (!text || from === to || isSourceLanguage(to) && from === to) return text;
+
+    const cacheKey = getTranslationCacheKey(scope, id, from, to);
+    if (runtimeTranslationCache.has(cacheKey)) {
+        return runtimeTranslationCache.get(cacheKey);
+    }
+
+    try {
+        const translated = await translateText(text, from, to);
+        const safeText = translated || text;
+        runtimeTranslationCache.set(cacheKey, safeText);
+        savePersistentTranslationCache();
+        return safeText;
+    } catch (error) {
+        console.warn(`⚠️ Không dịch được [${scope}:${id}] từ ${from} sang ${to}:`, error);
+        return text;
+    }
+}
+
+function loadPersistentTranslationCache() {
+    try {
+        const raw = localStorage.getItem(TRANSLATION_CACHE_KEY);
+        if (!raw) return;
+        const entries = JSON.parse(raw);
+        if (Array.isArray(entries)) {
+            entries.forEach(([key, value]) => runtimeTranslationCache.set(key, value));
+        }
+    } catch (error) {
+        console.warn('⚠️ Không đọc được translation cache:', error);
+    }
+}
+
+function savePersistentTranslationCache() {
+    try {
+        const entries = Array.from(runtimeTranslationCache.entries()).slice(-500);
+        localStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(entries));
+    } catch (error) {
+        console.warn('⚠️ Không lưu được translation cache:', error);
+    }
+}
+
+function showTranslationStatus(message) {
+    const status = document.getElementById('translation-status');
+    const text = document.getElementById('translation-status-text');
+    if (!status || !text) return;
+    text.textContent = message;
+    status.classList.remove('hidden');
+}
+
+function hideTranslationStatus() {
+    const status = document.getElementById('translation-status');
+    if (status) status.classList.add('hidden');
+}
+
+async function getLocalizedPoiText(poi, field, lang = AppState.language) {
+    const textMap = poi?.[field] || {};
+
+    if (textMap[lang]) return textMap[lang];
+
+    const { lang: sourceLang, text: sourceText } = getSourceText(textMap);
+    if (!sourceText) return '';
+    if (sourceLang === lang) return sourceText;
+
+    const translated = await translateWithCache(`poi.${field}`, poi.id || poi.qrCode || field, sourceText, sourceLang, lang);
+    if (translated && textMap) {
+        textMap[lang] = translated;
+    }
+    return translated;
+}
+
+function getLocalizedPoiTextSync(poi, field, lang = AppState.language) {
+    const textMap = poi?.[field] || {};
+    if (textMap[lang]) return textMap[lang];
+
+    const { lang: sourceLang, text: sourceText } = getSourceText(textMap);
+    const cacheKey = getTranslationCacheKey(`poi.${field}`, poi.id || poi.qrCode || field, sourceLang, lang);
+    return runtimeTranslationCache.get(cacheKey) || sourceText || textMap[lang] || textMap.vi || textMap.en || '';
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function getQrServerUrl(data, size) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}`;
+}
+
+async function setQrImage(imgEl, data, size = 240) {
+    if (!imgEl) return;
+    imgEl.alt = 'QR Code';
+    try {
+        if (window.QRCode?.toDataURL) {
+            imgEl.src = await window.QRCode.toDataURL(data, {
+                width: size,
+                margin: 1,
+                errorCorrectionLevel: 'M'
+            });
+            return;
+        }
+    } catch (error) {
+        console.warn('⚠️ Không tạo QR local được, fallback QR server:', error);
+    }
+
+    imgEl.src = getQrServerUrl(data, size);
+    imgEl.onerror = () => {
+        imgEl.replaceWith(document.createTextNode(data));
+    };
+}
+
+async function applyUILanguage(lang = AppState.language) {
+    document.documentElement.lang = lang;
+
+    const uiKeys = [
+        'gpsSearching', 'gpsActive', 'gpsError', 'gpsRealityHint', 'accuracy', 'listen', 'navigate', 'close',
+        'poiList', 'all', 'seafood', 'hotpot', 'streetFood', 'snack', 'landmark',
+        'scanQr', 'qrInstruction', 'qrPlaceTitle', 'qrListenHint', 'qrPoiHint',
+        'qrNotFoundTitle', 'qrNotFoundMessage', 'cameraErrorTitle', 'cameraErrorMessage',
+        'offline', 'speakForMe', 'aacHint', 'aacPlaceholder', 'commonPhrases',
+        'speak', 'myLocation', 'tapToListen', 'audioPrompt', 'skip', 'nowPlaying',
+        'translating', 'translationFallback', 'testVoice'
+    ];
+    await Promise.all(uiKeys.map(key => getUiText(key, lang)));
+
+    const gpsText = document.getElementById('gps-text');
+    if (gpsText) gpsText.textContent = AppState.isGpsActive ? t('gpsActive') : t('gpsSearching');
+
+    const gpsAccuracy = document.getElementById('gps-accuracy');
+    if (gpsAccuracy?.textContent && geofenceManager?.currentPosition?.accuracy) {
+        gpsAccuracy.textContent = `${t('accuracy')}: ±${Math.round(geofenceManager.currentPosition.accuracy)}m`;
+    }
+    const gpsRealityText = document.getElementById('gps-reality-text');
+    if (gpsRealityText) gpsRealityText.textContent = t('gpsRealityHint');
+
+    setBtnText('btn-listen', t('listen'));
+    setBtnText('btn-navigate', t('navigate'));
+    setBtnText('btn-close-detail', t('close'));
+    setBtnText('toast-listen', t('listen'));
+
+    const panelTitle = document.querySelector('#poi-panel .poi-panel-header h2');
+    if (panelTitle) panelTitle.textContent = '📍 ' + t('poiList');
+
+    const filterMap = {
+        all: t('all'),
+        seafood: '🦐 ' + t('seafood'),
+        hotpot: '🍲 ' + t('hotpot'),
+        street_food: '🍜 ' + t('streetFood'),
+        snack: '🧁 ' + t('snack'),
+        landmark: '🏛️ ' + t('landmark')
+    };
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        const key = btn.dataset.filter;
+        if (filterMap[key]) btn.textContent = filterMap[key];
+    });
+
+    const qrTitle = document.querySelector('#qr-modal .modal-header h2');
+    if (qrTitle) qrTitle.innerHTML = `<span class="material-icons-round">qr_code_scanner</span> ${escapeHtml(t('scanQr'))}`;
+    const qrInstruction = document.querySelector('.qr-instruction');
+    if (qrInstruction) qrInstruction.textContent = t('qrInstruction');
+    const poiQrTitle = document.querySelector('#poi-qr-modal .modal-header h2');
+    if (poiQrTitle) poiQrTitle.innerHTML = `<span class="material-icons-round">qr_code_2</span> ${escapeHtml(t('qrPlaceTitle'))}`;
+    const poiQrHint = document.querySelector('#poi-qr-modal .modal-content p[style*="font-size:13px"]');
+    if (poiQrHint) poiQrHint.textContent = t('qrPoiHint');
+    const qrLightboxHint = document.querySelector('.qr-lightbox-hint');
+    if (qrLightboxHint) qrLightboxHint.innerHTML = `<span class="material-icons-round" style="font-size:18px;vertical-align:middle;">smartphone</span> ${escapeHtml(t('qrListenHint'))}`;
+
+    const aacTitle = document.querySelector('#aac-modal .modal-header h2');
+    if (aacTitle) aacTitle.innerHTML = `<span class="material-icons-round">record_voice_over</span> ${escapeHtml(t('speakForMe'))}`;
+    const aacHint = document.querySelector('.aac-hint');
+    if (aacHint) aacHint.textContent = t('aacHint');
+    const aacText = document.getElementById('aac-text');
+    if (aacText) aacText.placeholder = t('aacPlaceholder');
+    const aacSpeakBtn = document.getElementById('btn-aac-speak');
+    if (aacSpeakBtn) aacSpeakBtn.title = t('speak');
+    const phrasesLabel = document.querySelector('.aac-phrases-label');
+    if (phrasesLabel) phrasesLabel.textContent = t('commonPhrases');
+
+    const offlineText = document.querySelector('#offline-banner span:last-child');
+    if (offlineText) offlineText.textContent = t('offline');
+    const audioTitle = document.getElementById('audio-title');
+    if (audioTitle && audioTitle.textContent === (UI_SOURCE_TEXT.vi.nowPlaying || UI_SOURCE_TEXT.en.nowPlaying)) audioTitle.textContent = t('nowPlaying');
+
+    const btnQr = document.getElementById('btn-qr');
+    if (btnQr) btnQr.title = t('scanQr');
+    const btnAac = document.getElementById('btn-aac');
+    if (btnAac) btnAac.title = t('speakForMe');
+    const btnMyLocation = document.getElementById('btn-my-location');
+    if (btnMyLocation) btnMyLocation.title = t('myLocation');
+    const btnToggleList = document.getElementById('btn-toggle-list');
+    if (btnToggleList) btnToggleList.title = t('poiList');
+    const btnTestTts = document.getElementById('btn-test-tts');
+    if (btnTestTts) btnTestTts.title = t('testVoice');
 }
 
 // ==================== INITIALIZATION ====================
@@ -350,21 +625,6 @@ async function initApp() {
 
 
 
-/**
- * Kiểm tra URL param ?qr= khi load trang
- * (trường hợp du khách quét QR bằng camera điện thoại → mở link trong trình duyệt)
- */
-function handleQrUrlParam() {
-    const params = new URLSearchParams(window.location.search);
-    const qrCode = params.get('qr');
-    if (qrCode) {
-        console.log('📱 QR code from URL param:', qrCode);
-        // Đợi 1 chút cho map render xong rồi mới xử lý
-        setTimeout(() => handleQrCode(qrCode), 2000);
-    }
-}
-
-
 // ==================== DATA LOADING ====================
 
 async function loadPois() {
@@ -397,12 +657,13 @@ async function loadPois() {
 
         // If offline or fetch failed, load from cache
         if (isOffline) {
-            updateSplashStatus('Đang tải dữ liệu offline...');
+            updateSplashStatus(t('offlineLoading'));
             const cachedPois = await offlineDB.loadPois();
             if (cachedPois && cachedPois.length > 0) {
                 pois = cachedPois;
             } else {
-                throw new Error('No offline data available');
+                console.warn('⚠️ Không có offline cache, dùng dữ liệu demo VI/EN để trình bày.');
+                pois = getDemoPois();
             }
         }
 
@@ -416,14 +677,64 @@ async function loadPois() {
 
         // Render POI list
         renderPoiList(pois);
+        await applyUILanguage(AppState.language);
 
         console.log(`✅ Loaded ${pois.length} POIs ${isOffline ? '(Offline)' : ''}`);
     } catch (error) {
         console.error('❌ Error loading POIs:', error);
-        updateSplashStatus('Lỗi kết nối. Đang thử lại...');
+        updateSplashStatus(t('connectionError'));
         // Retry after 3s
         setTimeout(loadPois, 3000);
     }
+}
+
+function getDemoPois() {
+    return [
+        {
+            id: 'demo-oc-dao',
+            name: { vi: 'Ốc Đào Vĩnh Khánh', en: 'Oc Dao Vinh Khanh' },
+            description: {
+                vi: 'Quán ốc nổi tiếng trên phố Vĩnh Khánh, phù hợp để giới thiệu trải nghiệm ẩm thực đường phố Sài Gòn.',
+                en: 'A famous snail restaurant on Vinh Khanh Street, ideal for introducing Saigon street food culture.'
+            },
+            ttsScript: {
+                vi: 'Xin chào! Bạn đang ở gần Ốc Đào Vĩnh Khánh, một địa điểm ẩm thực nổi bật của Quận 4. Nội dung này được nhập bằng tiếng Việt và có thể dịch tự động sang ngôn ngữ du khách chọn.',
+                en: 'Hello! You are near Oc Dao Vinh Khanh, a well-known food stop in District 4. This source text can be translated automatically into the visitor selected language.'
+            },
+            latitude: 10.7559,
+            longitude: 106.6944,
+            radius: 40,
+            priority: 1,
+            category: 'seafood',
+            address: '212B Vĩnh Khánh, Quận 4, TP.HCM',
+            openingHours: '16:00 - 23:00',
+            priceRange: '50.000 - 150.000 VNĐ',
+            qrCode: 'VK-DEMO-001',
+            isActive: true
+        },
+        {
+            id: 'demo-lau-bo',
+            name: { vi: 'Lẩu Bò Vĩnh Khánh', en: 'Vinh Khanh Beef Hotpot' },
+            description: {
+                vi: 'Điểm ăn tối quen thuộc với món lẩu bò nóng, thích hợp để demo danh mục, bản đồ, QR và thuyết minh tự động.',
+                en: 'A familiar dinner stop with hot beef hotpot, useful for demonstrating category filters, map, QR and automatic narration.'
+            },
+            ttsScript: {
+                vi: 'Đây là điểm lẩu bò demo trên phố Vĩnh Khánh. Ứng dụng lấy văn bản nguồn tiếng Việt hoặc tiếng Anh, sau đó dịch runtime nếu khách chọn ngôn ngữ khác.',
+                en: 'This is a demo beef hotpot stop on Vinh Khanh Street. The app uses Vietnamese or English source text, then translates it at runtime when visitors choose another language.'
+            },
+            latitude: 10.7570,
+            longitude: 106.6950,
+            radius: 35,
+            priority: 2,
+            category: 'hotpot',
+            address: 'Vĩnh Khánh, Quận 4, TP.HCM',
+            openingHours: '17:00 - 22:30',
+            priceRange: '80.000 - 180.000 VNĐ',
+            qrCode: 'VK-DEMO-002',
+            isActive: true
+        }
+    ];
 }
 
 // ==================== QR URL HANDLER ====================
@@ -431,7 +742,7 @@ async function loadPois() {
 /**
  * Xử lý khi mở app bằng cách quét QR Code tại cửa hàng.
  * URL: /index.html?qr=VK-POI-001
- * Tự động tìm POI và phát thuyết minh đúng ngôn ngữ đang chọn.
+ * Tự động tìm POI, mở chi tiết và hiện nút nghe để đúng chính sách mobile autoplay.
  */
 function handleQrUrlParam() {
     const params = new URLSearchParams(window.location.search);
@@ -439,68 +750,32 @@ function handleQrUrlParam() {
     if (!qrCode) return;
 
     console.log('📱 Mở app qua QR Code:', qrCode);
-    
-    // Đợi POI load xong (tối đa 5s)
-    const tryFind = (attempt = 0) => {
-        const poi = AppState.pois.find(p => 
-            (p.qrCode && p.qrCode === qrCode) || p.id === qrCode
-        );
-        
-        if (poi) {
-            showPoiDetail(poi);
-            mapManager.centerOnPoi(poi.id);
-            
-            // Phát sau 1.8 giây (chờ splash screen tắt)
-            setTimeout(async () => {
-                const lang = AppState.language;
-                const name = poi.name[lang] || poi.name.vi;
-                const script = await getPoiScript(poi, lang);
-                audioManager.playDirect(poi.id, script, name);
-                console.log(`✅ QR: Đang phát thuyết minh [${lang}] cho`, name);
-            }, 1800);
-        } else if (attempt < 10) {
-            setTimeout(() => tryFind(attempt + 1), 500);
-        } else {
-            console.warn('⚠️ Không tìm thấy POI với mã QR:', qrCode);
-        }
-    };
-    
-    setTimeout(() => tryFind(), 1500);
+
+    // Đợi splash/map ổn định, sau đó dùng chung luồng QR scanner.
+    setTimeout(() => handleQrCode(qrCode), 1800);
 }
 
 /**
  * Lấy script thuyết minh đúng ngôn ngữ.
- * Nếu DB không có ngôn ngữ đang chọn → tự động dịch từ tiếng Việt sang ngôn ngữ đó.
+ * VI/EN là ngôn ngữ nguồn cố định. Các ngôn ngữ khác dịch runtime và cache ở client.
  */
 async function getPoiScript(poi, lang) {
-    // Nếu đã có sẵn trong DB → dùng luôn
-    if (poi.ttsScript && poi.ttsScript[lang]) {
+    if (isSourceLanguage(lang) && poi.ttsScript?.[lang]) {
         return poi.ttsScript[lang];
     }
 
-    // Lấy text gốc (tiếng Việt hoặc tiếng Anh)
-    const sourceText = poi.ttsScript?.vi || poi.ttsScript?.en || '';
+    const { lang: sourceLang, text: sourceText } = getSourceText(poi.ttsScript);
     if (!sourceText) return '';
-    const sourceLang = poi.ttsScript?.vi ? 'vi' : 'en';
-
-    // Nếu ngôn ngữ chọn trùng với nguồn → không cần dịch
     if (lang === sourceLang) return sourceText;
 
-    // Tự động dịch bằng Google Translate
-    try {
-        const translated = await translateText(sourceText, sourceLang, lang);
-        if (translated) {
-            // Cache lại vào POI để lần sau không cần dịch nữa
-            if (!poi.ttsScript) poi.ttsScript = {};
-            poi.ttsScript[lang] = translated;
-            console.log(`🌐 Đã dịch thuyết minh sang [${lang}]:`, translated.substring(0, 50) + '...');
-            return translated;
-        }
-    } catch (e) {
-        console.warn('⚠️ Lỗi dịch tự động:', e);
+    const translated = await translateWithCache('poi.ttsScript', poi.id || poi.qrCode || 'tts', sourceText, sourceLang, lang);
+    if (translated) {
+        if (!poi.ttsScript) poi.ttsScript = {};
+        poi.ttsScript[lang] = translated;
+        console.log(`🌐 Đã dịch thuyết minh từ [${sourceLang}] sang [${lang}]:`, translated.substring(0, 50) + '...');
+        return translated;
     }
 
-    // Fallback về text gốc nếu dịch thất bại
     return sourceText;
 }
 
@@ -553,6 +828,8 @@ function updateNetworkStatus() {
     
     if (!navigator.onLine) {
         banner.classList.remove('hidden');
+        const text = banner.querySelector('span:last-child');
+        if (text) text.textContent = t('offline');
         console.log('📶 App is offline');
     } else {
         banner.classList.add('hidden');
@@ -579,6 +856,7 @@ function setupGeofenceCallbacks() {
         gpsBar.classList.add('active');
         gpsText.textContent = t('gpsActive');
         gpsAccuracy.textContent = `${t('accuracy')}: ±${Math.round(accuracy)}m`;
+        document.getElementById('gps-reality-hint')?.classList.add('hidden');
         AppState.isGpsActive = true;
     };
 
@@ -596,7 +874,7 @@ function setupGeofenceCallbacks() {
         }
 
         const lang = AppState.language;
-        const name = fullPoi.name[lang] || fullPoi.name.vi;
+        const name = getLocalizedPoiTextSync(fullPoi, 'name', lang);
 
         // Show toast notification
         showGeofenceToast(name, fullPoi);
@@ -637,12 +915,21 @@ function setupGeofenceCallbacks() {
             gpsBar.classList.remove('active');
             gpsText.textContent = t('gpsError');
             icon.textContent = 'gps_off';
+            AppState.isGpsActive = false;
         }
     };
 
-    geofenceManager.onError = (message) => {
+    geofenceManager.onError = async (message) => {
         const gpsText = document.getElementById('gps-text');
-        gpsText.textContent = message;
+        const gpsHint = document.getElementById('gps-reality-hint');
+        const gpsHintText = document.getElementById('gps-reality-text');
+        const friendlyTitle = await getUiText('gpsError', AppState.language);
+        const friendlyHint = await getUiText('gpsRealityHint', AppState.language);
+
+        gpsText.textContent = isSourceLanguage(AppState.language) ? message : friendlyTitle;
+        if (gpsHintText) gpsHintText.textContent = friendlyHint;
+        gpsHint?.classList.remove('hidden');
+        showAppMessage(friendlyTitle, `${isSourceLanguage(AppState.language) ? message + '. ' : ''}${friendlyHint}`, 'gps_off', 7000);
     };
 }
 
@@ -687,6 +974,15 @@ function setupQRCallbacks() {
         closeQRModal();
         await handleQrCode(rawQrCode);
     };
+    qrScanner.onError = async () => {
+        closeQRModal();
+        showAppMessage(
+            await getUiText('cameraErrorTitle', AppState.language),
+            await getUiText('cameraErrorMessage', AppState.language),
+            'photo_camera_off',
+            7000
+        );
+    };
 }
 
 /**
@@ -728,7 +1024,12 @@ async function handleQrCode(rawQrCode) {
     }
 
     if (!poi) {
-        alert('Không tìm thấy điểm thuyết minh cho QR này');
+        showAppMessage(
+            await getUiText('qrNotFoundTitle', AppState.language),
+            await getUiText('qrNotFoundMessage', AppState.language),
+            'qr_code_2',
+            7000
+        );
         return;
     }
 
@@ -747,13 +1048,16 @@ async function handleQrCode(rawQrCode) {
  * Hiện overlay to rõ ràng yêu cầu người dùng bấm để phát audio
  * Giải quyết vấn đề autoplay bị chặn trên điện thoại
  */
-function showAudioPrompt(poi) {
+async function showAudioPrompt(poi) {
     // Xóa prompt cũ nếu có
     const old = document.getElementById('audio-prompt-overlay');
     if (old) old.remove();
 
     const lang = AppState.language;
-    const name = poi.name[lang] || poi.name.vi;
+    const name = await getLocalizedPoiText(poi, 'name', lang);
+    const promptText = await getUiText('audioPrompt', lang);
+    const listenText = await getUiText('listen', lang);
+    const skipText = await getUiText('skip', lang);
 
     const overlay = document.createElement('div');
     overlay.id = 'audio-prompt-overlay';
@@ -771,8 +1075,8 @@ function showAudioPrompt(poi) {
             border: 1px solid rgba(255,255,255,0.1);
         ">
             <div style="font-size: 48px; margin-bottom: 16px;">🎧</div>
-            <h3 style="color: #fff; font-size: 18px; margin-bottom: 8px; font-weight: 700;">${name}</h3>
-            <p style="color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 24px;">Bấm nút bên dưới để nghe thuyết minh</p>
+            <h3 style="color: #fff; font-size: 18px; margin-bottom: 8px; font-weight: 700;">${escapeHtml(name)}</h3>
+            <p style="color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 24px;">${escapeHtml(promptText)}</p>
             <button id="audio-prompt-btn" style="
                 background: linear-gradient(135deg, #FF6B35, #F7931E);
                 color: white; border: none; border-radius: 16px;
@@ -784,14 +1088,14 @@ function showAudioPrompt(poi) {
                 transition: transform 0.2s, box-shadow 0.2s;
             ">
                 <span class="material-icons-round" style="font-size: 24px;">volume_up</span>
-                Nghe thuyết minh
+                ${escapeHtml(listenText)}
             </button>
             <button id="audio-prompt-close" style="
                 background: none; border: 1px solid rgba(255,255,255,0.15);
                 color: rgba(255,255,255,0.5); border-radius: 10px;
                 padding: 10px 24px; font-size: 13px; cursor: pointer;
                 margin-top: 12px; font-family: 'Inter', sans-serif;
-            ">Bỏ qua</button>
+            ">${escapeHtml(skipText)}</button>
         </div>
     `;
 
@@ -803,7 +1107,7 @@ function showAudioPrompt(poi) {
         const p = window._pendingQrPoi;
         if (p) {
             const l = AppState.language;
-            const n = p.name[l] || p.name.vi;
+            const n = await getLocalizedPoiText(p, 'name', l);
             const script = await getPoiScript(p, l);
             audioManager.playDirect(p.id, script, n);
             window._pendingQrPoi = null;
@@ -832,6 +1136,7 @@ function setupUIEvents() {
     document.getElementById('lang-select').addEventListener('change', (e) => {
         changeLanguage(e.target.value);
     });
+    document.getElementById('btn-test-tts').addEventListener('click', testCurrentLanguageVoice);
 
     // Menu button - toggle POI list
     document.getElementById('btn-menu').addEventListener('click', togglePoiPanel);
@@ -846,8 +1151,15 @@ function setupUIEvents() {
     document.getElementById('qr-backdrop').addEventListener('click', closeQRModal);
 
     // My Location
-    document.getElementById('btn-my-location').addEventListener('click', () => {
-        mapManager.centerOnUser();
+    document.getElementById('btn-my-location').addEventListener('click', async () => {
+        if (!mapManager.centerOnUser()) {
+            showAppMessage(
+                await getUiText('gpsError', AppState.language),
+                await getUiText('gpsRealityHint', AppState.language),
+                'gps_off',
+                6000
+            );
+        }
     });
 
     // Audio controls
@@ -869,7 +1181,7 @@ function setupUIEvents() {
         if (AppState.selectedPoi) {
             const lang = AppState.language;
             const poi = AppState.selectedPoi;
-            const name = poi.name[lang] || poi.name.vi;
+            const name = await getLocalizedPoiText(poi, 'name', lang);
             const script = await getPoiScript(poi, lang);
             audioManager.playDirect(poi.id, script, name);
         }
@@ -904,61 +1216,61 @@ function setupUIEvents() {
     });
 
     // Toast listen button — bấm để phát thuyết minh (cần user gesture cho mobile)
-    document.getElementById('toast-listen').addEventListener('click', () => {
+    document.getElementById('toast-listen').addEventListener('click', async () => {
         hideGeofenceToast();
 
         // Phát audio cho POI pending (từ QR hoặc geofence)
         const poi = window._pendingQrPoi || AppState.selectedPoi;
         if (poi) {
             const lang = AppState.language;
-            const name = poi.name[lang] || poi.name.vi;
-            const script = poi.ttsScript[lang] || poi.ttsScript.vi;
+            const name = await getLocalizedPoiText(poi, 'name', lang);
+            const script = await getPoiScript(poi, lang);
             audioManager.playDirect(poi.id, script, name);
             window._pendingQrPoi = null;
         }
     });
 }
 
+async function testCurrentLanguageVoice() {
+    const lang = AppState.language;
+    const text = await getUiText('testVoice', lang);
+    audioManager.setLanguage(lang);
+    audioManager.playDirect(`voice-test-${lang}`, text, `TTS ${lang.toUpperCase()}`);
+}
+
 // ==================== UI FUNCTIONS ====================
 
-function changeLanguage(lang) {
+async function changeLanguage(lang) {
     AppState.language = lang;
-    audioManager.setLanguage(lang);
-    mapManager.updateLanguage(AppState.pois, lang);
-    renderPoiList(AppState.pois);
-    
-    // Update UI text — dùng lastChild.textContent để KHÔNG xóa <span class="material-icons-round">
-    document.getElementById('gps-text').textContent = AppState.isGpsActive ? t('gpsActive') : t('gpsSearching');
-    setBtnText('btn-listen',       t('listen'));
-    setBtnText('btn-navigate',     t('navigate'));
-    setBtnText('btn-close-detail', t('close'));
-    
-    // Update panel title
-    const panelTitle = document.querySelector('#poi-panel .poi-panel-header h2');
-    if (panelTitle) panelTitle.textContent = '📍 ' + t('poiList');
+    showTranslationStatus(t('translating'));
+    try {
+        const select = document.getElementById('lang-select');
+        if (select && select.value !== lang) select.value = lang;
+        audioManager.setLanguage(lang);
+        await Promise.all(AppState.pois.map(async poi => {
+            await getLocalizedPoiText(poi, 'name', lang);
+            await getLocalizedPoiText(poi, 'description', lang);
+        }));
+        mapManager.updateLanguage(AppState.pois, lang);
+        renderPoiList(AppState.pois);
+        await applyUILanguage(lang);
+        
+        // Re-sync audio player bar
+        if (audioManager.onStateChange) {
+            audioManager.onStateChange(audioManager.getState ? audioManager.getState() : { isPlaying: false, isPaused: false });
+        }
+        
+        // Update detail if open
+        if (AppState.selectedPoi) {
+            await showPoiDetail(AppState.selectedPoi);
+        }
 
-    // Update filter buttons
-    const filterMap = {
-        'all':         t('all'),
-        'seafood':     '🦐 ' + t('seafood'),
-        'hotpot':      '🍲 ' + t('hotpot'),
-        'street_food': '🍜 ' + t('streetFood'),
-        'snack':       '🧁 ' + t('snack'),
-        'landmark':    '🏛️ ' + t('landmark')
-    };
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        const key = btn.dataset.filter;
-        if (filterMap[key]) btn.textContent = filterMap[key];
-    });
-    
-    // Re-sync audio player bar
-    if (audioManager.onStateChange) {
-        audioManager.onStateChange(audioManager.getState ? audioManager.getState() : { isPlaying: false, isPaused: false });
-    }
-    
-    // Update detail if open
-    if (AppState.selectedPoi) {
-        showPoiDetail(AppState.selectedPoi);
+        const qrLightbox = document.getElementById('qr-lightbox');
+        if (AppState.selectedPoi && qrLightbox && !qrLightbox.classList.contains('hidden')) {
+            await openQrLightbox();
+        }
+    } finally {
+        hideTranslationStatus();
     }
 }
 
@@ -969,14 +1281,10 @@ function changeLanguage(lang) {
 function setBtnText(btnId, text) {
     const btn = document.getElementById(btnId);
     if (!btn) return;
-    // Tìm text node cuối (sau span icon) và update; nếu chưa có thì thêm mới
-    const nodes = Array.from(btn.childNodes);
-    const textNode = nodes.find(n => n.nodeType === Node.TEXT_NODE);
-    if (textNode) {
-        textNode.textContent = ' ' + text;
-    } else {
-        btn.appendChild(document.createTextNode(' ' + text));
-    }
+    Array.from(btn.childNodes)
+        .filter(node => node.nodeType === Node.TEXT_NODE)
+        .forEach(node => node.remove());
+    btn.appendChild(document.createTextNode(' ' + text));
 }
 
 
@@ -988,8 +1296,8 @@ function renderPoiList(pois, filter = 'all') {
     const filtered = filter === 'all' ? pois : pois.filter(p => p.category === filter);
 
     listEl.innerHTML = filtered.map(poi => {
-        const name = poi.name?.[lang] || poi.name?.vi || '';
-        const desc = poi.description?.[lang] || poi.description?.vi || '';
+        const name = getLocalizedPoiTextSync(poi, 'name', lang);
+        const desc = getLocalizedPoiTextSync(poi, 'description', lang);
         const icon = emoji[poi.category] || '📍';
         const distance = geofenceManager.getDistanceTo(poi.latitude, poi.longitude);
         const distText = GeofenceManager.formatDistance(distance);
@@ -998,8 +1306,8 @@ function renderPoiList(pois, filter = 'all') {
             <div class="poi-item" data-poi-id="${poi.id}" onclick="onPoiItemClick('${poi.id}')">
                 <div class="poi-item-icon ${poi.category}">${icon}</div>
                 <div class="poi-item-info">
-                    <div class="poi-item-name">${name}</div>
-                    <div class="poi-item-desc">${desc}</div>
+                    <div class="poi-item-name">${escapeHtml(name)}</div>
+                    <div class="poi-item-desc">${escapeHtml(desc)}</div>
                     <div class="poi-item-distance">📍 ${distText}</div>
                 </div>
             </div>
@@ -1019,24 +1327,26 @@ function onPoiItemClick(poiId) {
     }
 }
 
-function showPoiDetail(poi) {
+async function showPoiDetail(poi) {
     AppState.selectedPoi = poi;
     const lang = AppState.language;
-    const categoryNames = {
-        'seafood': { vi: 'Hải sản', en: 'Seafood', ja: 'シーフード', zh: '海鲜' },
-        'hotpot': { vi: 'Lẩu', en: 'Hotpot', ja: '鍋', zh: '火锅' },
-        'snack': { vi: 'Ăn vặt', en: 'Snack', ja: 'スナック', zh: '小吃' },
-        'street_food': { vi: 'Đường phố', en: 'Street Food', ja: 'ストリートフード', zh: '街头美食' },
-        'landmark': { vi: 'Địa danh', en: 'Landmark', ja: 'ランドマーク', zh: '地标' }
+    const categoryKeyMap = {
+        seafood: 'seafood',
+        hotpot: 'hotpot',
+        snack: 'snack',
+        street_food: 'streetFood',
+        landmark: 'landmark'
     };
+    const name = await getLocalizedPoiText(poi, 'name', lang);
+    const description = await getLocalizedPoiText(poi, 'description', lang);
 
     const catEl = document.getElementById('detail-category');
-    catEl.textContent = categoryNames[poi.category]?.[lang] || categoryNames[poi.category]?.en || poi.category;
+    catEl.textContent = t(categoryKeyMap[poi.category]) || poi.category;
     catEl.className = `poi-detail-category ${poi.category}`;
 
-    document.getElementById('detail-name').textContent = poi.name?.[lang] || poi.name?.vi || '';
+    document.getElementById('detail-name').textContent = name;
     document.getElementById('detail-address').textContent = poi.address || '';
-    document.getElementById('detail-description').textContent = poi.description?.[lang] || poi.description?.vi || '';
+    document.getElementById('detail-description').textContent = description;
     document.getElementById('detail-hours-text').textContent = poi.openingHours || '—';
     document.getElementById('detail-price-text').textContent = poi.priceRange || '—';
 
@@ -1049,8 +1359,8 @@ function showPoiDetail(poi) {
     const qrUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
     const qrImg = document.getElementById('detail-qr-img');
     if (qrImg) {
-        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
-        qrImg.alt = `QR Code - ${poi.name[lang] || poi.name.vi}`;
+        qrImg.alt = `QR Code - ${name}`;
+        setQrImage(qrImg, qrUrl, 200);
     }
 
     document.getElementById('poi-detail').classList.remove('hidden');
@@ -1095,7 +1405,14 @@ function showGeofenceToast(poiName, poi) {
     const toast = document.getElementById('geofence-toast');
     const title = document.getElementById('toast-title');
     const message = document.getElementById('toast-message');
+    const icon = toast.querySelector('.toast-icon .material-icons-round');
+    const action = document.getElementById('toast-listen');
 
+    if (icon) icon.textContent = 'place';
+    if (action) {
+        action.classList.remove('hidden');
+        action.textContent = t('listen');
+    }
     title.textContent = `${t('nearPoi')}: ${poiName}`;
     message.textContent = t('tapToListen');
     
@@ -1105,6 +1422,26 @@ function showGeofenceToast(poiName, poi) {
     // Auto hide after 8s
     clearTimeout(window._toastTimeout);
     window._toastTimeout = setTimeout(hideGeofenceToast, 8000);
+}
+
+function showAppMessage(titleText, messageText, iconName = 'info', duration = 6000) {
+    const toast = document.getElementById('geofence-toast');
+    const title = document.getElementById('toast-title');
+    const message = document.getElementById('toast-message');
+    const icon = toast?.querySelector('.toast-icon .material-icons-round');
+    const action = document.getElementById('toast-listen');
+    if (!toast || !title || !message) return;
+
+    if (icon) icon.textContent = iconName;
+    if (action) action.classList.add('hidden');
+    title.textContent = titleText;
+    message.textContent = messageText;
+
+    toast.classList.remove('hidden');
+    toast.classList.remove('fade-out');
+
+    clearTimeout(window._toastTimeout);
+    window._toastTimeout = setTimeout(hideGeofenceToast, duration);
 }
 
 function hideGeofenceToast() {
@@ -1129,17 +1466,16 @@ function closeQRModal() {
  * Hiển thị QR Code của POI để nhân viên/du khách quét.
  * QR encode URL app → khi quét tự mở app và phát thuyết minh.
  */
-function showPoiQr(poi) {
+async function showPoiQr(poi) {
     const lang = AppState.language;
-    const name = poi.name[lang] || poi.name.vi;
+    const name = await getLocalizedPoiText(poi, 'name', lang);
     const qrCode = poi.qrCode || poi.id;
     
     // URL mà QR sẽ encode: mở app và tự phát thuyết minh
     const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
     
     document.getElementById('poi-qr-name').textContent = name;
-    document.getElementById('poi-qr-img').src = 
-        `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(appUrl)}`;
+    setQrImage(document.getElementById('poi-qr-img'), appUrl, 400);
     
     document.getElementById('poi-qr-modal').classList.remove('hidden');
 }
@@ -1211,18 +1547,17 @@ function setupBottomSheetDrag() {
 
 // ==================== QR LIGHTBOX ====================
 
-function openQrLightbox() {
+async function openQrLightbox() {
     const poi = AppState.selectedPoi;
     if (!poi) return;
 
     const lang  = AppState.language;
-    const name  = poi.name[lang] || poi.name.vi;
+    const name  = await getLocalizedPoiText(poi, 'name', lang);
     const qrCode = poi.qrCode || poi.id;
     const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}`;
 
     document.getElementById('qr-lightbox-name').textContent = name;
-    document.getElementById('qr-lightbox-img').src =
-        `https://api.qrserver.com/v1/create-qr-code/?size=480x480&data=${encodeURIComponent(appUrl)}`;
+    setQrImage(document.getElementById('qr-lightbox-img'), appUrl, 480);
 
     document.getElementById('qr-lightbox').classList.remove('hidden');
 }
@@ -1309,12 +1644,12 @@ const AAC_PHRASES = {
     ]
 };
 
-function openAACModal() {
+async function openAACModal() {
     const modal = document.getElementById('aac-modal');
     modal.classList.remove('hidden');
 
     // Mặc định load câu mẫu theo ngôn ngữ đang chọn ở màn hình chính
-    renderAACPhrases(AppState.language);
+    await renderAACPhrases(AppState.language);
 
     // Focus vào ô nhập
     setTimeout(() => document.getElementById('aac-text').focus(), 300);
@@ -1331,9 +1666,16 @@ function closeAACModal() {
     btn.querySelector('.material-icons-round').textContent = 'volume_up';
 }
 
-function renderAACPhrases(lang) {
+async function renderAACPhrases(lang) {
     const container = document.getElementById('aac-phrases');
-    const phrases = AAC_PHRASES[lang] || AAC_PHRASES.vi;
+    let phrases = AAC_PHRASES[lang];
+    if (!phrases) {
+        const sourceLang = AAC_PHRASES.vi ? 'vi' : 'en';
+        phrases = await Promise.all(AAC_PHRASES[sourceLang].map((phrase, index) =>
+            translateWithCache('aac.phrase', index, phrase, sourceLang, lang)
+        ));
+        AAC_PHRASES[lang] = phrases;
+    }
 
     container.innerHTML = phrases.map(phrase =>
         `<button class="aac-phrase-btn" data-phrase="${phrase.replace(/"/g, '&quot;')}">${phrase}</button>`

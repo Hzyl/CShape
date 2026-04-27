@@ -1,6 +1,6 @@
 # 🍜 Vĩnh Khánh Food Tour - PWA Đa Ngôn Ngữ
 
-Vĩnh Khánh Food Tour là một ứng dụng Web Tiến Tiến (Progressive Web App - PWA) hỗ trợ cho khách du lịch khi tham quan Phố ẩm thực Vĩnh Khánh (Quận 4, TP.HCM). Ứng dụng cung cấp bản đồ số, thuyết minh đa ngôn ngữ tự động (Audio Guide), quét mã QR, và cả tính năng hỗ trợ giao tiếp cho người khuyết tật (AAC).
+Vĩnh Khánh Food Tour là một ứng dụng Web Tiến Bộ (Progressive Web App - PWA) hỗ trợ khách du lịch khi tham quan Phố ẩm thực Vĩnh Khánh (Quận 4, TP.HCM). Ứng dụng cung cấp bản đồ số, thuyết minh đa ngôn ngữ tự động (Audio Guide), quét mã QR, và tính năng hỗ trợ giao tiếp cho người khuyết tật/người khó nói (AAC).
 
 ## ✨ Tính năng nổi bật (Features)
 
@@ -21,8 +21,9 @@ Vĩnh Khánh Food Tour là một ứng dụng Web Tiến Tiến (Progressive Web
 
 4. **📷 Quét Mã QR (QR Scanner Integration)**
    - Tích hợp HTML5-QRCode quét máy ảnh trực tiếp trên trình duyệt.
-   - Du khách quét mã QR được dán tại các quán ăn để tự động hiển thị mô tả quán và mở audio thuyết minh nhà hàng. 
-   - Admin CMS có sẵn chức năng gen hình mã QR dán cho từng nhà hàng khi tạo POI mới.
+   - QR thực tế encode URL dạng `/index.html?qr=<POI_CODE>`: quét bằng camera hệ thống hoặc scanner trong app đều mở đúng điểm thuyết minh.
+   - Admin CMS tạo QR local bằng thư viện `qrcode`; nếu CDN lỗi mới fallback sang QR server bên ngoài.
+   - Mobile browser thường chặn autoplay, nên sau khi quét QR app mở chi tiết POI và hiện nút “Nghe thuyết minh” để user bấm phát audio hợp lệ.
 
 5. **💬 Nói Giúp Tôi (AAC Ngôn ngữ & Nhận diện tự động)**
    - Tính năng đặc biệt hỗ trợ quy trình giao tiếp hai chiều dành cho người câm/khuyết tật ngôn ngữ hoặc du khách nước ngoài mua hàng.
@@ -30,7 +31,7 @@ Vĩnh Khánh Food Tour là một ứng dụng Web Tiến Tiến (Progressive Web
    - Tự động lấy cấu trúc ngôn ngữ nhận diện điểu khiển Web Speech API giao tiếp thoại cho chủ quán ăn.
 
 6. **📊 Xử lý & Quản Lý Dữ Liệu (Admin CMS & Analytics)**
-   - Bảng điều khiển (Dashboard) thông qua xác thực bảo mật chuẩn JWT Authentication.
+   - Bảng điều khiển (Dashboard) đăng nhập bằng token HMAC ký server-side; token gửi qua `Authorization: Bearer ...` cho các API quản trị.
    - Theo dõi số phiên truy cập, lưu vết (Log) sự kiện nghe Audio và hoàn thành điểm đi.
    - Quản lý POI toàn diện: Thêm, Sửa, Xóa, Xem báo cáo theo chuẩn REST API.
 
@@ -56,30 +57,53 @@ Vĩnh Khánh Food Tour là một ứng dụng Web Tiến Tiến (Progressive Web
 
 ### Cài Đặt (Setup)
 
-1. **Sửa cấu hình Database:**
-   Mở file `appsettings.json`, điền chuỗi kết nối MongoDB của bạn vào:
+1. **Sửa cấu hình Database (không commit secret):**
+   File `appsettings.json` không chứa mật khẩu thật. Khi cần kết nối MongoDB, tạo file local `appsettings.Local.json` từ mẫu `appsettings.Local.example.json` hoặc dùng biến môi trường `MongoDB__ConnectionString`:
    ```json
    {
-     "MongoDbSettings": {
+     "MongoDB": {
        "ConnectionString": "mongodb+srv://<user>:<password>@cluster.mongodb.net/",
-       "DatabaseName": "VinhKhanhDB"
+       "DatabaseName": "VinhKhanhFoodTour"
      }
    }
    ```
+   Nếu chưa cấu hình MongoDB, backend tự mở demo API in-memory và frontend vẫn có demo fallback POI để bảo vệ chức năng UI/i18n/QR/TTS.
+   Khi chạy thật, nên đặt thêm biến môi trường `AUTH_TOKEN_SECRET` để thay secret demo dùng ký token admin.
 
-2. **Khởi Chạy Máy Chủ Backend API:**
-   Mở ứng dụng terminal/command line trỏ đường dẫn tại vị trí chứa code (`.csproj`) và nạp lệnh:
+2. **Khởi Chạy Máy Chủ Backend API / LAN Demo:**
+   Mở terminal tại thư mục dự án và chạy:
    ```bash
-   dotnet run
+   dotnet run --project CShape/VinhKhanhFoodTour.Api/VinhKhanhFoodTour.Api.csproj
    ```
+   App bind mặc định `0.0.0.0:5000`, nên máy khác cùng WiFi/LAN có thể truy cập bằng IP LAN của máy chạy demo.
 
 3. **Truy Cập Ứng Dụng:**
-   - Phiên bản PWA Khách Hàng: Truy cập `http://localhost:5033/index.html` (Hoặc lấy Local IP WiFi dán vào điện thoại để test PWA).
-   - Trang Điều hành CMS: Truy cập `http://localhost:5033/admin.html`
+   - Trên máy chạy demo: `http://localhost:5000/index.html` và `http://localhost:5000/admin.html`
+   - Trên điện thoại/máy giảng viên cùng WiFi: `http://<IP-LAN-của-máy>:5000/index.html`
+   - Trang Admin LAN: `http://<IP-LAN-của-máy>:5000/admin.html`
+   - Có thể xem IP LAN app tự nhận tại `http://localhost:5000/api/system/network`
    - Tài khoản Admin cấp sẵn mặc định: `admin` / `admin123`
+   - Khi mở modal QR trong Admin, QR sẽ ưu tiên sinh link LAN để điện thoại quét mở được; nếu máy có nhiều card mạng, nhập đúng `http://192.168.x.x:5000` vào ô LAN origin trong modal QR.
 
 ### 💡 Lưu ý về HTTPS và Phân quyền Máy ảnh Thực tế
-Quét mã QR (Camera API) và chế độ PWA Install bắt buộc chạy trên nền tảng **bảo mật HTTPS (Secure context)**. Nếu test bằng localhost máy tính, nó được mặc nhiên bỏ qua chuẩn này. Thế nhưng khi chạy qua IP điện thoại LAN mạng Wifi (ví dụ: `http://192.168.1.5:5033`), bạn cần cấu hình lại cho phép Insecure Origins trên Chrome để cấp quyền dùng Mic & Camera.
+Luồng thực tế khi demo QR là dùng camera mặc định của điện thoại quét mã QR đã in/dán, QR mở thẳng URL `http://<IP-LAN>:5000/index.html?qr=...`; luồng này không cần Web Camera API trong app. Riêng nút “Quét QR” bên trong web app dùng Camera API, nên khi chạy qua LAN dạng HTTP một số trình duyệt sẽ chặn camera; muốn demo nút này cần HTTPS hoặc bật Insecure Origins cho địa chỉ `http://<IP-LAN>:5000` trên Chrome.
+
+## 🎓 Ghi Chú Demo / Bảo Vệ
+
+- Mở `HUONG_DAN_BAO_VE_I18N_DEMO.md` để xem câu trả lời theo kiểu giảng viên hỏi sequence → method → code.
+- Mô hình đa ngôn ngữ: Admin chỉ nhập `vi/en`; 18 ngôn ngữ còn lại dịch runtime ở frontend, cache bằng `localStorage` + RAM.
+- Nút `record_voice_over` cạnh dropdown dùng để test nhanh TTS của ngôn ngữ đang chọn.
+- Nếu Google Translate/TTS hoặc MongoDB không khả dụng, app fallback về `vi/en`, demo API in-memory và dữ liệu demo để buổi bảo vệ không bị trắng màn hình.
+- QR là luồng thực tế nhất khi GPS trong phố nhỏ bị lệch; app có banner nhắc quét QR nếu GPS lỗi hoặc chưa bắt vị trí.
+- Demo cho giảng viên/điện thoại phải dùng `http://<IP-LAN>:5000`, không dùng QR chứa `localhost` vì `localhost` trên điện thoại là chính điện thoại chứ không phải laptop chạy server.
+
+## ⚠️ Giới Hạn MVP & Hướng Nâng Cấp
+
+- Google Translate/TTS client-side phù hợp demo; triển khai thật nên dùng API chính thức hoặc backend proxy để kiểm soát quota/lỗi mạng.
+- GPS trong phố nhỏ có thể sai lệch; QR dán tại quán là luồng thực tế và ổn định hơn.
+- Mobile browser thường chặn autoplay; app dùng prompt/nút nghe để tuân thủ chính sách trình duyệt.
+- Unicode regex của AAC là heuristic nhận diện hệ chữ, không phải mô hình AI phân loại ngôn ngữ tuyệt đối.
+- Nâng cấp tiếp theo: lưu translation cache vào IndexedDB, xuất QR PDF theo lô để in/dán tại quán, triển khai HTTPS/public hosting, thêm backend translation proxy và quản lý nội dung ảnh/menu thật.
 
 ## 📁 Cấu Trúc Thư Mục Hệ Thống (Folder Structure)
 
