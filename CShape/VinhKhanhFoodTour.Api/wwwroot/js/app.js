@@ -18,7 +18,8 @@ const AppState = {
     language: initialLang,
     pois: [],
     selectedPoi: null,
-    isGpsActive: false
+    isGpsActive: false,
+    activeTour: null
 };
 
 // Managers
@@ -65,6 +66,34 @@ const UI_TEXT = {
         seafood: 'Seafood', hotpot: 'Hotpot', streetFood: 'Street food', snack: 'Snack', landmark: 'Landmark'
     }
 };
+
+Object.assign(UI_TEXT.vi, {
+    scanQr: 'Quet QR cong tour',
+    qrInstruction: 'Huong camera vao ma QR o cong tour',
+    qrPlaceTitle: 'Ma QR Tour',
+    tourListTitle: 'Lo trinh tour',
+    tourOpenedTitle: 'Da mo tour',
+    tourOpenedMessage: 'Danh sach quan trong tour da san sang.',
+    tourStep: 'Diem',
+    tourPrev: 'Truoc',
+    tourNext: 'Tiep theo',
+    tourQrTitle: 'Ma QR Tour',
+    tourQrHint: 'Quet QR cong de mo toan bo tour'
+});
+
+Object.assign(UI_TEXT.en, {
+    scanQr: 'Scan Tour QR',
+    qrInstruction: 'Point the camera at the gate or tour QR code',
+    qrPlaceTitle: 'Tour QR Code',
+    tourListTitle: 'Tour Route',
+    tourOpenedTitle: 'Tour opened',
+    tourOpenedMessage: 'The ordered restaurant list is ready.',
+    tourStep: 'Stop',
+    tourPrev: 'Previous',
+    tourNext: 'Next',
+    tourQrTitle: 'Tour QR Code',
+    tourQrHint: 'Scan the gate QR to open the whole tour'
+});
 
 const SOURCE_LANGUAGES = ['vi', 'en'];
 const SOURCE_LANGUAGE_PRIORITY = ['vi', 'en'];
@@ -202,6 +231,12 @@ function getLocalizedPoiTextSync(poi, field, lang = AppState.language) {
     const { lang: sourceLang, text: sourceText } = getSourceText(textMap);
     const cacheKey = getTranslationCacheKey(`poi.${field}`, poi.id || poi.qrCode || field, sourceLang, lang);
     return runtimeTranslationCache.get(cacheKey) || sourceText || textMap[lang] || textMap.vi || textMap.en || '';
+}
+
+function getLocalizedTextMapSync(textMap, lang = AppState.language) {
+    if (!textMap) return '';
+    if (textMap[lang]) return textMap[lang];
+    return textMap.vi || textMap.en || Object.values(textMap).find(Boolean) || '';
 }
 
 function escapeHtml(value) {
@@ -682,7 +717,7 @@ function getDemoPois() {
  */
 function handleQrUrlParam() {
     const params = new URLSearchParams(window.location.search);
-    const qrCode = params.get('qr');
+    const qrCode = params.get('tour') || params.get('qr');
     if (!qrCode) return;
 
     console.log('📱 Mở app qua QR Code:', qrCode);
@@ -925,6 +960,7 @@ function setupQRCallbacks() {
  * Xử lý mã QR — dùng cả cho QR scanner trong app lẫn QR param từ URL
  */
 async function handleQrCode(rawQrCode) {
+    if (await handleTourQrCode(rawQrCode)) return;
     // Nếu QR chứa URL (ví dụ: https://host/index.html?qr=VK-POI-001)
     // → trích xuất mã QR thật từ param ?qr=
     let qrCode = rawQrCode;
@@ -999,6 +1035,134 @@ async function handleQrCode(rawQrCode) {
  * Hiện overlay to rõ ràng yêu cầu người dùng bấm để phát audio
  * Giải quyết vấn đề autoplay bị chặn trên điện thoại
  */
+async function handleTourQrCode(rawQrCode) {
+    const qrCode = extractTourQrCode(rawQrCode);
+    if (!qrCode) return false;
+
+    const payload = await resolveTourByQrCode(qrCode);
+    if (!payload) return false;
+
+    await openTourFromQr(payload, qrCode);
+    trackTourQrScan();
+    return true;
+}
+
+function extractTourQrCode(rawQrCode) {
+    let qrCode = String(rawQrCode || '').trim();
+    try {
+        const url = new URL(qrCode);
+        qrCode = url.searchParams.get('tour') || url.searchParams.get('qr') || qrCode;
+    } catch {
+        // Plain QR payload.
+    }
+    return qrCode;
+}
+
+function normalizeTourPayload(payload) {
+    if (!payload?.tour) return null;
+
+    const tour = { ...payload.tour, id: payload.tour.id || payload.tour._id };
+    const pois = Array.isArray(payload.pois)
+        ? payload.pois.map(p => ({ ...p, id: p.id || p._id }))
+        : [];
+
+    return { tour, pois };
+}
+
+async function resolveTourByQrCode(qrCode) {
+    try {
+        const response = await fetch(`/api/tour/qr/${encodeURIComponent(qrCode)}`);
+        if (response.ok) {
+            const normalized = normalizeTourPayload(await response.json());
+            if (normalized) return normalized;
+        }
+    } catch (error) {
+        console.warn('Tour QR lookup failed:', error);
+    }
+
+    return getFallbackTourByQrCode(qrCode);
+}
+
+function getFallbackTourByQrCode(qrCode) {
+    const fallbackCodes = new Set(['VK-DEMO-TOUR-GATE', 'VK-TOUR-GATE-001', 'demo-tour-vinh-khanh']);
+    if (!fallbackCodes.has(qrCode)) return null;
+
+    const pois = (AppState.pois.length ? AppState.pois : getDemoPois())
+        .filter(p => p.isActive !== false)
+        .sort((a, b) => (a.priority || 99) - (b.priority || 99));
+
+    return normalizeTourPayload({
+        tour: {
+            id: 'demo-tour-vinh-khanh',
+            qrCode,
+            name: {
+                vi: 'Tour Am Thuc Vinh Khanh',
+                en: 'Vinh Khanh Food Tour'
+            },
+            description: {
+                vi: 'Quet QR tai cong de mo danh sach cac quan trong tour.',
+                en: 'Scan the gate QR to open the ordered restaurant list for this tour.'
+            }
+        },
+        pois
+    });
+}
+
+async function openTourFromQr(payload, qrCode) {
+    const normalized = normalizeTourPayload(payload);
+    if (!normalized || normalized.pois.length === 0) {
+        showAppMessage(
+            await getUiText('qrNotFoundTitle', AppState.language),
+            await getUiText('qrNotFoundMessage', AppState.language),
+            'route',
+            7000
+        );
+        return;
+    }
+
+    normalized.pois.forEach(poi => {
+        if (!AppState.pois.some(existing => existing.id === poi.id)) {
+            AppState.pois.push(poi);
+        }
+    });
+
+    AppState.activeTour = {
+        tour: normalized.tour,
+        pois: normalized.pois,
+        currentIndex: 0,
+        qrCode
+    };
+
+    renderTourPoiList();
+
+    const firstPoi = normalized.pois[0];
+    await showPoiDetail(firstPoi);
+    mapManager.centerOnPoi(firstPoi.id);
+
+    document.getElementById('poi-panel')?.classList.remove('hidden');
+    showAppMessage(
+        t('tourOpenedTitle'),
+        `${t('tourOpenedMessage')} (${normalized.pois.length} ${t('tourStep').toLowerCase()})`,
+        'route',
+        5000
+    );
+}
+
+function trackTourQrScan() {
+    fetch('/api/analytics/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            eventType: 'qr_scan',
+            poiId: null,
+            sessionId: window.APP_SESSION_ID || 'unknown',
+            latitude: geofenceManager.currentPosition?.lat,
+            longitude: geofenceManager.currentPosition?.lng,
+            language: AppState.language
+        })
+    }).catch(() => { });
+}
+
 async function showAudioPrompt(poi) {
     // Xóa prompt cũ nếu có
     const old = document.getElementById('audio-prompt-overlay');
@@ -1221,8 +1385,13 @@ async function changeLanguage(lang) {
             await getLocalizedPoiText(poi, 'description', lang);
         }));
         mapManager.updateLanguage(AppState.pois, lang);
-        renderPoiList(AppState.pois);
+        if (AppState.activeTour) {
+            renderTourPoiList();
+        } else {
+            renderPoiList(AppState.pois);
+        }
         await applyUILanguage(lang);
+        if (AppState.activeTour) renderTourPoiList();
 
         // Re-sync audio player bar
         if (audioManager.onStateChange) {
@@ -1257,6 +1426,28 @@ function setBtnText(btnId, text) {
 }
 
 
+function renderTourPoiList() {
+    if (!AppState.activeTour) return;
+
+    const panelTitle = document.querySelector('#poi-panel .poi-panel-header h2');
+    const filterBar = document.querySelector('.poi-filter-bar');
+    const tourName = getLocalizedTextMapSync(AppState.activeTour.tour?.name);
+
+    if (panelTitle) {
+        panelTitle.innerHTML = `<span class="material-icons-round">route</span> ${escapeHtml(tourName || t('tourListTitle'))}`;
+    }
+    filterBar?.classList.add('hidden');
+
+    renderPoiList(AppState.activeTour.pois, 'all');
+}
+
+function resetPoiPanelTitle() {
+    const panelTitle = document.querySelector('#poi-panel .poi-panel-header h2');
+    const filterBar = document.querySelector('.poi-filter-bar');
+    if (panelTitle) panelTitle.textContent = t('poiList');
+    filterBar?.classList.remove('hidden');
+}
+
 function renderPoiList(pois, filter = 'all') {
     const listEl = document.getElementById('poi-list');
     const lang = AppState.language;
@@ -1264,16 +1455,19 @@ function renderPoiList(pois, filter = 'all') {
 
     const filtered = filter === 'all' ? pois : pois.filter(p => p.category === filter);
 
-    listEl.innerHTML = filtered.map(poi => {
+    listEl.innerHTML = filtered.map((poi) => {
         const name = getLocalizedPoiTextSync(poi, 'name', lang);
         const desc = getLocalizedPoiTextSync(poi, 'description', lang);
         const icon = emoji[poi.category] || '📍';
         const distance = geofenceManager.getDistanceTo(poi.latitude, poi.longitude);
         const distText = GeofenceManager.formatDistance(distance);
+        const tourIndex = AppState.activeTour?.pois.findIndex(p => p.id === poi.id) ?? -1;
+        const isActive = AppState.selectedPoi?.id === poi.id;
+        const iconContent = tourIndex >= 0 ? `<span class="poi-step-number">${tourIndex + 1}</span>` : icon;
 
         return `
-            <div class="poi-item" data-poi-id="${poi.id}" onclick="onPoiItemClick('${poi.id}')">
-                <div class="poi-item-icon ${poi.category}">${icon}</div>
+            <div class="poi-item ${isActive ? 'active' : ''}" data-poi-id="${poi.id}" onclick="onPoiItemClick('${poi.id}')">
+                <div class="poi-item-icon ${poi.category}">${iconContent}</div>
                 <div class="poi-item-info">
                     <div class="poi-item-name">${escapeHtml(name)}</div>
                     <div class="poi-item-desc">${escapeHtml(desc)}</div>
@@ -1287,6 +1481,8 @@ function renderPoiList(pois, filter = 'all') {
 function onPoiItemClick(poiId) {
     const poi = AppState.pois.find(p => p.id === poiId);
     if (poi) {
+        const tourIndex = AppState.activeTour?.pois.findIndex(p => p.id === poiId) ?? -1;
+        if (tourIndex >= 0) AppState.activeTour.currentIndex = tourIndex;
         showPoiDetail(poi);
         mapManager.centerOnPoi(poiId);
         // Close panel on mobile
@@ -1324,16 +1520,74 @@ async function showPoiDetail(poi) {
 
     // Set QR code ngay trong bottom sheet
     // QR encode URL → khi du khách quét bằng camera sẽ mở app và tự phát thuyết minh
-    const qrCode = poi.qrCode || poi.id;
-    const qrUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
+    const tourQrCode = AppState.activeTour?.tour?.qrCode || AppState.activeTour?.tour?.id;
+    const qrUrl = tourQrCode ? `${window.location.origin}/index.html?qr=${encodeURIComponent(tourQrCode)}&lang=${AppState.language}` : '';
     const qrImg = document.getElementById('detail-qr-img');
+    const qrBtn = document.getElementById('btn-qr-thumb');
     if (qrImg) {
-        qrImg.alt = `QR Code - ${name}`;
-        setQrImage(qrImg, qrUrl, 200);
+        if (tourQrCode) {
+            qrBtn?.classList.remove('hidden');
+            qrBtn.title = t('tourQrTitle');
+            qrImg.alt = t('tourQrTitle');
+            setQrImage(qrImg, qrUrl, 200);
+        } else {
+            qrBtn?.classList.add('hidden');
+            qrImg.removeAttribute('src');
+        }
     }
 
     document.getElementById('poi-detail').classList.remove('hidden');
     mapManager.setActiveMarker(poi.id);
+    renderTourNavigation(poi);
+}
+
+function renderTourNavigation(poi) {
+    let nav = document.getElementById('tour-step-nav');
+    if (!AppState.activeTour) {
+        nav?.remove();
+        return;
+    }
+
+    const index = AppState.activeTour.pois.findIndex(p => p.id === poi.id);
+    if (index < 0) {
+        nav?.remove();
+        return;
+    }
+
+    AppState.activeTour.currentIndex = index;
+    const total = AppState.activeTour.pois.length;
+    if (!nav) {
+        nav = document.createElement('div');
+        nav.id = 'tour-step-nav';
+        nav.className = 'tour-step-nav';
+        const actions = document.querySelector('.poi-detail-actions');
+        actions?.parentNode?.insertBefore(nav, actions);
+    }
+
+    nav.innerHTML = `
+        <div class="tour-step-label">${t('tourStep')} ${index + 1}/${total}</div>
+        <div class="tour-step-actions">
+            <button class="tour-step-btn" onclick="goToTourStop(-1)" ${index === 0 ? 'disabled' : ''}>
+                <span class="material-icons-round">chevron_left</span>${escapeHtml(t('tourPrev'))}
+            </button>
+            <button class="tour-step-btn primary" onclick="goToTourStop(1)" ${index >= total - 1 ? 'disabled' : ''}>
+                ${escapeHtml(t('tourNext'))}<span class="material-icons-round">chevron_right</span>
+            </button>
+        </div>
+    `;
+
+    renderPoiList(AppState.activeTour.pois, 'all');
+}
+
+async function goToTourStop(delta) {
+    if (!AppState.activeTour) return;
+    const nextIndex = AppState.activeTour.currentIndex + delta;
+    if (nextIndex < 0 || nextIndex >= AppState.activeTour.pois.length) return;
+
+    AppState.activeTour.currentIndex = nextIndex;
+    const poi = AppState.activeTour.pois[nextIndex];
+    await showPoiDetail(poi);
+    mapManager.centerOnPoi(poi.id);
 }
 
 function closePoiDetail() {
@@ -1349,11 +1603,15 @@ function togglePoiPanel() {
     const panel = document.getElementById('poi-panel');
     panel.classList.toggle('hidden');
     if (!panel.classList.contains('hidden')) {
+        if (AppState.activeTour) renderTourPoiList();
+        else resetPoiPanelTitle();
         updatePoiDistances();
     }
 }
 
 function filterPois(category) {
+    AppState.activeTour = null;
+    resetPoiPanelTitle();
     renderPoiList(AppState.pois, category);
 }
 
@@ -1517,6 +1775,22 @@ function setupBottomSheetDrag() {
 // ==================== QR LIGHTBOX ====================
 
 async function openQrLightbox() {
+    if (AppState.activeTour?.tour) {
+        const tour = AppState.activeTour.tour;
+        const name = getLocalizedTextMapSync(tour.name) || t('tourQrTitle');
+        const qrCode = tour.qrCode || tour.id;
+        const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
+
+        document.getElementById('qr-lightbox-name').textContent = name;
+        setQrImage(document.getElementById('qr-lightbox-img'), appUrl, 480);
+
+        const hint = document.querySelector('.qr-lightbox-hint');
+        if (hint) hint.innerHTML = `<span class="material-icons-round" style="font-size:18px;vertical-align:middle;">route</span> ${escapeHtml(t('tourQrHint'))}`;
+
+        document.getElementById('qr-lightbox').classList.remove('hidden');
+        return;
+    }
+
     const poi = AppState.selectedPoi;
     if (!poi) return;
 

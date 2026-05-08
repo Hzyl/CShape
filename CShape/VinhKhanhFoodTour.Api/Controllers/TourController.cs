@@ -15,6 +15,16 @@ namespace VinhKhanhFoodTour.Api.Controllers
             _tourService = tourService;
         }
 
+        [HttpGet("qr/{qrCode}")]
+        public async Task<ActionResult<object>> GetByQrCode(string qrCode)
+        {
+            var tour = await _tourService.GetActiveByQrCodeAsync(qrCode);
+            if (tour == null) return NotFound(new { message = "Tour QR not found" });
+
+            var pois = await _tourService.GetOrderedPoisAsync(tour);
+            return Ok(new { tour, pois });
+        }
+
         [HttpGet]
         public async Task<ActionResult<List<Tour>>> GetAll()
         {

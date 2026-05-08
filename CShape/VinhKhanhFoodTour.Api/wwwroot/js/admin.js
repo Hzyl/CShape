@@ -505,6 +505,7 @@ async function loadPoisTable() {
                 </td>
             </tr>
         `}).join('');
+        tbody.querySelectorAll('button[onclick^="viewQr"]').forEach(btn => btn.remove());
     } catch (err) {
         console.error('Load POIs error:', err);
     }
@@ -672,6 +673,9 @@ async function loadTours() {
                     <p>📏 ${tour.estimatedDistance || 0} km</p>
                 </div>
                 <div style="margin-top: 12px; display: flex; gap: 8px;">
+                    <button class="btn btn-primary btn-sm" onclick="viewTourQr('${tour.id}')">
+                        <span class="material-icons-round" style="font-size: 14px">qr_code_2</span> QR Tour
+                    </button>
                     <button class="btn btn-danger btn-sm" onclick="deleteTour('${tour.id}')">
                         <span class="material-icons-round" style="font-size: 14px">delete</span> Xóa
                     </button>
@@ -843,6 +847,26 @@ async function loadTranslations() {
 
 // ==================== QR VIEWER ====================
 
+async function viewTourQr(tourId) {
+    const tour = adminTours.find(t => t.id === tourId);
+    if (!tour) return;
+    await getQrNetworkInfo();
+
+    const qrCode = tour.qrCode || tour.id;
+    const name = tour.name?.vi || tour.name?.en || 'Tour';
+    const modal = document.getElementById('qr-view-modal');
+
+    document.querySelector('#qr-view-modal .modal-header h2').textContent = 'Ma QR Tour';
+    document.getElementById('qr-poi-name').textContent = name;
+
+    modal.dataset.poiName = name;
+    modal.dataset.qrCode = qrCode;
+    modal.dataset.qrKind = 'tour';
+    modal.classList.remove('hidden');
+
+    await renderQrForCurrentModal();
+}
+
 async function viewQr(poiId) {
     const poi = adminPois.find(p => p.id === poiId);
     if (!poi) return;
@@ -853,11 +877,13 @@ async function viewQr(poiId) {
     const name = poi.name?.vi || 'Điểm Thuyết Minh';
     const modal = document.getElementById('qr-view-modal');
 
+    document.querySelector('#qr-view-modal .modal-header h2').textContent = 'Ma QR Diem';
     document.getElementById('qr-poi-name').textContent = name;
 
     // Lưu để dùng khi in
     modal.dataset.poiName = name;
     modal.dataset.qrCode = qrCode;
+    modal.dataset.qrKind = 'poi';
     modal.classList.remove('hidden');
 
     await renderQrForCurrentModal();
@@ -871,6 +897,10 @@ function printQr() {
     const container = document.getElementById('qr-image-container').innerHTML;
     const name = document.getElementById('qr-poi-name').textContent;
     const code = document.getElementById('qr-poi-code').textContent;
+    const isTourQr = document.getElementById('qr-view-modal').dataset.qrKind === 'tour';
+    const printHint = isTourQr
+        ? 'Quet ma QR nay tai cong de mo danh sach quan trong tour.'
+        : 'Quet ma QR nay de mo diem thuyet minh.';
 
     const printWindow = window.open('', '', 'height=600,width=800');
     // Mở một cửa sổ mới để in
@@ -881,7 +911,7 @@ function printQr() {
     printWindow.document.write(`<h2 style="font-size: 24px; color: #FF6B35;">${name}</h2>`);
     printWindow.document.write(container);
     printWindow.document.write(`<p style="font-weight: bold; color: #000;">${code}</p>`);
-    printWindow.document.write('<p>Quét mã này bằng ứng dụng <br><strong>Vĩnh Khánh Food Tour</strong> để nghe thuyết minh.</p>');
+    printWindow.document.write(`<p>${printHint}</p>`);
     printWindow.document.write('</body></html>');
     printWindow.document.close();
     printWindow.focus();

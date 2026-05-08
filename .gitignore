@@ -14,3 +14,4 @@ obj/
 *.suo
 Thumbs.db
 .DS_Store
+.ai_skills/**

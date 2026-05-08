@@ -18,6 +18,9 @@ namespace VinhKhanhFoodTour.Api.Models
         [BsonElement("description")]
         public Dictionary<string, string> Description { get; set; } = new();
 
+        [BsonElement("qrCode")]
+        public string? QrCode { get; set; }
+
         /// <summary>Danh sách POI ID theo thứ tự tour</summary>
         [BsonElement("poiIds")]
         public List<string> PoiIds { get; set; } = new();

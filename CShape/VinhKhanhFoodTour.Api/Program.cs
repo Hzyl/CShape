@@ -275,6 +275,7 @@ static int GetLanAddressPriority(string address)
 static void MapDemoApi(WebApplication app)
 {
     var demoPois = CreateDemoPois();
+    var demoTours = CreateDemoTours(demoPois);
     var analyticsEvents = new List<AnalyticsEvent>();
 
     app.MapPost("/api/auth/login", IResult (LoginRequest request) =>
@@ -332,8 +333,32 @@ static void MapDemoApi(WebApplication app)
         return removed > 0 ? Results.NoContent() : Results.NotFound();
     });
 
-    app.MapGet("/api/tour", () => Results.Ok(Array.Empty<Tour>()));
-    app.MapGet("/api/tour/{id}", IResult (string id) => Results.NotFound());
+    app.MapGet("/api/tour", IResult (HttpRequest request) =>
+    {
+        if (!AdminTokenHelper.IsAuthorized(request)) return Results.Unauthorized();
+        return Results.Ok(demoTours);
+    });
+    app.MapGet("/api/tour/qr/{qrCode}", IResult (string qrCode) =>
+    {
+        var tour = demoTours.FirstOrDefault(t => t.IsActive && (t.QrCode == qrCode || t.Id == qrCode));
+        if (tour == null) return Results.NotFound(new { message = "Tour QR not found" });
+
+        var order = tour.PoiIds
+            .Select((id, index) => new { id, index })
+            .ToDictionary(x => x.id, x => x.index);
+        var pois = demoPois
+            .Where(p => p.IsActive && p.Id != null && order.ContainsKey(p.Id))
+            .OrderBy(p => p.Id != null ? order[p.Id] : int.MaxValue)
+            .ThenBy(p => p.Priority)
+            .ToList();
+
+        return Results.Ok(new { tour, pois });
+    });
+    app.MapGet("/api/tour/{id}", IResult (HttpRequest request, string id) =>
+    {
+        if (!AdminTokenHelper.IsAuthorized(request)) return Results.Unauthorized();
+        return demoTours.FirstOrDefault(t => t.Id == id) is { } tour ? Results.Ok(tour) : Results.NotFound();
+    });
 
     app.MapPost("/api/analytics/event", IResult (AnalyticsEvent ev) =>
     {
@@ -432,6 +457,33 @@ static void MapDemoApi(WebApplication app)
         }
     });
 }
+
+static List<Tour> CreateDemoTours(List<Poi> demoPois) =>
+[
+    new Tour
+    {
+        Id = "demo-tour-vinh-khanh",
+        QrCode = "VK-DEMO-TOUR-GATE",
+        Name = new()
+        {
+            ["vi"] = "Tour Am Thuc Vinh Khanh",
+            ["en"] = "Vinh Khanh Food Tour"
+        },
+        Description = new()
+        {
+            ["vi"] = "Quet QR tai cong de mo danh sach cac quan trong tour.",
+            ["en"] = "Scan the gate QR to open the ordered restaurant list for this tour."
+        },
+        PoiIds = demoPois
+            .Where(p => p.IsActive && !string.IsNullOrWhiteSpace(p.Id))
+            .OrderBy(p => p.Priority)
+            .Select(p => p.Id!)
+            .ToList(),
+        EstimatedDuration = 45,
+        EstimatedDistance = 0.8,
+        IsActive = true
+    }
+];
 
 static List<Poi> CreateDemoPois() =>
 [

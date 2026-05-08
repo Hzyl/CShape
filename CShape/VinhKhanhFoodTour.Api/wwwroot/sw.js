@@ -4,9 +4,9 @@
  * Khi offline → phục vụ từ cache
  */
 
-const CACHE_NAME = 'vinhkhanh-v11';
-const API_CACHE = 'vinhkhanh-api-v11';
-const TILE_CACHE = 'vinhkhanh-tiles-v11';
+const CACHE_NAME = 'vinhkhanh-v12';
+const API_CACHE = 'vinhkhanh-api-v12';
+const TILE_CACHE = 'vinhkhanh-tiles-v12';
 
 // Static assets cần pre-cache
 const PRECACHE_ASSETS = [
@@ -15,8 +15,8 @@ const PRECACHE_ASSETS = [
     '/admin.html',
     '/css/app.css',
     '/css/admin.css',
-    '/js/app.js?v=11',
-    '/js/admin.js?v=11',
+    '/js/app.js?v=18',
+    '/js/admin.js?v=18',
     '/js/audio-manager.js?v=11',
     '/js/map.js?v=11',
     '/js/geofence.js?v=11',
