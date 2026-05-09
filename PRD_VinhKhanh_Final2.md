@@ -183,39 +183,39 @@ sequenceDiagram
     Scanner->>Scanner: _onScanSuccess(decodedText)<br/>📍 qr-scanner.js:65
     Scanner->>App: Callback onQRDetected(decodedText)
 
-    App->>App: handleQrCode(rawQrCode)<br/>📍 app.js:962
-    App->>App: handleTourQrCode(rawQrCode)<br/>📍 app.js:1038
+    App->>App: handleQrCode(rawQrCode)<br/>📍 app.js:963
+    App->>App: handleTourQrCode(rawQrCode)<br/>📍 app.js:981
 
     Note over App: Bước 1 — Tách mã QR
-    App->>App: extractTourQrCode(rawQrCode)<br/>📍 app.js:1050<br/>Trích ?tour= hoặc ?qr= từ URL
+    App->>App: extractTourQrCode(rawQrCode)<br/>📍 app.js:993<br/>Trích ?tour= hoặc ?qr= từ URL
 
     Note over App: Bước 2 — Gọi API lấy tour
-    App->>API: resolveTourByQrCode(qrCode)<br/>📍 app.js:1072<br/>GET /api/tour/qr/{qrCode}
-    API->>API: MapGet("/api/tour/qr/{qrCode}")<br/>📍 Program.cs:341
+    App->>API: resolveTourByQrCode(qrCode)<br/>📍 app.js:1015<br/>GET /api/tour/qr/{qrCode}
+    API->>API: MapGet("/api/tour/qr/{qrCode}")<br/>📍 Program.cs:339
     API->>DB: Tìm tour → lấy POI theo thứ tự
     DB-->>API: { tour, pois[] }
     API-->>App: JSON { tour, pois[] }
 
     alt API lỗi hoặc offline
-        App->>App: getFallbackTourByQrCode(qrCode)<br/>📍 app.js:1086<br/>Dùng POI demo trong bộ nhớ
+        App->>App: getFallbackTourByQrCode(qrCode)<br/>📍 app.js:1029<br/>Dùng POI demo trong bộ nhớ
     end
 
     Note over App: Bước 3 — Mở tour & hiện danh sách quán
-    App->>App: openTourFromQr(payload, qrCode)<br/>📍 app.js:1111
-    App->>App: normalizeTourPayload(payload)<br/>📍 app.js:1061
+    App->>App: openTourFromQr(payload, qrCode)<br/>📍 app.js:1054
+    App->>App: normalizeTourPayload(payload)<br/>📍 app.js:1004
     App->>App: AppState.activeTour = {tour, pois, currentIndex: 0}
-    App->>App: renderTourPoiList()<br/>📍 app.js:1428
-    App->>App: showPoiDetail(firstPoi)<br/>📍 app.js:1139 — Hiện quán đầu tiên
+    App->>App: renderTourPoiList()<br/>📍 app.js:1372
+    App->>App: showPoiDetail(firstPoi)<br/>📍 app.js:1438 — Hiện quán đầu tiên
     App-->>User: Hiện danh sách quán + nút Trước/Tiếp
 
     Note over App: Bước 4 — Ghi thống kê
-    App->>API: trackTourQrScan()<br/>📍 app.js:1151<br/>POST /api/analytics/event {eventType: "qr_scan"}
+    App->>API: trackTourQrScan()<br/>📍 app.js:1094<br/>POST /api/analytics/event {eventType: "qr_scan"}
 
     Note over User,App: Chuyển tiếp giữa các quán
     User->>App: Bấm "Tiếp theo" hoặc "Trước"
-    App->>App: goToTourStop(delta)<br/>📍 app.js:1582
+    App->>App: goToTourStop(delta)<br/>📍 app.js:1525
     App->>App: showPoiDetail(nextPoi)<br/>Hiện quán kế tiếp + phát audio
-    App->>App: renderTourNavigation(poi)<br/>📍 app.js:1544<br/>Cập nhật "Điểm 2/5"
+    App->>App: renderTourNavigation(poi)<br/>📍 app.js:1487<br/>Cập nhật "Điểm 2/5"
 ```
 
 ### 9.2 Luồng Đổi Ngôn Ngữ và Phát Thuyết Minh (TTS)
