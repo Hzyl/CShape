@@ -371,7 +371,7 @@ static void MapDemoApi(WebApplication app)
         return Results.Ok(new
         {
             eventCounts = analyticsEvents.GroupBy(e => e.EventType).ToDictionary(g => g.Key, g => g.Count()),
-            uniqueSessions = analyticsEvents.Select(e => e.SessionId).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().Count(),
+            uniqueSessions = analyticsEvents.Select(e => e.SessionId).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().Count(), activeNow = analyticsEvents.Where(e => e.Timestamp >= DateTime.UtcNow.AddMinutes(-10)).Select(e => e.SessionId).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().Count(),
             generatedAt = DateTime.UtcNow
         });
     });

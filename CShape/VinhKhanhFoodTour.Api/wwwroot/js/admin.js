@@ -329,6 +329,7 @@ async function loadDashboardData() {
         // Update stat cards
         document.getElementById('stat-pois').textContent = adminPois.length;
         document.getElementById('stat-sessions').textContent = stats.uniqueSessions || 0;
+        document.getElementById('stat-active').textContent = stats.activeNow || 0;
         document.getElementById('stat-listens').textContent = (stats.eventCounts?.poi_enter || 0) + (stats.eventCounts?.qr_scan || 0) + (stats.eventCounts?.poi_listen || 0);
         document.getElementById('stat-qr').textContent = stats.eventCounts?.qr_scan || 0;
 
@@ -490,9 +491,7 @@ async function loadPoisTable() {
                 <td><span style="font-weight: 600; color: ${rank <= 3 ? 'var(--primary)' : 'var(--text-muted)'}" title="🎧 ${poi.listenCount} lượt nghe">${rankBadge(rank)}</span></td>
                 <td><span class="status-badge ${poi.isActive ? 'active' : 'inactive'}">${poi.isActive ? 'Hoạt động' : 'Ẩn'}</span></td>
                 <td class="actions">
-                    <button class="btn btn-primary btn-sm" onclick="viewQr('${poi.id}')" title="Hiển thị mã QR">
-                        <span class="material-icons-round" style="font-size: 16px">qr_code_2</span>
-                    </button>
+                    
                     <button class="btn btn-ghost btn-sm" onclick="editPoi('${poi.id}')" title="Sửa">
                         <span class="material-icons-round" style="font-size: 16px">edit</span>
                     </button>
@@ -524,7 +523,7 @@ function openPoiModal(poi = null) {
         document.getElementById('poi-radius').value = poi.radius;
         document.getElementById('poi-priority').value = poi.priority;
         document.getElementById('poi-category').value = poi.category;
-        document.getElementById('poi-qrcode').value = poi.qrCode || '';
+        
         document.getElementById('poi-address').value = poi.address || '';
         document.getElementById('poi-hours').value = poi.openingHours || '';
         document.getElementById('poi-price').value = poi.priceRange || '';
@@ -542,7 +541,7 @@ function openPoiModal(poi = null) {
     }
 
     // QR là readonly — admin không cần nhập tay
-    document.getElementById('poi-qrcode').readOnly = true;
+    
 }
 
 function closePoiModal() {
@@ -576,7 +575,7 @@ async function savePoi(e) {
         radius: parseInt(document.getElementById('poi-radius').value),
         priority: parseInt(document.getElementById('poi-priority').value),
         category: document.getElementById('poi-category').value,
-        qrCode: document.getElementById('poi-qrcode').value,
+        
         address: document.getElementById('poi-address').value,
         openingHours: document.getElementById('poi-hours').value,
         priceRange: document.getElementById('poi-price').value,
