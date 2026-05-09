@@ -940,256 +940,413 @@ function setupAudioCallbacks() {
     };
 }
 
-function setupQRCallbacks() {
-    qrScanner.onQRDetected = async (rawQrCode) => {
-        closeQRModal();
-        await handleQrCode(rawQrCode);
-    };
-    qrScanner.onError = async () => {
-        closeQRModal();
-        showAppMessage(
-            await getUiText('cameraErrorTitle', AppState.language),
-            await getUiText('cameraErrorMessage', AppState.language),
-            'photo_camera_off',
-            7000
-        );
-    };
-}
-
-/**
- * Xử lý mã QR — dùng cả cho QR scanner trong app lẫn QR param từ URL
- */
-async function handleQrCode(rawQrCode) {
-    if (await handleTourQrCode(rawQrCode)) return;
-    // Nếu QR chứa URL (ví dụ: https://host/index.html?qr=VK-POI-001)
-    // → trích xuất mã QR thật từ param ?qr=
-    let qrCode = rawQrCode;
-    try {
-        const url = new URL(rawQrCode);
-        const qrParam = url.searchParams.get('qr');
-        if (qrParam) {
-            qrCode = qrParam;
-            console.log('📱 Extracted QR code from URL:', qrCode);
+    /**
+     * Lấy script thuyết minh đúng ngôn ngữ.
+     * VI/EN là ngôn ngữ nguồn cố định. Các ngôn ngữ khác dịch runtime và cache ở client.
+     */
+    async function getPoiScript(poi, lang) {
+        if (isSourceLanguage(lang) && poi.ttsScript?.[lang]) {
+            return poi.ttsScript[lang];
         }
-    } catch (e) {
-        // Không phải URL → dùng nguyên giá trị
+
+        const { lang: sourceLang, text: sourceText } = getSourceText(poi.ttsScript);
+        if (!sourceText) return '';
+        if (lang === sourceLang) return sourceText;
+
+        const translated = await translateWithCache('poi.ttsScript', poi.id || poi.qrCode || 'tts', sourceText, sourceLang, lang);
+        if (translated) {
+            if (!poi.ttsScript) poi.ttsScript = {};
+            poi.ttsScript[lang] = translated;
+            console.log(`🌐 Đã dịch thuyết minh từ [${sourceLang}] sang [${lang}]:`, translated.substring(0, 50) + '...');
+            return translated;
+        }
+
+        return sourceText;
     }
 
-    console.log('🔍 Looking up POI for QR:', qrCode);
+    /**
+     * Dịch văn bản bằng Google Translate API (client-side, miễn phí)
+     * @param {string} text - Văn bản cần dịch
+     * @param {string} from - Mã ngôn ngữ nguồn (vd: 'vi')
+     * @param {string} to - Mã ngôn ngữ đích (vd: 'ko')
+     * @returns {Promise<string>} Văn bản đã dịch
+     */
+    async function translateText(text, from, to) {
+        // Chia nhỏ text nếu dài quá (Google giới hạn ~5000 ký tự/request)
+        const maxLen = 4500;
+        if (text.length <= maxLen) {
+            return await _translateChunk(text, from, to);
+        }
 
-    // Bước 1: Tìm trong dữ liệu đã load (nhanh, hoạt động offline)
-    let poi = AppState.pois.find(p =>
-        (p.qrCode && p.qrCode === qrCode) || p.id === qrCode
-    );
-
-    // Bước 2: Nếu không tìm thấy local → thử gọi API
-    if (!poi) {
-        try {
-            const response = await fetch(`/api/poi/qr/${encodeURIComponent(qrCode)}`);
-            if (response.ok) {
-                poi = await response.json();
-                poi.id = poi.id || poi._id;
+        // Chia theo câu
+        const sentences = text.split(/(?<=[.!?。\n])\s*/);
+        let chunks = [];
+        let current = '';
+        for (const s of sentences) {
+            if ((current + s).length <= maxLen) {
+                current += s;
+            } else {
+                if (current) chunks.push(current);
+                current = s;
             }
-        } catch (e) {
-            console.warn('API QR lookup failed:', e);
+        }
+        if (current) chunks.push(current);
+
+        const results = await Promise.all(chunks.map(c => _translateChunk(c, from, to)));
+        return results.join(' ');
+    }
+
+    async function _translateChunk(text, from, to) {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        // Response format: [[["đoạn dịch", "đoạn gốc"], ...], ...]
+        if (data && data[0]) {
+            return data[0].map(item => item[0]).join('');
+        }
+        return text;
+    }
+
+    function updateNetworkStatus() {
+        const banner = document.getElementById('offline-banner');
+        if (!banner) return;
+
+        if (!navigator.onLine) {
+            banner.classList.remove('hidden');
+            const text = banner.querySelector('span:last-child');
+            if (text) text.textContent = t('offline');
+            console.log('📶 App is offline');
+        } else {
+            banner.classList.add('hidden');
+            console.log('📶 App is online');
         }
     }
 
-    if (!poi) {
+    function updateSplashStatus(text) {
+        const el = document.getElementById('splash-status');
+        if (el) el.textContent = text;
+    }
+
+    // ==================== GEOFENCE CALLBACKS ====================
+
+    function setupGeofenceCallbacks() {
+        geofenceManager.onLocationUpdate = (lat, lng, accuracy) => {
+            mapManager.updateUserLocation(lat, lng, accuracy);
+
+            // Update GPS status bar
+            const gpsBar = document.getElementById('gps-status');
+            const gpsText = document.getElementById('gps-text');
+            const gpsAccuracy = document.getElementById('gps-accuracy');
+
+            gpsBar.classList.add('active');
+            gpsText.textContent = t('gpsActive');
+            gpsAccuracy.textContent = `${t('accuracy')}: ±${Math.round(accuracy)}m`;
+            document.getElementById('gps-reality-hint')?.classList.add('hidden');
+            AppState.isGpsActive = true;
+        };
+
+        geofenceManager.onPoiEnter = (poi, distance) => {
+            console.log(`📍 Entered POI: ${poi.name.vi} (${Math.round(distance)}m)`);
+
+            // Tìm full POI data
+            const fullPoi = AppState.pois.find(p => p.id === poi.id);
+            if (!fullPoi) return;
+
+            // Chỉ phát 1 lần/POI trong session
+            if (audioManager.hasPlayed(poi.id)) {
+                console.log(`⏭️ POI ${poi.name.vi} đã được thuyết minh trong session này, bỏ qua.`);
+                return;
+            }
+
+            const lang = AppState.language;
+            const name = getLocalizedPoiTextSync(fullPoi, 'name', lang);
+
+            // Show toast notification
+            showGeofenceToast(name, fullPoi);
+
+            // Auto-play TTS với dịch tự động nếu cần
+            (async () => {
+                const script = await getPoiScript(fullPoi, lang);
+                audioManager.enqueue(poi.id, script, name, poi.priority);
+            })();
+
+            // Track analytics
+            fetch('/api/analytics/event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    eventType: 'poi_enter',
+                    poiId: poi.id,
+                    sessionId: window.APP_SESSION_ID,
+                    latitude: geofenceManager.currentPosition?.lat,
+                    longitude: geofenceManager.currentPosition?.lng
+                })
+            }).catch(() => { });
+        };
+
+        geofenceManager.onClosestPoi = (poi, distance) => {
+            mapManager.highlightClosest(poi.id);
+
+            // Update distance trong POI list
+            updatePoiDistances();
+        };
+
+        geofenceManager.onStatusChange = (status) => {
+            const gpsBar = document.getElementById('gps-status');
+            const gpsText = document.getElementById('gps-text');
+            const icon = gpsBar.querySelector('.gps-icon');
+
+            if (status === 'error') {
+                gpsBar.classList.remove('active');
+                gpsText.textContent = t('gpsError');
+                icon.textContent = 'gps_off';
+                AppState.isGpsActive = false;
+            }
+        };
+
+        geofenceManager.onError = async (message) => {
+            const gpsText = document.getElementById('gps-text');
+            const gpsHint = document.getElementById('gps-reality-hint');
+            const gpsHintText = document.getElementById('gps-reality-text');
+            const friendlyTitle = await getUiText('gpsError', AppState.language);
+            const friendlyHint = await getUiText('gpsRealityHint', AppState.language);
+
+            gpsText.textContent = isSourceLanguage(AppState.language) ? message : friendlyTitle;
+            if (gpsHintText) gpsHintText.textContent = friendlyHint;
+            gpsHint?.classList.remove('hidden');
+            showAppMessage(friendlyTitle, `${isSourceLanguage(AppState.language) ? message + '. ' : ''}${friendlyHint}`, 'gps_off', 7000);
+        };
+    }
+
+    // ==================== AUDIO CALLBACKS ====================
+
+    function setupAudioCallbacks() {
+        audioManager.onStateChange = (state) => {
+            const playerBar = document.getElementById('audio-player');
+            const playBtn = document.getElementById('btn-audio-play');
+            const titleEl = document.getElementById('audio-title');
+            const waveEl = document.querySelector('.audio-wave');
+            const fabStop = document.getElementById('btn-fab-stop');
+            const bottomSheet = document.getElementById('poi-detail');
+
+            if (state.isPlaying || state.isPaused) {
+                playerBar.classList.remove('hidden');
+                fabStop.classList.remove('hidden');
+                titleEl.textContent = state.currentItem?.title || '';
+
+                // Đẩy bottom-sheet lên trên khi audio bar xuất hiện (56px = chiều cao audio bar)
+                if (bottomSheet && !bottomSheet.classList.contains('hidden')) {
+                    bottomSheet.style.paddingBottom = '60px';
+                }
+
+                if (state.isPaused) {
+                    playBtn.querySelector('.material-icons-round').textContent = 'play_arrow';
+                    waveEl?.classList.add('paused');
+                } else {
+                    playBtn.querySelector('.material-icons-round').textContent = 'pause';
+                    waveEl?.classList.remove('paused');
+                }
+            } else {
+                playerBar.classList.add('hidden');
+                fabStop.classList.add('hidden');
+                if (bottomSheet) bottomSheet.style.paddingBottom = '';
+            }
+        };
+    }
+
+    function setupQRCallbacks() {
+        qrScanner.onQRDetected = async (rawQrCode) => {
+            closeQRModal();
+            await handleQrCode(rawQrCode);
+        };
+        qrScanner.onError = async () => {
+            closeQRModal();
+            showAppMessage(
+                await getUiText('cameraErrorTitle', AppState.language),
+                await getUiText('cameraErrorMessage', AppState.language),
+                'photo_camera_off',
+                7000
+            );
+        };
+    }
+
+    /**
+     * Xử lý mã QR — chỉ hỗ trợ QR Tour (quét tại cổng)
+     * Không hỗ trợ QR từng quán đơn lẻ
+     */
+    async function handleQrCode(rawQrCode) {
+        if (await handleTourQrCode(rawQrCode)) return;
+
+        // QR không phải Tour → thông báo lỗi
         showAppMessage(
             await getUiText('qrNotFoundTitle', AppState.language),
             await getUiText('qrNotFoundMessage', AppState.language),
             'qr_code_2',
             7000
         );
-        return;
     }
 
-    // Show detail + center map
-    showPoiDetail(poi);
-    mapManager.centerOnPoi(poi.id);
 
-    // 📊 Track qr_scan analytics — hoạt động cho CẢ scan từ app QR điện thoại lẫn QR scanner trong web
-    const scanSource = new URLSearchParams(window.location.search).has('qr') ? 'external_qr_app' : 'in_app_scanner';
-    fetch('/api/analytics/event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            eventType: 'qr_scan',
-            poiId: poi.id,
-            sessionId: window.APP_SESSION_ID || 'unknown',
-            latitude: geofenceManager.currentPosition?.lat,
-            longitude: geofenceManager.currentPosition?.lng
-        })
-    }).catch(() => { });
-    console.log(`📊 QR scan tracked: ${qrCode} (source: ${scanSource})`);
 
-    // Lưu POI pending để nút nghe có thể phát
-    window._pendingQrPoi = poi;
+    /**
+     * Xử lý QR Tour — gọi API lấy tour, mở danh sách quán, ghi analytics
+     * Trả về true nếu QR là tour hợp lệ, false nếu không phải tour
+     */
+    async function handleTourQrCode(rawQrCode) {
+        const qrCode = extractTourQrCode(rawQrCode);
+        if (!qrCode) return false;
 
-    // Hiện overlay "Bấm để nghe" — cần user gesture cho mobile
-    showAudioPrompt(poi);
-}
+        const payload = await resolveTourByQrCode(qrCode);
+        if (!payload) return false;
 
-/**
- * Hiện overlay to rõ ràng yêu cầu người dùng bấm để phát audio
- * Giải quyết vấn đề autoplay bị chặn trên điện thoại
- */
-async function handleTourQrCode(rawQrCode) {
-    const qrCode = extractTourQrCode(rawQrCode);
-    if (!qrCode) return false;
-
-    const payload = await resolveTourByQrCode(qrCode);
-    if (!payload) return false;
-
-    await openTourFromQr(payload, qrCode);
-    trackTourQrScan();
-    return true;
-}
-
-function extractTourQrCode(rawQrCode) {
-    let qrCode = String(rawQrCode || '').trim();
-    try {
-        const url = new URL(qrCode);
-        qrCode = url.searchParams.get('tour') || url.searchParams.get('qr') || qrCode;
-    } catch {
-        // Plain QR payload.
+        await openTourFromQr(payload, qrCode);
+        trackTourQrScan();
+        return true;
     }
-    return qrCode;
-}
 
-function normalizeTourPayload(payload) {
-    if (!payload?.tour) return null;
-
-    const tour = { ...payload.tour, id: payload.tour.id || payload.tour._id };
-    const pois = Array.isArray(payload.pois)
-        ? payload.pois.map(p => ({ ...p, id: p.id || p._id }))
-        : [];
-
-    return { tour, pois };
-}
-
-async function resolveTourByQrCode(qrCode) {
-    try {
-        const response = await fetch(`/api/tour/qr/${encodeURIComponent(qrCode)}`);
-        if (response.ok) {
-            const normalized = normalizeTourPayload(await response.json());
-            if (normalized) return normalized;
+    function extractTourQrCode(rawQrCode) {
+        let qrCode = String(rawQrCode || '').trim();
+        try {
+            const url = new URL(qrCode);
+            qrCode = url.searchParams.get('tour') || url.searchParams.get('qr') || qrCode;
+        } catch {
+            // Plain QR payload.
         }
-    } catch (error) {
-        console.warn('Tour QR lookup failed:', error);
+        return qrCode;
     }
 
-    return getFallbackTourByQrCode(qrCode);
-}
+    function normalizeTourPayload(payload) {
+        if (!payload?.tour) return null;
 
-function getFallbackTourByQrCode(qrCode) {
-    const fallbackCodes = new Set(['VK-DEMO-TOUR-GATE', 'VK-TOUR-GATE-001', 'demo-tour-vinh-khanh']);
-    if (!fallbackCodes.has(qrCode)) return null;
+        const tour = { ...payload.tour, id: payload.tour.id || payload.tour._id };
+        const pois = Array.isArray(payload.pois)
+            ? payload.pois.map(p => ({ ...p, id: p.id || p._id }))
+            : [];
 
-    const pois = (AppState.pois.length ? AppState.pois : getDemoPois())
-        .filter(p => p.isActive !== false)
-        .sort((a, b) => (a.priority || 99) - (b.priority || 99));
+        return { tour, pois };
+    }
 
-    return normalizeTourPayload({
-        tour: {
-            id: 'demo-tour-vinh-khanh',
-            qrCode,
-            name: {
-                vi: 'Tour Am Thuc Vinh Khanh',
-                en: 'Vinh Khanh Food Tour'
-            },
-            description: {
-                vi: 'Quet QR tai cong de mo danh sach cac quan trong tour.',
-                en: 'Scan the gate QR to open the ordered restaurant list for this tour.'
+    async function resolveTourByQrCode(qrCode) {
+        try {
+            const response = await fetch(`/api/tour/qr/${encodeURIComponent(qrCode)}`);
+            if (response.ok) {
+                const normalized = normalizeTourPayload(await response.json());
+                if (normalized) return normalized;
             }
-        },
-        pois
-    });
-}
+        } catch (error) {
+            console.warn('Tour QR lookup failed:', error);
+        }
 
-async function openTourFromQr(payload, qrCode) {
-    const normalized = normalizeTourPayload(payload);
-    if (!normalized || normalized.pois.length === 0) {
-        showAppMessage(
-            await getUiText('qrNotFoundTitle', AppState.language),
-            await getUiText('qrNotFoundMessage', AppState.language),
-            'route',
-            7000
-        );
-        return;
+        return getFallbackTourByQrCode(qrCode);
     }
 
-    normalized.pois.forEach(poi => {
-        if (!AppState.pois.some(existing => existing.id === poi.id)) {
-            AppState.pois.push(poi);
+    function getFallbackTourByQrCode(qrCode) {
+        const fallbackCodes = new Set(['VK-DEMO-TOUR-GATE', 'VK-TOUR-GATE-001', 'demo-tour-vinh-khanh']);
+        if (!fallbackCodes.has(qrCode)) return null;
+
+        const pois = (AppState.pois.length ? AppState.pois : getDemoPois())
+            .filter(p => p.isActive !== false)
+            .sort((a, b) => (a.priority || 99) - (b.priority || 99));
+
+        return normalizeTourPayload({
+            tour: {
+                id: 'demo-tour-vinh-khanh',
+                qrCode,
+                name: {
+                    vi: 'Tour Am Thuc Vinh Khanh',
+                    en: 'Vinh Khanh Food Tour'
+                },
+                description: {
+                    vi: 'Quet QR tai cong de mo danh sach cac quan trong tour.',
+                    en: 'Scan the gate QR to open the ordered restaurant list for this tour.'
+                }
+            },
+            pois
+        });
+    }
+
+    async function openTourFromQr(payload, qrCode) {
+        const normalized = normalizeTourPayload(payload);
+        if (!normalized || normalized.pois.length === 0) {
+            showAppMessage(
+                await getUiText('qrNotFoundTitle', AppState.language),
+                await getUiText('qrNotFoundMessage', AppState.language),
+                'route',
+                7000
+            );
+            return;
         }
-    });
 
-    AppState.activeTour = {
-        tour: normalized.tour,
-        pois: normalized.pois,
-        currentIndex: 0,
-        qrCode
-    };
+        normalized.pois.forEach(poi => {
+            if (!AppState.pois.some(existing => existing.id === poi.id)) {
+                AppState.pois.push(poi);
+            }
+        });
 
-    renderTourPoiList();
+        AppState.activeTour = {
+            tour: normalized.tour,
+            pois: normalized.pois,
+            currentIndex: 0,
+            qrCode
+        };
 
-    const firstPoi = normalized.pois[0];
-    await showPoiDetail(firstPoi);
-    mapManager.centerOnPoi(firstPoi.id);
+        renderTourPoiList();
 
-    document.getElementById('poi-panel')?.classList.remove('hidden');
-    showAppMessage(
-        t('tourOpenedTitle'),
-        `${t('tourOpenedMessage')} (${normalized.pois.length} ${t('tourStep').toLowerCase()})`,
-        'route',
-        5000
-    );
-}
+        const firstPoi = normalized.pois[0];
+        await showPoiDetail(firstPoi);
+        mapManager.centerOnPoi(firstPoi.id);
 
-function trackTourQrScan() {
-    fetch('/api/analytics/event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            eventType: 'qr_scan',
-            poiId: null,
-            sessionId: window.APP_SESSION_ID || 'unknown',
-            latitude: geofenceManager.currentPosition?.lat,
-            longitude: geofenceManager.currentPosition?.lng,
-            language: AppState.language
-        })
-    }).catch(() => { });
-}
+        document.getElementById('poi-panel')?.classList.remove('hidden');
+        showAppMessage(
+            t('tourOpenedTitle'),
+            `${t('tourOpenedMessage')} (${normalized.pois.length} ${t('tourStep').toLowerCase()})`,
+            'route',
+            5000
+        );
+    }
 
-async function showAudioPrompt(poi) {
-    // Xóa prompt cũ nếu có
-    const old = document.getElementById('audio-prompt-overlay');
-    if (old) old.remove();
+    function trackTourQrScan() {
+        fetch('/api/analytics/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                eventType: 'qr_scan',
+                poiId: null,
+                sessionId: window.APP_SESSION_ID || 'unknown',
+                latitude: geofenceManager.currentPosition?.lat,
+                longitude: geofenceManager.currentPosition?.lng,
+                language: AppState.language
+            })
+        }).catch(() => { });
+    }
 
-    const lang = AppState.language;
-    const name = await getLocalizedPoiText(poi, 'name', lang);
-    const promptText = await getUiText('audioPrompt', lang);
-    const listenText = await getUiText('listen', lang);
-    const skipText = await getUiText('skip', lang);
+    async function showAudioPrompt(poi) {
+        // Xóa prompt cũ nếu có
+        const old = document.getElementById('audio-prompt-overlay');
+        if (old) old.remove();
 
-    // ⚡ PRE-TRANSLATE script TRƯỚC khi user bấm
-    // Nếu không làm bước này, click handler gọi await getPoiScript → mất user gesture → mobile chặn audio
-    const preScript = await getPoiScript(poi, lang);
-    window._pendingQrScript = preScript;
-    window._pendingQrName = name;
-    console.log(`🎯 Pre-translated script for [${lang}]:`, preScript.substring(0, 60) + '...');
+        const lang = AppState.language;
+        const name = await getLocalizedPoiText(poi, 'name', lang);
+        const promptText = await getUiText('audioPrompt', lang);
+        const listenText = await getUiText('listen', lang);
+        const skipText = await getUiText('skip', lang);
 
-    const overlay = document.createElement('div');
-    overlay.id = 'audio-prompt-overlay';
-    overlay.style.cssText = `
+        // ⚡ PRE-TRANSLATE script TRƯỚC khi user bấm
+        // Nếu không làm bước này, click handler gọi await getPoiScript → mất user gesture → mobile chặn audio
+        const preScript = await getPoiScript(poi, lang);
+        window._pendingQrScript = preScript;
+        window._pendingQrName = name;
+        console.log(`🎯 Pre-translated script for [${lang}]:`, preScript.substring(0, 60) + '...');
+
+        const overlay = document.createElement('div');
+        overlay.id = 'audio-prompt-overlay';
+        overlay.style.cssText = `
         position: fixed; inset: 0; z-index: 10000;
         background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
         display: flex; align-items: center; justify-content: center;
         animation: fadeIn 0.3s ease;
     `;
-    overlay.innerHTML = `
+        overlay.innerHTML = `
         <div style="
             background: linear-gradient(145deg, #1a1a2e, #16213e);
             border-radius: 20px; padding: 32px 24px; text-align: center;
@@ -1221,251 +1378,251 @@ async function showAudioPrompt(poi) {
         </div>
     `;
 
-    document.body.appendChild(overlay);
+        document.body.appendChild(overlay);
 
-    // Bấm "Nghe thuyết minh" → phát audio NGAY (USER GESTURE ✓)
-    // KHÔNG gọi await ở đây để giữ user gesture context trên mobile
-    document.getElementById('audio-prompt-btn').addEventListener('click', () => {
-        audioManager.unlockAudio(); // Mở khoá Media trên mobile trong user-gesture
-        overlay.remove();
-        const p = window._pendingQrPoi;
-        if (p) {
-            const l = AppState.language;
-            const script = window._pendingQrScript || '';
-            const n = window._pendingQrName || '';
-            console.log(`🎯 Playing audio [${l}]: ${script.substring(0, 60)}...`);
-            audioManager.setLanguage(l);
-            audioManager.playDirect(p.id, script, n);
-            window._pendingQrPoi = null;
-            window._pendingQrScript = null;
-            window._pendingQrName = null;
-        }
-    });
+        // Bấm "Nghe thuyết minh" → phát audio NGAY (USER GESTURE ✓)
+        // KHÔNG gọi await ở đây để giữ user gesture context trên mobile
+        document.getElementById('audio-prompt-btn').addEventListener('click', () => {
+            audioManager.unlockAudio(); // Mở khoá Media trên mobile trong user-gesture
+            overlay.remove();
+            const p = window._pendingQrPoi;
+            if (p) {
+                const l = AppState.language;
+                const script = window._pendingQrScript || '';
+                const n = window._pendingQrName || '';
+                console.log(`🎯 Playing audio [${l}]: ${script.substring(0, 60)}...`);
+                audioManager.setLanguage(l);
+                audioManager.playDirect(p.id, script, n);
+                window._pendingQrPoi = null;
+                window._pendingQrScript = null;
+                window._pendingQrName = null;
+            }
+        });
 
-    // Bấm "Bỏ qua"
-    document.getElementById('audio-prompt-close').addEventListener('click', () => {
-        overlay.remove();
-        window._pendingQrPoi = null;
-        window._pendingQrScript = null;
-        window._pendingQrName = null;
-    });
-
-    // Bấm ngoài cũng đóng
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
+        // Bấm "Bỏ qua"
+        document.getElementById('audio-prompt-close').addEventListener('click', () => {
             overlay.remove();
             window._pendingQrPoi = null;
             window._pendingQrScript = null;
             window._pendingQrName = null;
-        }
-    });
-}
-
-// ==================== UI EVENTS ====================
-
-function setupUIEvents() {
-    // Language selector (dropdown)
-    document.getElementById('lang-select').addEventListener('change', (e) => {
-        changeLanguage(e.target.value);
-    });
-    document.getElementById('btn-test-tts').addEventListener('click', testCurrentLanguageVoice);
-
-    // Menu button - toggle POI list
-    document.getElementById('btn-menu').addEventListener('click', togglePoiPanel);
-    document.getElementById('btn-toggle-list').addEventListener('click', togglePoiPanel);
-    document.getElementById('btn-close-panel').addEventListener('click', () => {
-        document.getElementById('poi-panel').classList.add('hidden');
-    });
-
-    // QR Scanner
-    document.getElementById('btn-qr').addEventListener('click', openQRModal);
-    document.getElementById('btn-close-qr').addEventListener('click', closeQRModal);
-    document.getElementById('qr-backdrop').addEventListener('click', closeQRModal);
-
-    // My Location
-    document.getElementById('btn-my-location').addEventListener('click', async () => {
-        if (!mapManager.centerOnUser()) {
-            showAppMessage(
-                await getUiText('gpsError', AppState.language),
-                await getUiText('gpsRealityHint', AppState.language),
-                'gps_off',
-                6000
-            );
-        }
-    });
-
-    // Audio controls
-    document.getElementById('btn-audio-play').addEventListener('click', () => {
-        audioManager.togglePlayPause();
-    });
-    document.getElementById('btn-audio-stop').addEventListener('click', () => {
-        audioManager.stop();
-    });
-
-    // FAB Stop button - nút dừng nổi bật trên bản đồ
-    document.getElementById('btn-fab-stop').addEventListener('click', () => {
-        audioManager.stop();
-        audioManager.queue = []; // Xóa luôn hàng chờ
-    });
-
-    // POI Detail buttons
-    document.getElementById('btn-listen').addEventListener('click', async () => {
-        if (AppState.selectedPoi) {
-            const lang = AppState.language;
-            const poi = AppState.selectedPoi;
-            const name = await getLocalizedPoiText(poi, 'name', lang);
-            const script = await getPoiScript(poi, lang);
-            audioManager.playDirect(poi.id, script, name);
-        }
-    });
-
-    document.getElementById('btn-navigate').addEventListener('click', () => {
-        if (AppState.selectedPoi) {
-            const { latitude, longitude } = AppState.selectedPoi;
-            window.open(`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`, '_blank');
-        }
-    });
-
-    document.getElementById('btn-close-detail').addEventListener('click', closePoiDetail);
-
-    // AAC - Nói giúp tôi
-    document.getElementById('btn-aac').addEventListener('click', openAACModal);
-    document.getElementById('btn-close-aac').addEventListener('click', closeAACModal);
-    document.getElementById('aac-backdrop').addEventListener('click', closeAACModal);
-    document.getElementById('btn-aac-speak').addEventListener('click', aacSpeak);
-
-    // QR lightbox
-    document.getElementById('btn-qr-thumb').addEventListener('click', openQrLightbox);
-    document.getElementById('qr-lightbox-backdrop').addEventListener('click', closeQrLightbox);
-
-    // Filter buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            filterPois(btn.dataset.filter);
         });
-    });
 
-    // Toast listen button — bấm để phát thuyết minh (cần user gesture cho mobile)
-    document.getElementById('toast-listen').addEventListener('click', async () => {
-        hideGeofenceToast();
+        // Bấm ngoài cũng đóng
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+                window._pendingQrPoi = null;
+                window._pendingQrScript = null;
+                window._pendingQrName = null;
+            }
+        });
+    }
 
-        // Phát audio cho POI pending (từ QR hoặc geofence)
-        const poi = window._pendingQrPoi || AppState.selectedPoi;
-        if (poi) {
-            const lang = AppState.language;
-            const name = await getLocalizedPoiText(poi, 'name', lang);
-            const script = await getPoiScript(poi, lang);
-            audioManager.playDirect(poi.id, script, name);
-            window._pendingQrPoi = null;
-        }
-    });
-}
+    // ==================== UI EVENTS ====================
 
-async function testCurrentLanguageVoice() {
-    const lang = AppState.language;
-    const text = await getUiText('testVoice', lang);
-    audioManager.setLanguage(lang);
-    audioManager.playDirect(`voice-test-${lang}`, text, `TTS ${lang.toUpperCase()}`);
-}
+    function setupUIEvents() {
+        // Language selector (dropdown)
+        document.getElementById('lang-select').addEventListener('change', (e) => {
+            changeLanguage(e.target.value);
+        });
+        document.getElementById('btn-test-tts').addEventListener('click', testCurrentLanguageVoice);
 
-// ==================== UI FUNCTIONS ====================
+        // Menu button - toggle POI list
+        document.getElementById('btn-menu').addEventListener('click', togglePoiPanel);
+        document.getElementById('btn-toggle-list').addEventListener('click', togglePoiPanel);
+        document.getElementById('btn-close-panel').addEventListener('click', () => {
+            document.getElementById('poi-panel').classList.add('hidden');
+        });
 
-async function changeLanguage(lang) {
-    AppState.language = lang;
-    localStorage.setItem('vinhkhanh_lang', lang);
-    showTranslationStatus(t('translating'));
-    try {
-        const select = document.getElementById('lang-select');
-        if (select && select.value !== lang) select.value = lang;
+        // QR Scanner
+        document.getElementById('btn-qr').addEventListener('click', openQRModal);
+        document.getElementById('btn-close-qr').addEventListener('click', closeQRModal);
+        document.getElementById('qr-backdrop').addEventListener('click', closeQRModal);
+
+        // My Location
+        document.getElementById('btn-my-location').addEventListener('click', async () => {
+            if (!mapManager.centerOnUser()) {
+                showAppMessage(
+                    await getUiText('gpsError', AppState.language),
+                    await getUiText('gpsRealityHint', AppState.language),
+                    'gps_off',
+                    6000
+                );
+            }
+        });
+
+        // Audio controls
+        document.getElementById('btn-audio-play').addEventListener('click', () => {
+            audioManager.togglePlayPause();
+        });
+        document.getElementById('btn-audio-stop').addEventListener('click', () => {
+            audioManager.stop();
+        });
+
+        // FAB Stop button - nút dừng nổi bật trên bản đồ
+        document.getElementById('btn-fab-stop').addEventListener('click', () => {
+            audioManager.stop();
+            audioManager.queue = []; // Xóa luôn hàng chờ
+        });
+
+        // POI Detail buttons
+        document.getElementById('btn-listen').addEventListener('click', async () => {
+            if (AppState.selectedPoi) {
+                const lang = AppState.language;
+                const poi = AppState.selectedPoi;
+                const name = await getLocalizedPoiText(poi, 'name', lang);
+                const script = await getPoiScript(poi, lang);
+                audioManager.playDirect(poi.id, script, name);
+            }
+        });
+
+        document.getElementById('btn-navigate').addEventListener('click', () => {
+            if (AppState.selectedPoi) {
+                const { latitude, longitude } = AppState.selectedPoi;
+                window.open(`https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`, '_blank');
+            }
+        });
+
+        document.getElementById('btn-close-detail').addEventListener('click', closePoiDetail);
+
+        // AAC - Nói giúp tôi
+        document.getElementById('btn-aac').addEventListener('click', openAACModal);
+        document.getElementById('btn-close-aac').addEventListener('click', closeAACModal);
+        document.getElementById('aac-backdrop').addEventListener('click', closeAACModal);
+        document.getElementById('btn-aac-speak').addEventListener('click', aacSpeak);
+
+        // QR lightbox
+        document.getElementById('btn-qr-thumb').addEventListener('click', openQrLightbox);
+        document.getElementById('qr-lightbox-backdrop').addEventListener('click', closeQrLightbox);
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                filterPois(btn.dataset.filter);
+            });
+        });
+
+        // Toast listen button — bấm để phát thuyết minh (cần user gesture cho mobile)
+        document.getElementById('toast-listen').addEventListener('click', async () => {
+            hideGeofenceToast();
+
+            // Phát audio cho POI pending (từ QR hoặc geofence)
+            const poi = window._pendingQrPoi || AppState.selectedPoi;
+            if (poi) {
+                const lang = AppState.language;
+                const name = await getLocalizedPoiText(poi, 'name', lang);
+                const script = await getPoiScript(poi, lang);
+                audioManager.playDirect(poi.id, script, name);
+                window._pendingQrPoi = null;
+            }
+        });
+    }
+
+    async function testCurrentLanguageVoice() {
+        const lang = AppState.language;
+        const text = await getUiText('testVoice', lang);
         audioManager.setLanguage(lang);
-        await Promise.all(AppState.pois.map(async poi => {
-            await getLocalizedPoiText(poi, 'name', lang);
-            await getLocalizedPoiText(poi, 'description', lang);
-        }));
-        mapManager.updateLanguage(AppState.pois, lang);
-        if (AppState.activeTour) {
-            renderTourPoiList();
-        } else {
-            renderPoiList(AppState.pois);
-        }
-        await applyUILanguage(lang);
-        if (AppState.activeTour) renderTourPoiList();
-
-        // Re-sync audio player bar
-        if (audioManager.onStateChange) {
-            audioManager.onStateChange(audioManager.getState ? audioManager.getState() : { isPlaying: false, isPaused: false });
-        }
-
-        // Update detail if open
-        if (AppState.selectedPoi) {
-            await showPoiDetail(AppState.selectedPoi);
-        }
-
-        const qrLightbox = document.getElementById('qr-lightbox');
-        if (AppState.selectedPoi && qrLightbox && !qrLightbox.classList.contains('hidden')) {
-            await openQrLightbox();
-        }
-    } finally {
-        hideTranslationStatus();
+        audioManager.playDirect(`voice-test-${lang}`, text, `TTS ${lang.toUpperCase()}`);
     }
-}
 
-/**
- * Cập nhật text của button mà GIỮ NGUYÊN icon <span> bên trong.
- * Tránh rebuild innerHTML làm mất DOM reference của audio callbacks.
- */
-function setBtnText(btnId, text) {
-    const btn = document.getElementById(btnId);
-    if (!btn) return;
-    Array.from(btn.childNodes)
-        .filter(node => node.nodeType === Node.TEXT_NODE)
-        .forEach(node => node.remove());
-    btn.appendChild(document.createTextNode(' ' + text));
-}
+    // ==================== UI FUNCTIONS ====================
 
+    async function changeLanguage(lang) {
+        AppState.language = lang;
+        localStorage.setItem('vinhkhanh_lang', lang);
+        showTranslationStatus(t('translating'));
+        try {
+            const select = document.getElementById('lang-select');
+            if (select && select.value !== lang) select.value = lang;
+            audioManager.setLanguage(lang);
+            await Promise.all(AppState.pois.map(async poi => {
+                await getLocalizedPoiText(poi, 'name', lang);
+                await getLocalizedPoiText(poi, 'description', lang);
+            }));
+            mapManager.updateLanguage(AppState.pois, lang);
+            if (AppState.activeTour) {
+                renderTourPoiList();
+            } else {
+                renderPoiList(AppState.pois);
+            }
+            await applyUILanguage(lang);
+            if (AppState.activeTour) renderTourPoiList();
 
-function renderTourPoiList() {
-    if (!AppState.activeTour) return;
+            // Re-sync audio player bar
+            if (audioManager.onStateChange) {
+                audioManager.onStateChange(audioManager.getState ? audioManager.getState() : { isPlaying: false, isPaused: false });
+            }
 
-    const panelTitle = document.querySelector('#poi-panel .poi-panel-header h2');
-    const filterBar = document.querySelector('.poi-filter-bar');
-    const tourName = getLocalizedTextMapSync(AppState.activeTour.tour?.name);
+            // Update detail if open
+            if (AppState.selectedPoi) {
+                await showPoiDetail(AppState.selectedPoi);
+            }
 
-    if (panelTitle) {
-        panelTitle.innerHTML = `<span class="material-icons-round">route</span> ${escapeHtml(tourName || t('tourListTitle'))}`;
+            const qrLightbox = document.getElementById('qr-lightbox');
+            if (AppState.selectedPoi && qrLightbox && !qrLightbox.classList.contains('hidden')) {
+                await openQrLightbox();
+            }
+        } finally {
+            hideTranslationStatus();
+        }
     }
-    filterBar?.classList.add('hidden');
 
-    renderPoiList(AppState.activeTour.pois, 'all');
-}
+    /**
+     * Cập nhật text của button mà GIỮ NGUYÊN icon <span> bên trong.
+     * Tránh rebuild innerHTML làm mất DOM reference của audio callbacks.
+     */
+    function setBtnText(btnId, text) {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        Array.from(btn.childNodes)
+            .filter(node => node.nodeType === Node.TEXT_NODE)
+            .forEach(node => node.remove());
+        btn.appendChild(document.createTextNode(' ' + text));
+    }
 
-function resetPoiPanelTitle() {
-    const panelTitle = document.querySelector('#poi-panel .poi-panel-header h2');
-    const filterBar = document.querySelector('.poi-filter-bar');
-    if (panelTitle) panelTitle.textContent = t('poiList');
-    filterBar?.classList.remove('hidden');
-}
 
-function renderPoiList(pois, filter = 'all') {
-    const listEl = document.getElementById('poi-list');
-    const lang = AppState.language;
-    const emoji = { 'seafood': '🦐', 'hotpot': '🍲', 'snack': '🧁', 'street_food': '🍜', 'landmark': '🏛️' };
+    function renderTourPoiList() {
+        if (!AppState.activeTour) return;
 
-    const filtered = filter === 'all' ? pois : pois.filter(p => p.category === filter);
+        const panelTitle = document.querySelector('#poi-panel .poi-panel-header h2');
+        const filterBar = document.querySelector('.poi-filter-bar');
+        const tourName = getLocalizedTextMapSync(AppState.activeTour.tour?.name);
 
-    listEl.innerHTML = filtered.map((poi) => {
-        const name = getLocalizedPoiTextSync(poi, 'name', lang);
-        const desc = getLocalizedPoiTextSync(poi, 'description', lang);
-        const icon = emoji[poi.category] || '📍';
-        const distance = geofenceManager.getDistanceTo(poi.latitude, poi.longitude);
-        const distText = GeofenceManager.formatDistance(distance);
-        const tourIndex = AppState.activeTour?.pois.findIndex(p => p.id === poi.id) ?? -1;
-        const isActive = AppState.selectedPoi?.id === poi.id;
-        const iconContent = tourIndex >= 0 ? `<span class="poi-step-number">${tourIndex + 1}</span>` : icon;
+        if (panelTitle) {
+            panelTitle.innerHTML = `<span class="material-icons-round">route</span> ${escapeHtml(tourName || t('tourListTitle'))}`;
+        }
+        filterBar?.classList.add('hidden');
 
-        return `
+        renderPoiList(AppState.activeTour.pois, 'all');
+    }
+
+    function resetPoiPanelTitle() {
+        const panelTitle = document.querySelector('#poi-panel .poi-panel-header h2');
+        const filterBar = document.querySelector('.poi-filter-bar');
+        if (panelTitle) panelTitle.textContent = t('poiList');
+        filterBar?.classList.remove('hidden');
+    }
+
+    function renderPoiList(pois, filter = 'all') {
+        const listEl = document.getElementById('poi-list');
+        const lang = AppState.language;
+        const emoji = { 'seafood': '🦐', 'hotpot': '🍲', 'snack': '🧁', 'street_food': '🍜', 'landmark': '🏛️' };
+
+        const filtered = filter === 'all' ? pois : pois.filter(p => p.category === filter);
+
+        listEl.innerHTML = filtered.map((poi) => {
+            const name = getLocalizedPoiTextSync(poi, 'name', lang);
+            const desc = getLocalizedPoiTextSync(poi, 'description', lang);
+            const icon = emoji[poi.category] || '📍';
+            const distance = geofenceManager.getDistanceTo(poi.latitude, poi.longitude);
+            const distText = GeofenceManager.formatDistance(distance);
+            const tourIndex = AppState.activeTour?.pois.findIndex(p => p.id === poi.id) ?? -1;
+            const isActive = AppState.selectedPoi?.id === poi.id;
+            const iconContent = tourIndex >= 0 ? `<span class="poi-step-number">${tourIndex + 1}</span>` : icon;
+
+            return `
             <div class="poi-item ${isActive ? 'active' : ''}" data-poi-id="${poi.id}" onclick="onPoiItemClick('${poi.id}')">
                 <div class="poi-item-icon ${poi.category}">${iconContent}</div>
                 <div class="poi-item-info">
@@ -1475,96 +1632,96 @@ function renderPoiList(pois, filter = 'all') {
                 </div>
             </div>
         `;
-    }).join('');
-}
-
-function onPoiItemClick(poiId) {
-    const poi = AppState.pois.find(p => p.id === poiId);
-    if (poi) {
-        const tourIndex = AppState.activeTour?.pois.findIndex(p => p.id === poiId) ?? -1;
-        if (tourIndex >= 0) AppState.activeTour.currentIndex = tourIndex;
-        showPoiDetail(poi);
-        mapManager.centerOnPoi(poiId);
-        // Close panel on mobile
-        if (window.innerWidth <= 768) {
-            document.getElementById('poi-panel').classList.add('hidden');
-        }
+        }).join('');
     }
-}
 
-async function showPoiDetail(poi) {
-    AppState.selectedPoi = poi;
-    const lang = AppState.language;
-    const categoryKeyMap = {
-        seafood: 'seafood',
-        hotpot: 'hotpot',
-        snack: 'snack',
-        street_food: 'streetFood',
-        landmark: 'landmark'
-    };
-    const name = await getLocalizedPoiText(poi, 'name', lang);
-    const description = await getLocalizedPoiText(poi, 'description', lang);
-
-    const catEl = document.getElementById('detail-category');
-    catEl.textContent = t(categoryKeyMap[poi.category]) || poi.category;
-    catEl.className = `poi-detail-category ${poi.category}`;
-
-    document.getElementById('detail-name').textContent = name;
-    document.getElementById('detail-address').textContent = poi.address || '';
-    document.getElementById('detail-description').textContent = description;
-    document.getElementById('detail-hours-text').textContent = poi.openingHours || '—';
-    document.getElementById('detail-price-text').textContent = poi.priceRange || '—';
-
-    const distance = geofenceManager.getDistanceTo(poi.latitude, poi.longitude);
-    document.getElementById('detail-distance-text').textContent = GeofenceManager.formatDistance(distance);
-
-    // Set QR code ngay trong bottom sheet
-    // QR encode URL → khi du khách quét bằng camera sẽ mở app và tự phát thuyết minh
-    const tourQrCode = AppState.activeTour?.tour?.qrCode || AppState.activeTour?.tour?.id;
-    const qrUrl = tourQrCode ? `${window.location.origin}/index.html?qr=${encodeURIComponent(tourQrCode)}&lang=${AppState.language}` : '';
-    const qrImg = document.getElementById('detail-qr-img');
-    const qrBtn = document.getElementById('btn-qr-thumb');
-    if (qrImg) {
-        if (tourQrCode) {
-            qrBtn?.classList.remove('hidden');
-            qrBtn.title = t('tourQrTitle');
-            qrImg.alt = t('tourQrTitle');
-            setQrImage(qrImg, qrUrl, 200);
-        } else {
-            qrBtn?.classList.add('hidden');
-            qrImg.removeAttribute('src');
+    function onPoiItemClick(poiId) {
+        const poi = AppState.pois.find(p => p.id === poiId);
+        if (poi) {
+            const tourIndex = AppState.activeTour?.pois.findIndex(p => p.id === poiId) ?? -1;
+            if (tourIndex >= 0) AppState.activeTour.currentIndex = tourIndex;
+            showPoiDetail(poi);
+            mapManager.centerOnPoi(poiId);
+            // Close panel on mobile
+            if (window.innerWidth <= 768) {
+                document.getElementById('poi-panel').classList.add('hidden');
+            }
         }
     }
 
-    document.getElementById('poi-detail').classList.remove('hidden');
-    mapManager.setActiveMarker(poi.id);
-    renderTourNavigation(poi);
-}
+    async function showPoiDetail(poi) {
+        AppState.selectedPoi = poi;
+        const lang = AppState.language;
+        const categoryKeyMap = {
+            seafood: 'seafood',
+            hotpot: 'hotpot',
+            snack: 'snack',
+            street_food: 'streetFood',
+            landmark: 'landmark'
+        };
+        const name = await getLocalizedPoiText(poi, 'name', lang);
+        const description = await getLocalizedPoiText(poi, 'description', lang);
 
-function renderTourNavigation(poi) {
-    let nav = document.getElementById('tour-step-nav');
-    if (!AppState.activeTour) {
-        nav?.remove();
-        return;
+        const catEl = document.getElementById('detail-category');
+        catEl.textContent = t(categoryKeyMap[poi.category]) || poi.category;
+        catEl.className = `poi-detail-category ${poi.category}`;
+
+        document.getElementById('detail-name').textContent = name;
+        document.getElementById('detail-address').textContent = poi.address || '';
+        document.getElementById('detail-description').textContent = description;
+        document.getElementById('detail-hours-text').textContent = poi.openingHours || '—';
+        document.getElementById('detail-price-text').textContent = poi.priceRange || '—';
+
+        const distance = geofenceManager.getDistanceTo(poi.latitude, poi.longitude);
+        document.getElementById('detail-distance-text').textContent = GeofenceManager.formatDistance(distance);
+
+        // Set QR code ngay trong bottom sheet
+        // QR encode URL → khi du khách quét bằng camera sẽ mở app và tự phát thuyết minh
+        const tourQrCode = AppState.activeTour?.tour?.qrCode || AppState.activeTour?.tour?.id;
+        const qrUrl = tourQrCode ? `${window.location.origin}/index.html?qr=${encodeURIComponent(tourQrCode)}&lang=${AppState.language}` : '';
+        const qrImg = document.getElementById('detail-qr-img');
+        const qrBtn = document.getElementById('btn-qr-thumb');
+        if (qrImg) {
+            if (tourQrCode) {
+                qrBtn?.classList.remove('hidden');
+                qrBtn.title = t('tourQrTitle');
+                qrImg.alt = t('tourQrTitle');
+                setQrImage(qrImg, qrUrl, 200);
+            } else {
+                qrBtn?.classList.add('hidden');
+                qrImg.removeAttribute('src');
+            }
+        }
+
+        document.getElementById('poi-detail').classList.remove('hidden');
+        mapManager.setActiveMarker(poi.id);
+        renderTourNavigation(poi);
     }
 
-    const index = AppState.activeTour.pois.findIndex(p => p.id === poi.id);
-    if (index < 0) {
-        nav?.remove();
-        return;
-    }
+    function renderTourNavigation(poi) {
+        let nav = document.getElementById('tour-step-nav');
+        if (!AppState.activeTour) {
+            nav?.remove();
+            return;
+        }
 
-    AppState.activeTour.currentIndex = index;
-    const total = AppState.activeTour.pois.length;
-    if (!nav) {
-        nav = document.createElement('div');
-        nav.id = 'tour-step-nav';
-        nav.className = 'tour-step-nav';
-        const actions = document.querySelector('.poi-detail-actions');
-        actions?.parentNode?.insertBefore(nav, actions);
-    }
+        const index = AppState.activeTour.pois.findIndex(p => p.id === poi.id);
+        if (index < 0) {
+            nav?.remove();
+            return;
+        }
 
-    nav.innerHTML = `
+        AppState.activeTour.currentIndex = index;
+        const total = AppState.activeTour.pois.length;
+        if (!nav) {
+            nav = document.createElement('div');
+            nav.id = 'tour-step-nav';
+            nav.className = 'tour-step-nav';
+            const actions = document.querySelector('.poi-detail-actions');
+            actions?.parentNode?.insertBefore(nav, actions);
+        }
+
+        nav.innerHTML = `
         <div class="tour-step-label">${t('tourStep')} ${index + 1}/${total}</div>
         <div class="tour-step-actions">
             <button class="tour-step-btn" onclick="goToTourStop(-1)" ${index === 0 ? 'disabled' : ''}>
@@ -1576,557 +1733,557 @@ function renderTourNavigation(poi) {
         </div>
     `;
 
-    renderPoiList(AppState.activeTour.pois, 'all');
-}
-
-async function goToTourStop(delta) {
-    if (!AppState.activeTour) return;
-    const nextIndex = AppState.activeTour.currentIndex + delta;
-    if (nextIndex < 0 || nextIndex >= AppState.activeTour.pois.length) return;
-
-    AppState.activeTour.currentIndex = nextIndex;
-    const poi = AppState.activeTour.pois[nextIndex];
-    await showPoiDetail(poi);
-    mapManager.centerOnPoi(poi.id);
-}
-
-function closePoiDetail() {
-    const sheet = document.getElementById('poi-detail');
-    sheet.classList.add('hidden');
-    sheet.classList.remove('expanded');
-    sheet.style.maxHeight = '';
-    AppState.selectedPoi = null;
-    mapManager.setActiveMarker(null);
-}
-
-function togglePoiPanel() {
-    const panel = document.getElementById('poi-panel');
-    panel.classList.toggle('hidden');
-    if (!panel.classList.contains('hidden')) {
-        if (AppState.activeTour) renderTourPoiList();
-        else resetPoiPanelTitle();
-        updatePoiDistances();
+        renderPoiList(AppState.activeTour.pois, 'all');
     }
-}
 
-function filterPois(category) {
-    AppState.activeTour = null;
-    resetPoiPanelTitle();
-    renderPoiList(AppState.pois, category);
-}
+    async function goToTourStop(delta) {
+        if (!AppState.activeTour) return;
+        const nextIndex = AppState.activeTour.currentIndex + delta;
+        if (nextIndex < 0 || nextIndex >= AppState.activeTour.pois.length) return;
 
-function updatePoiDistances() {
-    if (!geofenceManager.currentPosition) return;
-    document.querySelectorAll('.poi-item').forEach(el => {
-        const poiId = el.dataset.poiId;
-        const poi = AppState.pois.find(p => p.id === poiId);
-        if (poi) {
-            const dist = geofenceManager.getDistanceTo(poi.latitude, poi.longitude);
-            const distEl = el.querySelector('.poi-item-distance');
-            if (distEl) distEl.textContent = '📍 ' + GeofenceManager.formatDistance(dist);
-        }
-    });
-}
-
-function showGeofenceToast(poiName, poi) {
-    const toast = document.getElementById('geofence-toast');
-    const title = document.getElementById('toast-title');
-    const message = document.getElementById('toast-message');
-    const icon = toast.querySelector('.toast-icon .material-icons-round');
-    const action = document.getElementById('toast-listen');
-
-    if (icon) icon.textContent = 'place';
-    if (action) {
-        action.classList.remove('hidden');
-        action.textContent = t('listen');
+        AppState.activeTour.currentIndex = nextIndex;
+        const poi = AppState.activeTour.pois[nextIndex];
+        await showPoiDetail(poi);
+        mapManager.centerOnPoi(poi.id);
     }
-    title.textContent = `${t('nearPoi')}: ${poiName}`;
-    message.textContent = t('tapToListen');
 
-    toast.classList.remove('hidden');
-    toast.classList.remove('fade-out');
+    function closePoiDetail() {
+        const sheet = document.getElementById('poi-detail');
+        sheet.classList.add('hidden');
+        sheet.classList.remove('expanded');
+        sheet.style.maxHeight = '';
+        AppState.selectedPoi = null;
+        mapManager.setActiveMarker(null);
+    }
 
-    // Auto hide after 8s
-    clearTimeout(window._toastTimeout);
-    window._toastTimeout = setTimeout(hideGeofenceToast, 8000);
-}
-
-function showAppMessage(titleText, messageText, iconName = 'info', duration = 6000) {
-    const toast = document.getElementById('geofence-toast');
-    const title = document.getElementById('toast-title');
-    const message = document.getElementById('toast-message');
-    const icon = toast?.querySelector('.toast-icon .material-icons-round');
-    const action = document.getElementById('toast-listen');
-    if (!toast || !title || !message) return;
-
-    if (icon) icon.textContent = iconName;
-    if (action) action.classList.add('hidden');
-    title.textContent = titleText;
-    message.textContent = messageText;
-
-    toast.classList.remove('hidden');
-    toast.classList.remove('fade-out');
-
-    clearTimeout(window._toastTimeout);
-    window._toastTimeout = setTimeout(hideGeofenceToast, duration);
-}
-
-function hideGeofenceToast() {
-    const toast = document.getElementById('geofence-toast');
-    toast.classList.add('fade-out');
-    setTimeout(() => toast.classList.add('hidden'), 300);
-}
-
-function openQRModal() {
-    document.getElementById('qr-modal').classList.remove('hidden');
-    qrScanner.start('qr-reader');
-}
-
-function closeQRModal() {
-    qrScanner.stop();
-    document.getElementById('qr-modal').classList.add('hidden');
-}
-
-// ==================== POI QR DISPLAY ====================
-
-/**
- * Hiển thị QR Code của POI để nhân viên/du khách quét.
- * QR encode URL app → khi quét tự mở app và phát thuyết minh.
- */
-async function showPoiQr(poi) {
-    const lang = AppState.language;
-    const name = await getLocalizedPoiText(poi, 'name', lang);
-    const qrCode = poi.qrCode || poi.id;
-
-    // URL mà QR sẽ encode: mở app và tự phát thuyết minh
-    const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
-
-    document.getElementById('poi-qr-name').textContent = name;
-    setQrImage(document.getElementById('poi-qr-img'), appUrl, 400);
-
-    document.getElementById('poi-qr-modal').classList.remove('hidden');
-}
-
-function closePoiQrModal() {
-    document.getElementById('poi-qr-modal').classList.add('hidden');
-}
-
-// ==================== BOTTOM SHEET DRAG ====================
-
-/**
- * Kéo handle để:
- * - Kéo lên: mở rộng bottom sheet (thêm class .expanded)
- * - Kéo xuống đủ mạnh: đóng bottom sheet
- */
-function setupBottomSheetDrag() {
-    const sheet = document.getElementById('poi-detail');
-    const handle = document.getElementById('sheet-handle');
-    if (!handle || !sheet) return;
-
-    let startY = 0;
-    let startH = 0;
-    let dragging = false;
-
-    const onStart = (y) => {
-        dragging = true;
-        startY = y;
-        startH = sheet.getBoundingClientRect().height;
-        sheet.style.transition = 'none';
-    };
-
-    const onMove = (y) => {
-        if (!dragging) return;
-        const delta = startY - y;           // dương = kéo lên
-        const newH = Math.min(Math.max(startH + delta, 60), window.innerHeight * 0.82);
-        sheet.style.maxHeight = newH + 'px';
-    };
-
-    const onEnd = (y) => {
-        if (!dragging) return;
-        dragging = false;
-        sheet.style.transition = '';
-
-        const delta = startY - y;
-        if (delta < -80) {
-            // Kéo xuống mạnh → đóng
-            closePoiDetail();
-        } else if (delta > 60) {
-            // Kéo lên → mở rộng
-            sheet.classList.add('expanded');
-            sheet.style.maxHeight = '';
-        } else {
-            // Trả về mặc định
-            sheet.classList.remove('expanded');
-            sheet.style.maxHeight = '';
+    function togglePoiPanel() {
+        const panel = document.getElementById('poi-panel');
+        panel.classList.toggle('hidden');
+        if (!panel.classList.contains('hidden')) {
+            if (AppState.activeTour) renderTourPoiList();
+            else resetPoiPanelTitle();
+            updatePoiDistances();
         }
-    };
+    }
 
-    // Touch
-    handle.addEventListener('touchstart', (e) => onStart(e.touches[0].clientY), { passive: true });
-    handle.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e.touches[0].clientY); }, { passive: false });
-    handle.addEventListener('touchend', (e) => onEnd(e.changedTouches[0].clientY));
+    function filterPois(category) {
+        AppState.activeTour = null;
+        resetPoiPanelTitle();
+        renderPoiList(AppState.pois, category);
+    }
 
-    // Mouse (để test trên PC)
-    handle.addEventListener('mousedown', (e) => { e.preventDefault(); onStart(e.clientY); });
-    window.addEventListener('mousemove', (e) => onMove(e.clientY));
-    window.addEventListener('mouseup', (e) => onEnd(e.clientY));
-}
+    function updatePoiDistances() {
+        if (!geofenceManager.currentPosition) return;
+        document.querySelectorAll('.poi-item').forEach(el => {
+            const poiId = el.dataset.poiId;
+            const poi = AppState.pois.find(p => p.id === poiId);
+            if (poi) {
+                const dist = geofenceManager.getDistanceTo(poi.latitude, poi.longitude);
+                const distEl = el.querySelector('.poi-item-distance');
+                if (distEl) distEl.textContent = '📍 ' + GeofenceManager.formatDistance(dist);
+            }
+        });
+    }
 
-// ==================== QR LIGHTBOX ====================
+    function showGeofenceToast(poiName, poi) {
+        const toast = document.getElementById('geofence-toast');
+        const title = document.getElementById('toast-title');
+        const message = document.getElementById('toast-message');
+        const icon = toast.querySelector('.toast-icon .material-icons-round');
+        const action = document.getElementById('toast-listen');
 
-async function openQrLightbox() {
-    if (AppState.activeTour?.tour) {
-        const tour = AppState.activeTour.tour;
-        const name = getLocalizedTextMapSync(tour.name) || t('tourQrTitle');
-        const qrCode = tour.qrCode || tour.id;
+        if (icon) icon.textContent = 'place';
+        if (action) {
+            action.classList.remove('hidden');
+            action.textContent = t('listen');
+        }
+        title.textContent = `${t('nearPoi')}: ${poiName}`;
+        message.textContent = t('tapToListen');
+
+        toast.classList.remove('hidden');
+        toast.classList.remove('fade-out');
+
+        // Auto hide after 8s
+        clearTimeout(window._toastTimeout);
+        window._toastTimeout = setTimeout(hideGeofenceToast, 8000);
+    }
+
+    function showAppMessage(titleText, messageText, iconName = 'info', duration = 6000) {
+        const toast = document.getElementById('geofence-toast');
+        const title = document.getElementById('toast-title');
+        const message = document.getElementById('toast-message');
+        const icon = toast?.querySelector('.toast-icon .material-icons-round');
+        const action = document.getElementById('toast-listen');
+        if (!toast || !title || !message) return;
+
+        if (icon) icon.textContent = iconName;
+        if (action) action.classList.add('hidden');
+        title.textContent = titleText;
+        message.textContent = messageText;
+
+        toast.classList.remove('hidden');
+        toast.classList.remove('fade-out');
+
+        clearTimeout(window._toastTimeout);
+        window._toastTimeout = setTimeout(hideGeofenceToast, duration);
+    }
+
+    function hideGeofenceToast() {
+        const toast = document.getElementById('geofence-toast');
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.classList.add('hidden'), 300);
+    }
+
+    function openQRModal() {
+        document.getElementById('qr-modal').classList.remove('hidden');
+        qrScanner.start('qr-reader');
+    }
+
+    function closeQRModal() {
+        qrScanner.stop();
+        document.getElementById('qr-modal').classList.add('hidden');
+    }
+
+    // ==================== POI QR DISPLAY ====================
+
+    /**
+     * Hiển thị QR Code của POI để nhân viên/du khách quét.
+     * QR encode URL app → khi quét tự mở app và phát thuyết minh.
+     */
+    async function showPoiQr(poi) {
+        const lang = AppState.language;
+        const name = await getLocalizedPoiText(poi, 'name', lang);
+        const qrCode = poi.qrCode || poi.id;
+
+        // URL mà QR sẽ encode: mở app và tự phát thuyết minh
+        const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
+
+        document.getElementById('poi-qr-name').textContent = name;
+        setQrImage(document.getElementById('poi-qr-img'), appUrl, 400);
+
+        document.getElementById('poi-qr-modal').classList.remove('hidden');
+    }
+
+    function closePoiQrModal() {
+        document.getElementById('poi-qr-modal').classList.add('hidden');
+    }
+
+    // ==================== BOTTOM SHEET DRAG ====================
+
+    /**
+     * Kéo handle để:
+     * - Kéo lên: mở rộng bottom sheet (thêm class .expanded)
+     * - Kéo xuống đủ mạnh: đóng bottom sheet
+     */
+    function setupBottomSheetDrag() {
+        const sheet = document.getElementById('poi-detail');
+        const handle = document.getElementById('sheet-handle');
+        if (!handle || !sheet) return;
+
+        let startY = 0;
+        let startH = 0;
+        let dragging = false;
+
+        const onStart = (y) => {
+            dragging = true;
+            startY = y;
+            startH = sheet.getBoundingClientRect().height;
+            sheet.style.transition = 'none';
+        };
+
+        const onMove = (y) => {
+            if (!dragging) return;
+            const delta = startY - y;           // dương = kéo lên
+            const newH = Math.min(Math.max(startH + delta, 60), window.innerHeight * 0.82);
+            sheet.style.maxHeight = newH + 'px';
+        };
+
+        const onEnd = (y) => {
+            if (!dragging) return;
+            dragging = false;
+            sheet.style.transition = '';
+
+            const delta = startY - y;
+            if (delta < -80) {
+                // Kéo xuống mạnh → đóng
+                closePoiDetail();
+            } else if (delta > 60) {
+                // Kéo lên → mở rộng
+                sheet.classList.add('expanded');
+                sheet.style.maxHeight = '';
+            } else {
+                // Trả về mặc định
+                sheet.classList.remove('expanded');
+                sheet.style.maxHeight = '';
+            }
+        };
+
+        // Touch
+        handle.addEventListener('touchstart', (e) => onStart(e.touches[0].clientY), { passive: true });
+        handle.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e.touches[0].clientY); }, { passive: false });
+        handle.addEventListener('touchend', (e) => onEnd(e.changedTouches[0].clientY));
+
+        // Mouse (để test trên PC)
+        handle.addEventListener('mousedown', (e) => { e.preventDefault(); onStart(e.clientY); });
+        window.addEventListener('mousemove', (e) => onMove(e.clientY));
+        window.addEventListener('mouseup', (e) => onEnd(e.clientY));
+    }
+
+    // ==================== QR LIGHTBOX ====================
+
+    async function openQrLightbox() {
+        if (AppState.activeTour?.tour) {
+            const tour = AppState.activeTour.tour;
+            const name = getLocalizedTextMapSync(tour.name) || t('tourQrTitle');
+            const qrCode = tour.qrCode || tour.id;
+            const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
+
+            document.getElementById('qr-lightbox-name').textContent = name;
+            setQrImage(document.getElementById('qr-lightbox-img'), appUrl, 480);
+
+            const hint = document.querySelector('.qr-lightbox-hint');
+            if (hint) hint.innerHTML = `<span class="material-icons-round" style="font-size:18px;vertical-align:middle;">route</span> ${escapeHtml(t('tourQrHint'))}`;
+
+            document.getElementById('qr-lightbox').classList.remove('hidden');
+            return;
+        }
+
+        const poi = AppState.selectedPoi;
+        if (!poi) return;
+
+        const lang = AppState.language;
+        const name = await getLocalizedPoiText(poi, 'name', lang);
+        const qrCode = poi.qrCode || poi.id;
         const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
 
         document.getElementById('qr-lightbox-name').textContent = name;
         setQrImage(document.getElementById('qr-lightbox-img'), appUrl, 480);
 
-        const hint = document.querySelector('.qr-lightbox-hint');
-        if (hint) hint.innerHTML = `<span class="material-icons-round" style="font-size:18px;vertical-align:middle;">route</span> ${escapeHtml(t('tourQrHint'))}`;
-
         document.getElementById('qr-lightbox').classList.remove('hidden');
-        return;
     }
 
-    const poi = AppState.selectedPoi;
-    if (!poi) return;
-
-    const lang = AppState.language;
-    const name = await getLocalizedPoiText(poi, 'name', lang);
-    const qrCode = poi.qrCode || poi.id;
-    const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
-
-    document.getElementById('qr-lightbox-name').textContent = name;
-    setQrImage(document.getElementById('qr-lightbox-img'), appUrl, 480);
-
-    document.getElementById('qr-lightbox').classList.remove('hidden');
-}
-
-function closeQrLightbox() {
-    document.getElementById('qr-lightbox').classList.add('hidden');
-}
-
-// ==================== AAC - NÓI GIÚP TÔI ====================
-
-/** Các câu mẫu thường dùng theo ngôn ngữ */
-const AAC_PHRASES = {
-    vi: [
-        'Xin chào!',
-        'Cảm ơn bạn!',
-        'Cho tôi xem thực đơn',
-        'Tính tiền giúp tôi',
-        'Cho tôi 1 ly nước',
-        'Không cay',
-        'Ít cay thôi',
-        'Cho thêm đá',
-        'Ngon lắm!',
-        'Tôi bị dị ứng hải sản',
-        'Nhà vệ sinh ở đâu?',
-        'Bao nhiêu tiền?',
-        'Cho tôi thêm 1 phần',
-        'Chờ một chút',
-        'Tôi không ăn được cay',
-        'Cho tôi mang về'
-    ],
-    en: [
-        'Hello!',
-        'Thank you!',
-        'Can I see the menu?',
-        'Check please',
-        'A glass of water please',
-        'Not spicy',
-        'A little spicy',
-        'More ice please',
-        'Delicious!',
-        'I\'m allergic to seafood',
-        'Where is the restroom?',
-        'How much?',
-        'One more serving please',
-        'Wait a moment',
-        'I can\'t eat spicy food',
-        'To go please'
-    ]
-};
-
-async function openAACModal() {
-    const modal = document.getElementById('aac-modal');
-    modal.classList.remove('hidden');
-
-    // Mặc định load câu mẫu theo ngôn ngữ đang chọn ở màn hình chính
-    await renderAACPhrases(AppState.language);
-
-    // Focus vào ô nhập
-    setTimeout(() => document.getElementById('aac-text').focus(), 300);
-}
-
-function closeAACModal() {
-    document.getElementById('aac-modal').classList.add('hidden');
-    // Dừng phát nếu đang nói
-    if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-    }
-    const btn = document.getElementById('btn-aac-speak');
-    btn.classList.remove('speaking');
-    btn.querySelector('.material-icons-round').textContent = 'volume_up';
-}
-
-async function renderAACPhrases(lang) {
-    const container = document.getElementById('aac-phrases');
-    let phrases = AAC_PHRASES[lang];
-    if (!phrases) {
-        const sourceLang = AAC_PHRASES.vi ? 'vi' : 'en';
-        phrases = await Promise.all(AAC_PHRASES[sourceLang].map((phrase, index) =>
-            translateWithCache('aac.phrase', index, phrase, sourceLang, lang)
-        ));
-        AAC_PHRASES[lang] = phrases;
+    function closeQrLightbox() {
+        document.getElementById('qr-lightbox').classList.add('hidden');
     }
 
-    container.innerHTML = phrases.map(phrase =>
-        `<button class="aac-phrase-btn" data-phrase="${phrase.replace(/"/g, '&quot;')}">${phrase}</button>`
-    ).join('');
+    // ==================== AAC - NÓI GIÚP TÔI ====================
 
-    // Click câu mẫu → điền vào ô nhập và phát luôn
-    container.querySelectorAll('.aac-phrase-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.getElementById('aac-text').value = btn.dataset.phrase;
-            aacSpeak();
-        });
-    });
-}
-
-function aacSpeak() {
-    const text = document.getElementById('aac-text').value.trim();
-    if (!text) return;
-
-    const btn = document.getElementById('btn-aac-speak');
-
-    // Nếu đang nói → dừng
-    if (window.speechSynthesis.speaking || window._aacGoogleAudio) {
-        window.speechSynthesis.cancel();
-        if (window._aacGoogleAudio) {
-            window._aacGoogleAudio.pause();
-            window._aacGoogleAudio = null;
-        }
-        btn.classList.remove('speaking');
-        btn.querySelector('.material-icons-round').textContent = 'volume_up';
-        return;
-    }
-
-    // ============ AI LANGUAGE DETECTION (50+ ngôn ngữ) ============
-    const detectedLang = detectLanguage(text);
-    console.log(`🌍 AAC: Phát hiện ngôn ngữ "${detectedLang}" cho text: "${text.substring(0, 30)}..."`);
-
-    // UI: hiệu ứng đang nói
-    btn.classList.add('speaking');
-    btn.querySelector('.material-icons-round').textContent = 'stop';
-
-    const resetBtn = () => {
-        btn.classList.remove('speaking');
-        btn.querySelector('.material-icons-round').textContent = 'volume_up';
+    /** Các câu mẫu thường dùng theo ngôn ngữ */
+    const AAC_PHRASES = {
+        vi: [
+            'Xin chào!',
+            'Cảm ơn bạn!',
+            'Cho tôi xem thực đơn',
+            'Tính tiền giúp tôi',
+            'Cho tôi 1 ly nước',
+            'Không cay',
+            'Ít cay thôi',
+            'Cho thêm đá',
+            'Ngon lắm!',
+            'Tôi bị dị ứng hải sản',
+            'Nhà vệ sinh ở đâu?',
+            'Bao nhiêu tiền?',
+            'Cho tôi thêm 1 phần',
+            'Chờ một chút',
+            'Tôi không ăn được cay',
+            'Cho tôi mang về'
+        ],
+        en: [
+            'Hello!',
+            'Thank you!',
+            'Can I see the menu?',
+            'Check please',
+            'A glass of water please',
+            'Not spicy',
+            'A little spicy',
+            'More ice please',
+            'Delicious!',
+            'I\'m allergic to seafood',
+            'Where is the restroom?',
+            'How much?',
+            'One more serving please',
+            'Wait a moment',
+            'I can\'t eat spicy food',
+            'To go please'
+        ]
     };
 
-    // Thử Web Speech API trước
-    const voices = window.speechSynthesis.getVoices();
-    const hasVoice = voices.some(v => v.lang.toLowerCase().startsWith(detectedLang.split('-')[0]));
+    async function openAACModal() {
+        const modal = document.getElementById('aac-modal');
+        modal.classList.remove('hidden');
 
-    if (hasVoice) {
-        // Có voice → dùng Web Speech API
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = detectedLang;
-        utterance.rate = 0.9;
-        utterance.volume = 1.0;
+        // Mặc định load câu mẫu theo ngôn ngữ đang chọn ở màn hình chính
+        await renderAACPhrases(AppState.language);
 
-        const langPrefix = detectedLang.split('-')[0];
-        const bestVoice = voices.find(v => v.lang === detectedLang && v.name.includes('Neural'))
-            || voices.find(v => v.lang === detectedLang)
-            || voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
-        if (bestVoice) utterance.voice = bestVoice;
-
-        // Fallback: nếu sau 3 giây không phát → chuyển Google TTS
-        let started = false;
-        const fallback = setTimeout(() => {
-            if (!started) {
-                window.speechSynthesis.cancel();
-                _aacGoogleTTS(text, detectedLang, resetBtn);
-            }
-        }, 3000);
-
-        utterance.onstart = () => { started = true; clearTimeout(fallback); };
-        utterance.onend = () => { clearTimeout(fallback); resetBtn(); };
-        utterance.onerror = (e) => {
-            clearTimeout(fallback);
-            if (e.error !== 'canceled') _aacGoogleTTS(text, detectedLang, resetBtn);
-            else resetBtn();
-        };
-
-        window.speechSynthesis.speak(utterance);
-    } else {
-        // Không có voice → Google Translate TTS fallback
-        _aacGoogleTTS(text, detectedLang, resetBtn);
+        // Focus vào ô nhập
+        setTimeout(() => document.getElementById('aac-text').focus(), 300);
     }
-}
 
-/**
- * Google Translate TTS fallback cho AAC — hoạt động mọi thiết bị
- */
-function _aacGoogleTTS(text, langCode, onDone) {
-    const tl = langCode.split('-')[0]; // vi-VN → vi
-    // Chia đoạn nếu text dài
-    const chunks = [];
-    const maxLen = 190;
-    if (text.length <= maxLen) {
-        chunks.push(text);
-    } else {
-        const sentences = text.split(/(?<=[.!?。！？;；,，])\s*/);
-        let current = '';
-        for (const s of sentences) {
-            if ((current + ' ' + s).trim().length <= maxLen) {
-                current = (current + ' ' + s).trim();
-            } else {
-                if (current) chunks.push(current);
-                if (s.length > maxLen) {
-                    for (let i = 0; i < s.length; i += maxLen) chunks.push(s.substring(i, i + maxLen));
-                    current = '';
-                } else {
-                    current = s;
-                }
-            }
+    function closeAACModal() {
+        document.getElementById('aac-modal').classList.add('hidden');
+        // Dừng phát nếu đang nói
+        if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
         }
-        if (current) chunks.push(current);
+        const btn = document.getElementById('btn-aac-speak');
+        btn.classList.remove('speaking');
+        btn.querySelector('.material-icons-round').textContent = 'volume_up';
     }
 
-    let idx = 0;
-    function playNext() {
-        if (idx >= chunks.length) {
-            window._aacGoogleAudio = null;
-            if (onDone) onDone();
+    async function renderAACPhrases(lang) {
+        const container = document.getElementById('aac-phrases');
+        let phrases = AAC_PHRASES[lang];
+        if (!phrases) {
+            const sourceLang = AAC_PHRASES.vi ? 'vi' : 'en';
+            phrases = await Promise.all(AAC_PHRASES[sourceLang].map((phrase, index) =>
+                translateWithCache('aac.phrase', index, phrase, sourceLang, lang)
+            ));
+            AAC_PHRASES[lang] = phrases;
+        }
+
+        container.innerHTML = phrases.map(phrase =>
+            `<button class="aac-phrase-btn" data-phrase="${phrase.replace(/"/g, '&quot;')}">${phrase}</button>`
+        ).join('');
+
+        // Click câu mẫu → điền vào ô nhập và phát luôn
+        container.querySelectorAll('.aac-phrase-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('aac-text').value = btn.dataset.phrase;
+                aacSpeak();
+            });
+        });
+    }
+
+    function aacSpeak() {
+        const text = document.getElementById('aac-text').value.trim();
+        if (!text) return;
+
+        const btn = document.getElementById('btn-aac-speak');
+
+        // Nếu đang nói → dừng
+        if (window.speechSynthesis.speaking || window._aacGoogleAudio) {
+            window.speechSynthesis.cancel();
+            if (window._aacGoogleAudio) {
+                window._aacGoogleAudio.pause();
+                window._aacGoogleAudio = null;
+            }
+            btn.classList.remove('speaking');
+            btn.querySelector('.material-icons-round').textContent = 'volume_up';
             return;
         }
-        const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${tl}&client=tw-ob&q=${encodeURIComponent(chunks[idx])}`;
-        const audio = new Audio(url);
-        window._aacGoogleAudio = audio;
-        audio.volume = 1.0;
-        audio.onended = () => { idx++; playNext(); };
-        audio.onerror = () => { idx++; playNext(); };
-        audio.play().catch(() => { if (onDone) onDone(); });
-    }
-    playNext();
-}
 
-/**
- * Phát hiện ngôn ngữ tự động dựa trên Unicode Range + Pattern Matching
- * Hỗ trợ 50+ ngôn ngữ phổ biến nhất thế giới
- * Trả về BCP47 lang code (vd: 'vi-VN', 'ko-KR', 'th-TH')
- */
-function detectLanguage(text) {
-    if (!text || text.length === 0) return 'vi-VN';
+        // ============ AI LANGUAGE DETECTION (50+ ngôn ngữ) ============
+        const detectedLang = detectLanguage(text);
+        console.log(`🌍 AAC: Phát hiện ngôn ngữ "${detectedLang}" cho text: "${text.substring(0, 30)}..."`);
 
-    // Bảng quét Unicode cho các hệ chữ viết đặc trưng
-    const scriptDetectors = [
-        // Tiếng Việt: các ký tự dấu đặc trưng
-        { test: /[àáãạảăắằẳẵặâấầẩẫậèéẹẻẽêềếểễệđìíĩỉịòóõọỏôốồổỗộơớờởỡợùúũụủưứừửữựỳýỵỷỹ]/i, lang: 'vi-VN' },
-        // Tiếng Nhật: Hiragana + Katakana
-        { test: /[\u3040-\u309F\u30A0-\u30FF]/, lang: 'ja-JP' },
-        // Tiếng Hàn: Hangul
-        { test: /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/, lang: 'ko-KR' },
-        // Tiếng Trung: CJK Ideographs (nếu không có Hiragana/Katakana/Hangul)
-        { test: /[\u4E00-\u9FFF\u3400-\u4DBF]/, lang: 'zh-CN' },
-        // Tiếng Thái
-        { test: /[\u0E00-\u0E7F]/, lang: 'th-TH' },
-        // Tiếng Ả Rập
-        { test: /[\u0600-\u06FF\u0750-\u077F]/, lang: 'ar-SA' },
-        // Tiếng Hebrew
-        { test: /[\u0590-\u05FF]/, lang: 'he-IL' },
-        // Tiếng Hindi / Devanagari
-        { test: /[\u0900-\u097F]/, lang: 'hi-IN' },
-        // Tiếng Bengali
-        { test: /[\u0980-\u09FF]/, lang: 'bn-BD' },
-        // Tiếng Tamil
-        { test: /[\u0B80-\u0BFF]/, lang: 'ta-IN' },
-        // Tiếng Telugu
-        { test: /[\u0C00-\u0C7F]/, lang: 'te-IN' },
-        // Tiếng Kannada
-        { test: /[\u0C80-\u0CFF]/, lang: 'kn-IN' },
-        // Tiếng Malayalam
-        { test: /[\u0D00-\u0D7F]/, lang: 'ml-IN' },
-        // Tiếng Myanmar
-        { test: /[\u1000-\u109F]/, lang: 'my-MM' },
-        // Tiếng Khmer (Campuchia)
-        { test: /[\u1780-\u17FF]/, lang: 'km-KH' },
-        // Tiếng Lào
-        { test: /[\u0E80-\u0EFF]/, lang: 'lo-LA' },
-        // Tiếng Georgia
-        { test: /[\u10A0-\u10FF]/, lang: 'ka-GE' },
-        // Tiếng Armenia
-        { test: /[\u0530-\u058F]/, lang: 'hy-AM' },
-        // Tiếng Ethiopia (Amharic)
-        { test: /[\u1200-\u137F]/, lang: 'am-ET' },
-        // Tiếng Hy Lạp
-        { test: /[\u0370-\u03FF]/, lang: 'el-GR' },
-        // Tiếng Nga / Cyrillic
-        { test: /[\u0400-\u04FF]/, lang: 'ru-RU' },
-        // Tiếng Gujarati
-        { test: /[\u0A80-\u0AFF]/, lang: 'gu-IN' },
-        // Tiếng Punjabi (Gurmukhi)
-        { test: /[\u0A00-\u0A7F]/, lang: 'pa-IN' },
-        // Tiếng Sinhala (Sri Lanka)
-        { test: /[\u0D80-\u0DFF]/, lang: 'si-LK' },
-        // Tiếng Tibetan
-        { test: /[\u0F00-\u0FFF]/, lang: 'bo-CN' },
-    ];
+        // UI: hiệu ứng đang nói
+        btn.classList.add('speaking');
+        btn.querySelector('.material-icons-round').textContent = 'stop';
 
-    // Quét theo hệ chữ viết (ưu tiên cao nhất, luôn chính xác)
-    for (const detector of scriptDetectors) {
-        if (detector.test.test(text)) {
-            return detector.lang;
+        const resetBtn = () => {
+            btn.classList.remove('speaking');
+            btn.querySelector('.material-icons-round').textContent = 'volume_up';
+        };
+
+        // Thử Web Speech API trước
+        const voices = window.speechSynthesis.getVoices();
+        const hasVoice = voices.some(v => v.lang.toLowerCase().startsWith(detectedLang.split('-')[0]));
+
+        if (hasVoice) {
+            // Có voice → dùng Web Speech API
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = detectedLang;
+            utterance.rate = 0.9;
+            utterance.volume = 1.0;
+
+            const langPrefix = detectedLang.split('-')[0];
+            const bestVoice = voices.find(v => v.lang === detectedLang && v.name.includes('Neural'))
+                || voices.find(v => v.lang === detectedLang)
+                || voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
+            if (bestVoice) utterance.voice = bestVoice;
+
+            // Fallback: nếu sau 3 giây không phát → chuyển Google TTS
+            let started = false;
+            const fallback = setTimeout(() => {
+                if (!started) {
+                    window.speechSynthesis.cancel();
+                    _aacGoogleTTS(text, detectedLang, resetBtn);
+                }
+            }, 3000);
+
+            utterance.onstart = () => { started = true; clearTimeout(fallback); };
+            utterance.onend = () => { clearTimeout(fallback); resetBtn(); };
+            utterance.onerror = (e) => {
+                clearTimeout(fallback);
+                if (e.error !== 'canceled') _aacGoogleTTS(text, detectedLang, resetBtn);
+                else resetBtn();
+            };
+
+            window.speechSynthesis.speak(utterance);
+        } else {
+            // Không có voice → Google Translate TTS fallback
+            _aacGoogleTTS(text, detectedLang, resetBtn);
         }
     }
 
-    // Nếu toàn ký tự Latin → phân biệt tiếp bằng đặc trưng ngôn ngữ
-    const latinDetectors = [
-        // Tiếng Đức: ß, ü, ö, ä
-        { test: /[ßüöäÜÖÄ]/, lang: 'de-DE' },
-        // Tiếng Pháp: ç, œ, ê, è, à, ù, â, î, ô, û, ë, ï, ÿ
-        { test: /[çœŒêèùâîôûëïÿ]/i, lang: 'fr-FR' },
-        // Tiếng Tây Ban Nha: ñ, ¿, ¡
-        { test: /[ñ¿¡]/i, lang: 'es-ES' },
-        // Tiếng Bồ Đào Nha: ã, õ, ç (không dấu Việt)
-        { test: /[ãõç]/i, lang: 'pt-BR' },
-        // Tiếng Thổ Nhĩ Kỳ: ğ, ı, ş, ç
-        { test: /[ğışŞİĞ]/, lang: 'tr-TR' },
-        // Tiếng Ba Lan: ą, ć, ę, ł, ń, ó, ś, ź, ż
-        { test: /[ąćęłńśźżĄĆĘŁŃŚŹŻ]/, lang: 'pl-PL' },
-        // Tiếng Séc: ě, š, č, ř, ž, ů, ď, ť, ň
-        { test: /[ěščřžůďťň]/i, lang: 'cs-CZ' },
-        // Tiếng Romania: ă, â, î, ș, ț
-        { test: /[ășțĂÂÎȘȚ]/, lang: 'ro-RO' },
-        // Tiếng Hungary: ő, ű
-        { test: /[őűŐŰ]/, lang: 'hu-HU' },
-        // Tiếng Hà Lan: ij, đặc điểm từ
-        { test: /\b(de|het|een|van|en|is|dat|niet|zijn|voor)\b/i, lang: 'nl-NL' },
-        // Tiếng Thụy Điển: å
-        { test: /[åÅ]/, lang: 'sv-SE' },
-        // Tiếng Na Uy / Đan Mạch: ø, æ
-        { test: /[øæØÆ]/, lang: 'no-NO' },
-        // Tiếng Phần Lan: ä, ö + đặc trung từ
-        { test: /\b(ja|on|ei|se|hän|mutta)\b/i, lang: 'fi-FI' },
-        // Tiếng Indonesia / Malay
-        { test: /\b(dan|yang|di|ini|itu|untuk|dengan|dari|tidak|saya)\b/i, lang: 'id-ID' },
-        // Tiếng Tagalog (Philippines)
-        { test: /\b(ang|ng|sa|na|mga|ko|niya|ito|ay)\b/i, lang: 'tl-PH' },
-        // Tiếng Swahili
-        { test: /\b(na|ya|wa|ni|kwa|katika|kuwa|hii)\b/i, lang: 'sw-KE' },
-    ];
-
-    for (const detector of latinDetectors) {
-        if (detector.test.test(text)) {
-            return detector.lang;
+    /**
+     * Google Translate TTS fallback cho AAC — hoạt động mọi thiết bị
+     */
+    function _aacGoogleTTS(text, langCode, onDone) {
+        const tl = langCode.split('-')[0]; // vi-VN → vi
+        // Chia đoạn nếu text dài
+        const chunks = [];
+        const maxLen = 190;
+        if (text.length <= maxLen) {
+            chunks.push(text);
+        } else {
+            const sentences = text.split(/(?<=[.!?。！？;；,，])\s*/);
+            let current = '';
+            for (const s of sentences) {
+                if ((current + ' ' + s).trim().length <= maxLen) {
+                    current = (current + ' ' + s).trim();
+                } else {
+                    if (current) chunks.push(current);
+                    if (s.length > maxLen) {
+                        for (let i = 0; i < s.length; i += maxLen) chunks.push(s.substring(i, i + maxLen));
+                        current = '';
+                    } else {
+                        current = s;
+                    }
+                }
+            }
+            if (current) chunks.push(current);
         }
+
+        let idx = 0;
+        function playNext() {
+            if (idx >= chunks.length) {
+                window._aacGoogleAudio = null;
+                if (onDone) onDone();
+                return;
+            }
+            const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${tl}&client=tw-ob&q=${encodeURIComponent(chunks[idx])}`;
+            const audio = new Audio(url);
+            window._aacGoogleAudio = audio;
+            audio.volume = 1.0;
+            audio.onended = () => { idx++; playNext(); };
+            audio.onerror = () => { idx++; playNext(); };
+            audio.play().catch(() => { if (onDone) onDone(); });
+        }
+        playNext();
     }
 
-    // Mặc định: tiếng Anh (chữ Latin thuần, không dấu)
-    return 'en-US';
-}
+    /**
+     * Phát hiện ngôn ngữ tự động dựa trên Unicode Range + Pattern Matching
+     * Hỗ trợ 50+ ngôn ngữ phổ biến nhất thế giới
+     * Trả về BCP47 lang code (vd: 'vi-VN', 'ko-KR', 'th-TH')
+     */
+    function detectLanguage(text) {
+        if (!text || text.length === 0) return 'vi-VN';
+
+        // Bảng quét Unicode cho các hệ chữ viết đặc trưng
+        const scriptDetectors = [
+            // Tiếng Việt: các ký tự dấu đặc trưng
+            { test: /[àáãạảăắằẳẵặâấầẩẫậèéẹẻẽêềếểễệđìíĩỉịòóõọỏôốồổỗộơớờởỡợùúũụủưứừửữựỳýỵỷỹ]/i, lang: 'vi-VN' },
+            // Tiếng Nhật: Hiragana + Katakana
+            { test: /[\u3040-\u309F\u30A0-\u30FF]/, lang: 'ja-JP' },
+            // Tiếng Hàn: Hangul
+            { test: /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/, lang: 'ko-KR' },
+            // Tiếng Trung: CJK Ideographs (nếu không có Hiragana/Katakana/Hangul)
+            { test: /[\u4E00-\u9FFF\u3400-\u4DBF]/, lang: 'zh-CN' },
+            // Tiếng Thái
+            { test: /[\u0E00-\u0E7F]/, lang: 'th-TH' },
+            // Tiếng Ả Rập
+            { test: /[\u0600-\u06FF\u0750-\u077F]/, lang: 'ar-SA' },
+            // Tiếng Hebrew
+            { test: /[\u0590-\u05FF]/, lang: 'he-IL' },
+            // Tiếng Hindi / Devanagari
+            { test: /[\u0900-\u097F]/, lang: 'hi-IN' },
+            // Tiếng Bengali
+            { test: /[\u0980-\u09FF]/, lang: 'bn-BD' },
+            // Tiếng Tamil
+            { test: /[\u0B80-\u0BFF]/, lang: 'ta-IN' },
+            // Tiếng Telugu
+            { test: /[\u0C00-\u0C7F]/, lang: 'te-IN' },
+            // Tiếng Kannada
+            { test: /[\u0C80-\u0CFF]/, lang: 'kn-IN' },
+            // Tiếng Malayalam
+            { test: /[\u0D00-\u0D7F]/, lang: 'ml-IN' },
+            // Tiếng Myanmar
+            { test: /[\u1000-\u109F]/, lang: 'my-MM' },
+            // Tiếng Khmer (Campuchia)
+            { test: /[\u1780-\u17FF]/, lang: 'km-KH' },
+            // Tiếng Lào
+            { test: /[\u0E80-\u0EFF]/, lang: 'lo-LA' },
+            // Tiếng Georgia
+            { test: /[\u10A0-\u10FF]/, lang: 'ka-GE' },
+            // Tiếng Armenia
+            { test: /[\u0530-\u058F]/, lang: 'hy-AM' },
+            // Tiếng Ethiopia (Amharic)
+            { test: /[\u1200-\u137F]/, lang: 'am-ET' },
+            // Tiếng Hy Lạp
+            { test: /[\u0370-\u03FF]/, lang: 'el-GR' },
+            // Tiếng Nga / Cyrillic
+            { test: /[\u0400-\u04FF]/, lang: 'ru-RU' },
+            // Tiếng Gujarati
+            { test: /[\u0A80-\u0AFF]/, lang: 'gu-IN' },
+            // Tiếng Punjabi (Gurmukhi)
+            { test: /[\u0A00-\u0A7F]/, lang: 'pa-IN' },
+            // Tiếng Sinhala (Sri Lanka)
+            { test: /[\u0D80-\u0DFF]/, lang: 'si-LK' },
+            // Tiếng Tibetan
+            { test: /[\u0F00-\u0FFF]/, lang: 'bo-CN' },
+        ];
+
+        // Quét theo hệ chữ viết (ưu tiên cao nhất, luôn chính xác)
+        for (const detector of scriptDetectors) {
+            if (detector.test.test(text)) {
+                return detector.lang;
+            }
+        }
+
+        // Nếu toàn ký tự Latin → phân biệt tiếp bằng đặc trưng ngôn ngữ
+        const latinDetectors = [
+            // Tiếng Đức: ß, ü, ö, ä
+            { test: /[ßüöäÜÖÄ]/, lang: 'de-DE' },
+            // Tiếng Pháp: ç, œ, ê, è, à, ù, â, î, ô, û, ë, ï, ÿ
+            { test: /[çœŒêèùâîôûëïÿ]/i, lang: 'fr-FR' },
+            // Tiếng Tây Ban Nha: ñ, ¿, ¡
+            { test: /[ñ¿¡]/i, lang: 'es-ES' },
+            // Tiếng Bồ Đào Nha: ã, õ, ç (không dấu Việt)
+            { test: /[ãõç]/i, lang: 'pt-BR' },
+            // Tiếng Thổ Nhĩ Kỳ: ğ, ı, ş, ç
+            { test: /[ğışŞİĞ]/, lang: 'tr-TR' },
+            // Tiếng Ba Lan: ą, ć, ę, ł, ń, ó, ś, ź, ż
+            { test: /[ąćęłńśźżĄĆĘŁŃŚŹŻ]/, lang: 'pl-PL' },
+            // Tiếng Séc: ě, š, č, ř, ž, ů, ď, ť, ň
+            { test: /[ěščřžůďťň]/i, lang: 'cs-CZ' },
+            // Tiếng Romania: ă, â, î, ș, ț
+            { test: /[ășțĂÂÎȘȚ]/, lang: 'ro-RO' },
+            // Tiếng Hungary: ő, ű
+            { test: /[őűŐŰ]/, lang: 'hu-HU' },
+            // Tiếng Hà Lan: ij, đặc điểm từ
+            { test: /\b(de|het|een|van|en|is|dat|niet|zijn|voor)\b/i, lang: 'nl-NL' },
+            // Tiếng Thụy Điển: å
+            { test: /[åÅ]/, lang: 'sv-SE' },
+            // Tiếng Na Uy / Đan Mạch: ø, æ
+            { test: /[øæØÆ]/, lang: 'no-NO' },
+            // Tiếng Phần Lan: ä, ö + đặc trung từ
+            { test: /\b(ja|on|ei|se|hän|mutta)\b/i, lang: 'fi-FI' },
+            // Tiếng Indonesia / Malay
+            { test: /\b(dan|yang|di|ini|itu|untuk|dengan|dari|tidak|saya)\b/i, lang: 'id-ID' },
+            // Tiếng Tagalog (Philippines)
+            { test: /\b(ang|ng|sa|na|mga|ko|niya|ito|ay)\b/i, lang: 'tl-PH' },
+            // Tiếng Swahili
+            { test: /\b(na|ya|wa|ni|kwa|katika|kuwa|hii)\b/i, lang: 'sw-KE' },
+        ];
+
+        for (const detector of latinDetectors) {
+            if (detector.test.test(text)) {
+                return detector.lang;
+            }
+        }
+
+        // Mặc định: tiếng Anh (chữ Latin thuần, không dấu)
+        return 'en-US';
+    }

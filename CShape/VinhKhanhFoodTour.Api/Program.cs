@@ -296,8 +296,6 @@ static void MapDemoApi(WebApplication app)
     app.MapGet("/api/poi", () => Results.Ok(demoPois.Where(p => p.IsActive).OrderBy(p => p.Priority)));
     app.MapGet("/api/poi/{id}", IResult (string id) =>
         demoPois.FirstOrDefault(p => p.Id == id) is { } poi ? Results.Ok(poi) : Results.NotFound());
-    app.MapGet("/api/poi/qr/{qrCode}", IResult (string qrCode) =>
-        demoPois.FirstOrDefault(p => p.QrCode == qrCode || p.Id == qrCode) is { } poi ? Results.Ok(poi) : Results.NotFound());
 
     app.MapGet("/api/poi/all", IResult (HttpRequest request) =>
     {

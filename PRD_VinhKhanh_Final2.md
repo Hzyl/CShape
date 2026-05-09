@@ -47,7 +47,7 @@
 ## 4. Functional Requirements
 * **Authentication & Authorization (High):** Admin đăng nhập nhận Bearer token ký HMAC; API quản trị kiểm tra token trước CRUD/Analytics.
 * **Geofencing/GPS (High):** Bắt GPS liên tục. Overlapping POI: chọn ưu tiên khoảng cách gần.
-* **QR Code Scanner (High):** Quét mã QR lấy URL/POI code -> mở POI -> hiện prompt nghe để phát audio đúng chính sách trình duyệt mobile.
+* **QR Code Scanner (High):** Quét mã QR Tour tại cổng → mở danh sách quán theo thứ tự → chuyển tiếp từng quán. Hiện prompt nghe để phát audio đúng chính sách trình duyệt mobile.
 * **CMS POI Management (High):** Quản lý Tên, tọa độ, mô tả thông tin quán.
 * **Analytics (Medium):** Ghi dấu behavior, đếm số lượt nghe hoàn thành và lưu log heatmap. Tính trung bình thời gian nghe.
 
@@ -76,15 +76,14 @@
 | BR-01 | Nếu user khoảng cách ≤ radius -> Quét vùng nhập, tự động kích hoạt Audio. |
 | BR-02 | Không spam audio nếu người dùng bấm Dừng (Stop) hoặc thoát vùng nhanh. |
 | BR-03 | Chỉ Track lượt nghe (Analytics) khi audio phát END hoặc khi người dùng tác động nút STOP. |
-| BR-04 | Quét mã QR là tác vụ chủ động -> Truy cập POI và Audio luôn, không cần check dải tọa độ GPS ngoài khu vực. |
+| BR-04 | Quét mã QR Tour tại cổng → mở danh sách quán theo thứ tự tour → chuyển tiếp từng quán. |
 | BR-05 | Client-side TTS: Âm thanh không được tạo dưới backend để tránh sập máy chủ. Text sẽ được Frontend gửi thẳng ra các API âm thanh. |
 | BR-06 | Khi du khách chọn ngôn ngữ không phải `vi/en` (vd: Tiếng Hàn) → hệ thống lấy source `vi`, nếu thiếu thì lấy `en` → dịch qua Google Translate API → cache kết quả → render UI/POI và phát audio bằng ngôn ngữ đã chọn. |
 | BR-07 | AAC "Nói giúp tôi" sử dụng AI nhận biết tự động hệ ngôn ngữ từ ký tự Unicode mà không cần chọn thủ công. |
-| BR-08 | QR dùng trong demo LAN phải encode URL đầy đủ dạng `https://<IP-LAN>:5001/index.html?qr=<POI_CODE>`; kết nối từ HTTPS là bắt buộc để Mobile không chặn GPS. Thống kê qr_scan sẽ hoạt động cho cả QR scan trong app lẫn app Camera hệ thống. |
+| BR-08 | QR dùng trong demo LAN phải encode URL đầy đủ dạng `https://<IP-LAN>:5001/index.html?tour=<TOUR_CODE>`; kết nối từ HTTPS là bắt buộc để Mobile không chặn GPS. |
 | BR-09 | Nếu MongoDB/API chưa sẵn sàng khi demo, frontend dùng dữ liệu POI mẫu để vẫn trình bày được bản đồ, đổi ngôn ngữ, QR và TTS. |
 | BR-10 | Nếu Google Translate/TTS không khả dụng, app fallback về source `vi/en` và thông báo trạng thái thay vì để giao diện rỗng. |
-| BR-11 | QR in tại quán encode URL đầy đủ `/index.html?qr=<POI_CODE>`; app cũng hỗ trợ QR chỉ chứa POI code để dễ test. |
-| BR-12 | GPS/geofence là gợi ý tự động; khi GPS lỗi hoặc lệch, UI nhắc dùng QR tại điểm dừng vì đây là luồng ổn định hơn trong phố ẩm thực. |
+| BR-11 | GPS/geofence là gợi ý tự động; khi GPS lỗi hoặc lệch, UI nhắc dùng QR tại điểm dừng vì đây là luồng ổn định hơn trong phố ẩm thực. |
 
 ## 6.1 Acceptance Criteria Cho Demo
 * Đổi `VI ↔ EN` phải cập nhật UI ngay, không gọi dịch.
@@ -170,191 +169,188 @@ graph TD
 
 ## 9. Sơ Đồ Chuỗi Xử Lý (Sequence Diagrams)
 
-### 9.1 Luồng Xử Lý Quét Mã QR
+### 9.1 Luồng Quét QR Tour Tại Cổng (Quét 1 lần → Mở danh sách quán → Chuyển tiếp)
 
 ```mermaid
 sequenceDiagram
-    actor User as Người dùng
-    participant App as Frontend (PWA)
-    participant Scanner as Html5-Qrcode
-    participant API as Backend (ASP.NET Core)
+    actor User as Du khách
+    participant Scanner as Html5-Qrcode<br/>(qr-scanner.js)
+    participant App as Frontend PWA<br/>(app.js)
+    participant API as Backend<br/>(Program.cs)
     participant DB as MongoDB Atlas
 
-    User->>App: Chọn tính năng Quét QR
-    App->>Scanner: Mở Camera
-    User->>Scanner: Quét mã QR tại quán
-    Scanner-->>App: Trả về chuỗi QR (URL có ?qr=... hoặc POI code)
-    App->>App: handleQrCode() trích xuất POI code
-    
-    App->>App: Tìm trong AppState.pois/offline cache trước
-    alt Chưa có trong cache
-        App->>API: GET /api/poi/qr/{qrCode}
-        API->>DB: Truy vấn dữ liệu POI theo qrCode
-        DB-->>API: Trả về document
+    User->>Scanner: Quét QR tại cổng tour
+    Scanner->>Scanner: _onScanSuccess(decodedText)<br/>📍 qr-scanner.js:65
+    Scanner->>App: Callback onQRDetected(decodedText)
+
+    App->>App: handleQrCode(rawQrCode)<br/>📍 app.js:962
+    App->>App: handleTourQrCode(rawQrCode)<br/>📍 app.js:1038
+
+    Note over App: Bước 1 — Tách mã QR
+    App->>App: extractTourQrCode(rawQrCode)<br/>📍 app.js:1050<br/>Trích ?tour= hoặc ?qr= từ URL
+
+    Note over App: Bước 2 — Gọi API lấy tour
+    App->>API: resolveTourByQrCode(qrCode)<br/>📍 app.js:1072<br/>GET /api/tour/qr/{qrCode}
+    API->>API: MapGet("/api/tour/qr/{qrCode}")<br/>📍 Program.cs:341
+    API->>DB: Tìm tour → lấy POI theo thứ tự
+    DB-->>API: { tour, pois[] }
+    API-->>App: JSON { tour, pois[] }
+
+    alt API lỗi hoặc offline
+        App->>App: getFallbackTourByQrCode(qrCode)<br/>📍 app.js:1086<br/>Dùng POI demo trong bộ nhớ
     end
-    
-    alt Lỗi không có dữ liệu
-        API-->>App: Trả về lỗi 404 hoặc cache không có POI
-        App-->>User: Hiện toast: "QR không tìm thấy"
-    else Thành công
-        API-->>App: Dữ liệu JSON quán ăn hợp lệ nếu cần
-        App-->>User: Hiện chi tiết POI và căn bản đồ
-        App->>API: POST /api/analytics/event (eventType: qr_scan)
-        App-->>User: Hiện prompt "Nghe thuyết minh"
-        User->>App: Bấm nghe
-        App->>App: getPoiScript() lấy/dịch script theo ngôn ngữ hiện tại
-        App->>App: audioManager.playDirect()
-    end
+
+    Note over App: Bước 3 — Mở tour & hiện danh sách quán
+    App->>App: openTourFromQr(payload, qrCode)<br/>📍 app.js:1111
+    App->>App: normalizeTourPayload(payload)<br/>📍 app.js:1061
+    App->>App: AppState.activeTour = {tour, pois, currentIndex: 0}
+    App->>App: renderTourPoiList()<br/>📍 app.js:1428
+    App->>App: showPoiDetail(firstPoi)<br/>📍 app.js:1139 — Hiện quán đầu tiên
+    App-->>User: Hiện danh sách quán + nút Trước/Tiếp
+
+    Note over App: Bước 4 — Ghi thống kê
+    App->>API: trackTourQrScan()<br/>📍 app.js:1151<br/>POST /api/analytics/event {eventType: "qr_scan"}
+
+    Note over User,App: Chuyển tiếp giữa các quán
+    User->>App: Bấm "Tiếp theo" hoặc "Trước"
+    App->>App: goToTourStop(delta)<br/>📍 app.js:1582
+    App->>App: showPoiDetail(nextPoi)<br/>Hiện quán kế tiếp + phát audio
+    App->>App: renderTourNavigation(poi)<br/>📍 app.js:1544<br/>Cập nhật "Điểm 2/5"
 ```
 
-### 9.2 Luồng Đổi Ngôn Ngữ, Dịch Runtime và Phát Thuyết Minh
+### 9.2 Luồng Đổi Ngôn Ngữ và Phát Thuyết Minh (TTS)
 
 ```mermaid
 sequenceDiagram
     actor User as Người dùng
-    participant App as Frontend (PWA App)
-    participant API as Backend (ASP.NET Core)
-    participant GTranslate as Google Translate API
-    participant BrowserTTS as Window Web Speech API
-    participant GoogleTTS as Google Translate TTS (Fallback)
+    participant App as app.js
+    participant GTranslate as Google Translate
+    participant TTS as audio-manager.js
+    participant Proxy as /api/tts (Program.cs)
 
-    User->>App: Chọn ngôn ngữ trên dropdown (vd: Korean)
-    App->>App: Kiểm tra targetLang có phải vi/en không
+    User->>App: Chọn ngôn ngữ (vd: Korean)
+    App->>App: changeLanguage(lang)
 
-    alt targetLang là vi hoặc en
-        App->>App: Dùng trực tiếp UI label + POI name/description + ttsScript source
-    else targetLang là ngôn ngữ khác
-        App->>App: Chọn sourceLang ưu tiên vi, nếu thiếu thì en
-        App->>GTranslate: Dịch UI label + POI text + ttsScript từ sourceLang sang targetLang
-        GTranslate-->>App: Trả về text đã dịch
-        App->>App: Cache runtime theo key sourceLang->targetLang
+    alt vi hoặc en
+        App->>App: Dùng trực tiếp source text
+    else Ngôn ngữ khác
+        App->>GTranslate: translateText(text, src, target)
+        GTranslate-->>App: Text đã dịch → cache localStorage
     end
 
-    App->>App: Render lại giao diện, danh sách POI, chi tiết POI, QR/AAC label
-    User->>App: Bấm "Nghe thuyết minh" hoặc quét QR/GPS kích hoạt POI
-    App->>API: Ghi analytics nếu có mạng
-    App->>BrowserTTS: Gửi ttsScript source/dịch để đọc
+    App->>App: Render lại UI + POI list
+    User->>App: Bấm "Nghe thuyết minh"
+    App->>TTS: playDirect(poiId, script, name)
+    TTS->>TTS: _speak(text, lang) 📍:244
 
-    alt Thiết bị có Voice đọc tiếng bản địa
-        BrowserTTS-->>App: Phát âm thanh thành công
-        App-->>User: Nghe Audio đúng ngôn ngữ
-    else Thiết bị không có Voice TTS ngôn ngữ đó
-        App->>GoogleTTS: Gọi Google Translate TTS fallback
-        GoogleTTS-->>App: Trả về luồng audio
-        App-->>User: Phát audio fallback
+    alt Có voice hệ thống
+        TTS->>TTS: _speakWithWebSpeech() 📍:276
+        TTS-->>User: Phát audio
+    else Không có voice
+        TTS->>Proxy: GET /api/tts?lang=ko&text=...
+        Proxy-->>TTS: audio/mpeg stream
+        TTS-->>User: Phát audio fallback
     end
+
+    TTS->>TTS: _trackListen(poiId) 📍:581
 ```
 
-### 9.3 Luồng Tính Năng Bản Đồ và Geofencing Hàng Rào Ảo
+### 9.3 Luồng Bản Đồ và Geofencing
 
 ```mermaid
 sequenceDiagram
     actor User as Người dùng
-    participant App as Frontend (Leaflet.js)
-    participant Geo as Geolocation API (Trình duyệt)
-    participant API as Backend (ASP.NET Core)
-    
-    User->>App: Mở ứng dụng
-    App->>Geo: Yêu cầu quyền truy cập Vị Trí (GPS)
-    Geo-->>App: Trả về Tọa độ (Lat/Lng) liên tục mỗi 1-5s
-    App->>API: Khởi tạo dữ liệu bằng (GET /api/poi/all)
-    API-->>App: Dữ liệu mảng toàn bộ Quán ăn trên đường
-    
-    loop Mỗi khi vị trí thay đổi (Khách di chuyển)
-        App->>App: Tính toán khoảng cách hiện tại đến các tập POI bằng Haversine formula
-        alt Khoảng cách < Bán kính POI quy định (vd: 50m)
-            App-->>User: Bật thẻ Popup trên màn hình "Nghe ngay" thông báo đã tới nơi
+    participant App as app.js
+    participant Map as map.js
+    participant Geo as geofence.js
+    participant API as Backend
+
+    User->>App: Mở ứng dụng → initApp()
+    App->>API: GET /api/poi
+    API-->>App: JSON POI[]
+    App->>Map: addPois(pois) — vẽ markers
+    App->>Geo: start() → watchPosition()
+
+    loop Khách di chuyển
+        Geo->>Geo: checkGeofences(lat, lng) — Haversine
+        alt Khoảng cách < bán kính POI
+            Geo->>App: onEnter(poi)
+            App-->>User: Popup + nút Nghe
         end
     end
 ```
 
-### 9.4 Luồng Xác Thực và Quản Trị Hệ Thống (CMS Admin)
+### 9.4 Luồng Xác Thực và Quản Trị (CMS Admin)
 
 ```mermaid
 sequenceDiagram
     actor Admin as Quản trị viên
-    participant Web as Admin Dashboard
-    participant API as Backend API
-    participant DB as MongoDB Atlas
-    participant QRGen as QR Local Lib
+    participant Web as admin.js
+    participant API as Backend
+    participant DB as MongoDB
 
-    Admin->>Web: Nhập Username/Password đăng nhập
-    Web->>API: Gửi POST Request /api/auth/login
-    API->>DB: Tìm user và So sánh Hash Password
-    DB-->>API: Match True
-    API-->>Web: Kết xuất Bearer token ký HMAC
-    Web->>Web: Lưu token vào Session Storage trình duyệt
-    Web-->>Admin: Render bảng điều khiển (Dashboard)
-    
-    Admin->>Web: Thêm POI Mới (Nhập tên quán, script thuyết minh, vị trí LatLng)
-    Web->>API: Request POST /api/poi (Có Auth Bearer Header)
-    API->>DB: Đẩy Schema mới vào kho dữ liệu
-    DB-->>Web: Trả về trạng thái Status Created
-    
-    Admin->>Web: Nhấn xem mã QRCode của quán vừa tạo
-    Web->>API: GET /api/system/network để lấy IP LAN
-    API-->>Web: Trả preferredOrigin + danh sách lanOrigins
-    alt Admin đang mở bằng localhost
-        Web->>Web: Dùng preferredOrigin LAN cho QR
-    else Admin đang mở bằng IP LAN
-        Web->>Web: Dùng window.location.origin
-    end
-    Web->>QRGen: Tạo hình ảnh QR từ URL đầy đủ
-    QRGen-->>Web: Trả data URL hình QR
-    Web-->>Admin: Hiển thị giao diện In ấn trực tiếp Print View Modal
+    Admin->>Web: Đăng nhập (username/password)
+    Web->>API: POST /api/auth/login
+    API->>DB: Kiểm tra hash password
+    API-->>Web: Bearer token HMAC → sessionStorage
+
+    Web->>API: GET /api/analytics/stats + top-pois + recent + poi/all
+    API-->>Web: Dữ liệu thống kê
+    Web->>Web: loadDashboardData() 📍:313 → renderTopPoisChart() 📍:348
+    Web-->>Admin: Hiện Dashboard + biểu đồ
+
+    Admin->>Web: Thêm/Sửa/Xóa POI
+    Web->>API: POST/PUT/DELETE /api/poi (Auth Bearer)
+    API->>DB: CRUD document
+    API-->>Web: Status OK
+
+    Admin->>Web: Xem QR Tour
+    Web->>API: GET /api/system/network → lấy IP LAN
+    Web->>Web: QRCode.js tạo QR từ URL tour
+    Web-->>Admin: Modal in QR
 ```
 
-### 9.5 Luồng Giao Tiếp Người Khuyết Tật Hỗ Trợ Đa Ngôn Ngữ (AAC) (Nhận Diện Ngôn Ngữ Thông Minh AI)
+### 9.5 Luồng AAC — "Nói giúp tôi"
 
 ```mermaid
 sequenceDiagram
-    actor User as Du khách / Người Khuyết Tật
-    participant C as Frontend (PWA App JS)
-    participant U as Unicode String Parser Math
-    participant TSS as Window Browser Web Speech API
-    participant GF as Google Translate Audio (Fallback)
+    actor User as Du khách
+    participant App as app.js
+    participant AI as detectLanguage()
+    participant TTS as audio-manager.js
 
-    User->>C: Bấm chọn các icon tình huống để nhờ giao tiếp, nói giúp với chủ quán
-    C->>U: Truyền chuỗi String văn bản nội dung hiện tại
-    U->>U: Tính toán Regex quét mảng ký tự dựa vào Cấu trúc Hệ chữ Unicode toàn cầu
-    U-->>C: Trả về Mã BCP47 chính xác tuyệt đối loại ngôn ngữ văn bản (ja, ko, th, ru, de...)
-    
-    C->>TSS: Ra lệnh gọi Engine đọc ngầm Text theo mã Code Language vừa quét được
-    
-    alt Xử Lý Native Đạt Yêu Cầu
-        TSS-->>C: Đã kích hoạt Voice
-        C-->>User: Phát loa ngoài ngôn ngữ tương thích lập tức
-    else Máy cấu hình yếu/Không Tải Voice OS
-         C->>GF: Gọi lên API dự phòng Google với String Text mã hóa URL Encode
-         GF-->>C: Generate mảng byte Audio File Buffer
-         C-->>User: Phát Audio Fallback để chủ cửa hàng nghe thấy
+    User->>App: Chọn câu mẫu hoặc nhập text
+    App->>AI: detectLanguage(text) — Unicode Range + Regex
+    AI-->>App: Mã BCP47 (ko, ja, th, ru...)
+    App->>TTS: _speak(text, lang) 📍:244
+
+    alt Có Voice OS
+        TTS-->>User: Phát loa ngoài
+    else Không có Voice
+        TTS->>TTS: GET /api/tts fallback
+        TTS-->>User: Phát audio Google TTS
     end
 ```
 
-### 9.6 Luồng Xử Lý Mất Kết Nối Mạng Tạm Thời PWA (Offline Capability)
+### 9.6 Luồng PWA Offline
 
 ```mermaid
 sequenceDiagram
-    actor User as Du Khách Nước Ngoài Sài 3G
-    participant B as Mobile Chrome/Safari
-    participant SW as Worker Đóng Ngầm (Service Worker PWA)
-    participant Cache as Network Cache Storage (Trình Duyệt)
-    participant Server as Cloud Backend ASP.NET
+    actor User as Du khách
+    participant SW as sw.js
+    participant Cache as Cache Storage
+    participant IDB as offline-db.js
+    participant Server as Backend
 
-    Note over User,Server: Luồng tải lên lần đầu (Khi còn sóng 4G/Wifi kết nối)
-    User->>B: Truy cập Domain đường link Web/App Lần đầu
-    B->>SW: Register Cài Đặt Ứng Dụng Service Worker PWA
-    SW->>Server: Kéo toàn bộ File tĩnh Asset (Font/CSS/JS/Hình nền/Audio Intro)
-    Server-->>SW: Xả Stream Payload
-    SW->>Cache: Lưu lại ghi đè vào Disk bộ nhớ lưu trữ Offline trong thiết bị
+    Note over User,Server: Lần đầu (có mạng)
+    SW->>Server: Fetch file tĩnh (HTML/CSS/JS)
+    SW->>Cache: Lưu offline
+    Server-->>IDB: GET /api/poi → savePois()
 
-    Note over User,Server: Luồng sụp ngầm (Khi Du khách thám hiểm sâu / Mất Sóng)
-    User->>B: Ấn vào Menu chức năng hoặc reload
-    B->>SW: Đang chuẩn bị gọi các HTTP Fetch qua mạng
-    SW->>Server: Kích hoạt request Ping tới Cloud
-    Server--xB: Lỗ hổng timeout kết nối API
-    
-    SW->>Cache: Fall mode - Ưu tiên truy xuất Cache Memory Local
-    Cache-->>SW: Lôi file và text lưu tạm lên lại
-    SW-->>B: Render Trả về Web DOM Component và báo lỗi Offline Đỏ góc màn hình
+    Note over User,Server: Khi mất mạng
+    SW->>Server: Ping API
+    Server--xSW: Timeout
+    SW->>Cache: Lấy file tĩnh cached
+    IDB-->>User: POI[] từ IndexedDB
+    Note over User: App vẫn chạy + badge "Offline"
 ```
