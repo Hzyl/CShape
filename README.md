@@ -21,7 +21,7 @@ Vĩnh Khánh Food Tour là một ứng dụng Web Tiến Bộ (Progressive Web A
 
 4. **📷 Quét Mã QR (QR Scanner Integration)**
    - Tích hợp HTML5-QRCode quét máy ảnh trực tiếp trên trình duyệt.
-   - QR thực tế encode URL dạng `/index.html?qr=<POI_CODE>`: quét bằng camera hệ thống hoặc scanner trong app đều mở đúng điểm thuyết minh.
+   - QR thực tế encode URL dạng `/index.html?tour=<TOUR_CODE>`: quét bằng camera hệ thống hoặc scanner trong app sẽ mở tour, hiển thị danh sách quán theo thứ tự và cho chuyển tiếp từng quán.
    - Admin CMS tạo QR local bằng thư viện `qrcode`; nếu CDN lỗi mới fallback sang QR server bên ngoài.
    - Mobile browser thường chặn autoplay, nên sau khi quét QR app mở chi tiết POI và hiện nút “Nghe thuyết minh” để user bấm phát audio hợp lệ.
 
@@ -32,7 +32,8 @@ Vĩnh Khánh Food Tour là một ứng dụng Web Tiến Bộ (Progressive Web A
 
 6. **📊 Xử lý & Quản Lý Dữ Liệu (Admin CMS & Analytics)**
    - Bảng điều khiển (Dashboard) đăng nhập bằng token HMAC ký server-side; token gửi qua `Authorization: Bearer ...` cho các API quản trị.
-   - Theo dõi số phiên truy cập, lưu vết (Log) sự kiện nghe Audio và hoàn thành điểm đi.
+   - Theo dõi số phiên truy cập, lưu vết (Log) sự kiện nghe Audio, quét QR tour và hoàn thành điểm đi.
+   - Dashboard tải lại 5 giây/lần khi đang mở trang Dashboard: widget QR Scans lấy `qr_scan`, Top POIs chỉ xếp hạng theo `poi_listen`, Recent Activities lấy log mới nhất từ database, Heatmap dùng tọa độ analytics hoặc tọa độ POI fallback để demo LAN không bị trống.
    - Quản lý POI toàn diện: Thêm, Sửa, Xóa, Xem báo cáo theo chuẩn REST API.
 
 ## 🛠️ Công Nghệ Sử Dụng (Tech Stack)
@@ -86,7 +87,7 @@ Vĩnh Khánh Food Tour là một ứng dụng Web Tiến Bộ (Progressive Web A
    - Khi mở modal QR trong Admin, QR sẽ ưu tiên sinh link LAN để điện thoại quét mở được; nếu máy có nhiều card mạng, nhập đúng `http://192.168.x.x:5000` vào ô LAN origin trong modal QR.
 
 ### 💡 Lưu ý về HTTPS và Phân quyền Máy ảnh Thực tế
-Luồng thực tế khi demo QR là dùng camera mặc định của điện thoại quét mã QR đã in/dán, QR mở thẳng URL `http://<IP-LAN>:5000/index.html?qr=...`; luồng này không cần Web Camera API trong app. Riêng nút “Quét QR” bên trong web app dùng Camera API, nên khi chạy qua LAN dạng HTTP một số trình duyệt sẽ chặn camera; muốn demo nút này cần HTTPS hoặc bật Insecure Origins cho địa chỉ `http://<IP-LAN>:5000` trên Chrome.
+Luồng thực tế khi demo QR là dùng camera mặc định của điện thoại quét mã QR tour đã in/dán tại cổng, QR mở thẳng URL `http://<IP-LAN>:5000/index.html?tour=...`; luồng này không cần Web Camera API trong app. Riêng nút “Quét QR” bên trong web app dùng Camera API, nên khi chạy qua LAN dạng HTTP một số trình duyệt sẽ chặn camera; muốn demo nút này cần HTTPS hoặc bật Insecure Origins cho địa chỉ `http://<IP-LAN>:5000` trên Chrome.
 
 ## 🎓 Ghi Chú Demo / Bảo Vệ
 

@@ -49,7 +49,7 @@
 * **Geofencing/GPS (High):** Bắt GPS liên tục. Overlapping POI: chọn ưu tiên khoảng cách gần.
 * **QR Code Scanner (High):** Quét mã QR Tour tại cổng → mở danh sách quán theo thứ tự → chuyển tiếp từng quán. Hiện prompt nghe để phát audio đúng chính sách trình duyệt mobile.
 * **CMS POI Management (High):** Quản lý Tên, tọa độ, mô tả thông tin quán.
-* **Analytics (Medium):** Ghi dấu behavior, đếm số lượt nghe hoàn thành và lưu log heatmap. Tính trung bình thời gian nghe.
+* **Analytics (Medium):** Ghi dấu behavior, đếm `qr_scan` realtime cho QR tour, xếp hạng Top POIs theo `poi_listen`, hiển thị Recent Activities từ log database và Heatmap từ tọa độ analytics/POI.
 
 ## 5. Technical Considerations
 * **Backend:** C# ASP.NET Core 10 (async), Architecture chuẩn REST.
@@ -84,6 +84,7 @@
 | BR-09 | Nếu MongoDB/API chưa sẵn sàng khi demo, frontend dùng dữ liệu POI mẫu để vẫn trình bày được bản đồ, đổi ngôn ngữ, QR và TTS. |
 | BR-10 | Nếu Google Translate/TTS không khả dụng, app fallback về source `vi/en` và thông báo trạng thái thay vì để giao diện rỗng. |
 | BR-11 | GPS/geofence là gợi ý tự động; khi GPS lỗi hoặc lệch, UI nhắc dùng QR tại điểm dừng vì đây là luồng ổn định hơn trong phố ẩm thực. |
+| BR-12 | Dashboard Admin tự refresh mỗi 5 giây khi trang Dashboard đang active; `QR Scans` lấy `qr_scan`, `Top POIs` chỉ lấy `poi_listen`, `Recent Activities` lấy log mới nhất, `Heatmap` dùng tọa độ event hoặc tọa độ POI fallback để demo LAN không trống dữ liệu. |
 
 ## 6.1 Acceptance Criteria Cho Demo
 * Đổi `VI ↔ EN` phải cập nhật UI ngay, không gọi dịch.
@@ -103,7 +104,7 @@
 
 ## 7. Dữ Liệu Lịch Sử (Data Schema MongoDB — 4 Collections)
 * **`pois`**: `id`, `name` (`vi/en` source, có thể còn seed fallback), `description` (`vi/en` source), `category`, `latitude`, `longitude`, `radius`, `priority`, `ttsScript` (`vi/en` source), `qrCode`, `address`, `openingHours`, `priceRange`, `isActive`, `createdAt`.
-* **`analytics`**: `id`, `sessionId`, `eventType` (`poi_enter`, `poi_listen`, `poi_complete`, `qr_scan`, `location_update`), `poiId`, `duration`, `latitude`, `longitude`, `timestamp`.
+* **`analytics`**: `id`, `sessionId`, `eventType` (`poi_enter`, `poi_listen`, `poi_complete`, `qr_scan`, `location_update`), `poiId`, `language`, `duration`, `latitude`, `longitude`, `timestamp`.
 * **`tours`**: `id`, `name` (đa ngôn ngữ), `description` (đa ngôn ngữ), `poiIds` (danh sách POI theo thứ tự), `estimatedDuration` (phút), `estimatedDistance` (km), `isActive`, `createdAt`.
 * **`users`**: `id`, `username`, `passwordHash`, `role` (`admin`, `editor`), `createdAt`.
 
@@ -294,10 +295,12 @@ sequenceDiagram
     API->>DB: Kiểm tra hash password
     API-->>Web: Bearer token HMAC → sessionStorage
 
-    Web->>API: GET /api/analytics/stats + top-pois + recent + poi/all
+    Web->>API: loadDashboardData() 📍 admin.js:340<br/>GET /api/analytics/stats + top-pois + recent + poi/all
     API-->>Web: Dữ liệu thống kê
-    Web->>Web: loadDashboardData() 📍:313 → renderTopPoisChart() 📍:348
-    Web-->>Admin: Hiện Dashboard + biểu đồ
+    Web->>Web: renderTopPoisChart() 📍 admin.js:377<br/>renderRecentEvents() 📍 admin.js:402
+    Web->>API: initHeatmap() 📍 admin.js:431<br/>GET /api/analytics/heatmap
+    Web->>Web: startDashboardRefresh() 📍 admin.js:324<br/>poll lại mỗi 5 giây khi Dashboard active
+    Web-->>Admin: Hiện QR scans realtime, Top POIs nghe nhiều, Recent Activities, Heatmap
 
     Admin->>Web: Thêm/Sửa/Xóa POI
     Web->>API: POST/PUT/DELETE /api/poi (Auth Bearer)

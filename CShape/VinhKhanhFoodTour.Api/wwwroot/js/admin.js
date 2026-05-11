@@ -7,6 +7,8 @@ let adminToken = sessionStorage.getItem('adminToken') || '';
 let adminPois = [];
 let adminTours = [];
 let heatmapMap = null;
+let heatmapLayers = [];
+let dashboardRefreshTimer = null;
 const QR_ORIGIN_KEY = 'vinhkhanh_qr_origin';
 let qrNetworkInfo = null;
 let qrNetworkInfoPromise = null;
@@ -28,6 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('admin-app').classList.remove('hidden');
         document.querySelector('.admin-user').textContent = `👤 ${savedUser}`;
         await loadDashboardData();
+        startDashboardRefresh();
     }
 });
 
@@ -72,6 +75,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
         // Load dashboard data
         await loadDashboardData();
+        startDashboardRefresh();
     } catch (err) {
         alert('Lỗi kết nối: ' + err.message);
     } finally {
@@ -81,6 +85,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 });
 
 function logout() {
+    stopDashboardRefresh();
     adminToken = '';
     sessionStorage.removeItem('adminToken');
     sessionStorage.removeItem('adminUser');
@@ -298,6 +303,12 @@ function switchPage(page) {
     document.getElementById('page-title').textContent = titles[page] || page;
 
     // Load page data
+    if (page === 'dashboard') {
+        loadDashboardData();
+        startDashboardRefresh();
+    } else {
+        stopDashboardRefresh();
+    }
     if (page === 'pois') loadPoisTable();
     if (page === 'tours') loadTours();
     if (page === 'analytics') loadAnalyticsDetail();
@@ -310,7 +321,23 @@ function toggleSidebar() {
 
 // ==================== DASHBOARD ====================
 
-async function loadDashboardData() {
+function startDashboardRefresh() {
+    stopDashboardRefresh();
+    dashboardRefreshTimer = setInterval(() => {
+        if (document.getElementById('page-dashboard')?.classList.contains('active')) {
+            loadDashboardData({ silent: true });
+        }
+    }, 5000);
+}
+
+function stopDashboardRefresh() {
+    if (dashboardRefreshTimer) {
+        clearInterval(dashboardRefreshTimer);
+        dashboardRefreshTimer = null;
+    }
+}
+
+async function loadDashboardData(options = {}) {
     try {
         // Load stats
         const [statsRes, topPoisRes, recentRes, poisRes] = await Promise.all([
@@ -329,8 +356,9 @@ async function loadDashboardData() {
         // Update stat cards
         document.getElementById('stat-pois').textContent = adminPois.length;
         document.getElementById('stat-sessions').textContent = stats.uniqueSessions || 0;
-        document.getElementById('stat-active').textContent = stats.activeNow || 0;
-        document.getElementById('stat-listens').textContent = (stats.eventCounts?.poi_enter || 0) + (stats.eventCounts?.qr_scan || 0) + (stats.eventCounts?.poi_listen || 0);
+        const activeEl = document.getElementById('stat-active');
+        if (activeEl) activeEl.textContent = stats.activeNow || 0;
+        document.getElementById('stat-listens').textContent = stats.eventCounts?.poi_listen || 0;
         document.getElementById('stat-qr').textContent = stats.eventCounts?.qr_scan || 0;
 
         // Render top POIs chart
@@ -340,9 +368,9 @@ async function loadDashboardData() {
         renderRecentEvents(recentEvents);
 
         // Init heatmap
-        initHeatmap();
+        await initHeatmap();
     } catch (err) {
-        console.error('Dashboard load error:', err);
+        if (!options.silent) console.error('Dashboard load error:', err);
     }
 }
 
@@ -353,17 +381,18 @@ function renderTopPoisChart(topPois) {
         return;
     }
 
-    const maxCount = Math.max(...topPois.map(p => p.listenCount));
+    const maxCount = Math.max(1, ...topPois.map(p => p.listenCount || 0));
 
     container.innerHTML = `<div class="bar-chart">${topPois.map(p => {
         const poi = adminPois.find(ap => ap.id === p.poiId);
-        const name = poi?.name?.vi || p.poiId;
-        const pct = (p.listenCount / maxCount * 100);
+        const name = p.poiName || poi?.name?.vi || poi?.name?.en || p.poiId;
+        const count = p.listenCount || 0;
+        const pct = Math.max(8, (count / maxCount * 100));
         return `
             <div class="bar-item">
-                <div class="bar-label">${name}</div>
+                <div class="bar-label" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
                 <div class="bar-fill-container">
-                    <div class="bar-fill" style="width: ${pct}%">${p.listenCount}</div>
+                    <div class="bar-fill" style="width: ${pct}%">${count}</div>
                 </div>
             </div>
         `;
@@ -388,11 +417,11 @@ function renderRecentEvents(events) {
     container.innerHTML = events.slice(0, 15).map(e => {
         const time = new Date(e.timestamp).toLocaleString('vi-VN');
         const poi = adminPois.find(p => p.id === e.poiId);
-        const poiName = poi?.name?.vi || '';
+        const poiName = poi?.name?.vi || poi?.name?.en || (e.poiId ? `POI ${e.poiId}` : 'Tour/hethong');
         return `
             <div class="event-item">
-                <span class="event-type">${typeLabels[e.eventType] || e.eventType}</span>
-                <span>${poiName}</span>
+                <span class="event-type">${escapeHtml(typeLabels[e.eventType] || e.eventType || 'event')}</span>
+                <span>${escapeHtml(poiName)}</span>
                 <span class="event-time">${time}</span>
             </div>
         `;
@@ -413,14 +442,18 @@ async function initHeatmap() {
         }).addTo(heatmapMap);
     }
 
+    heatmapLayers.forEach(layer => layer.remove());
+    heatmapLayers = [];
+
     // Add POI markers
     adminPois.forEach(poi => {
-        L.circleMarker([poi.latitude, poi.longitude], {
+        const marker = L.circleMarker([poi.latitude, poi.longitude], {
             radius: 8,
             color: '#FF6B35',
             fillColor: '#FF6B35',
             fillOpacity: 0.7
-        }).bindTooltip(poi.name?.vi || 'POI').addTo(heatmapMap);
+        }).bindTooltip(poi.name?.vi || poi.name?.en || 'POI').addTo(heatmapMap);
+        heatmapLayers.push(marker);
     });
 
     // Load and display heatmap data
@@ -429,13 +462,14 @@ async function initHeatmap() {
         const points = await res.json();
 
         points.forEach(p => {
-            L.circle([p.latitude, p.longitude], {
+            const circle = L.circle([p.latitude, p.longitude], {
                 radius: 15 + p.intensity * 5,
                 color: 'rgba(255, 107, 53, 0.4)',
                 fillColor: 'rgba(255, 107, 53, 0.2)',
                 fillOpacity: 0.6,
                 weight: 0
             }).addTo(heatmapMap);
+            heatmapLayers.push(circle);
         });
     } catch (e) {
         // No heatmap data yet

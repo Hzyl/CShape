@@ -379,9 +379,8 @@ static void MapDemoApi(WebApplication app)
     {
         if (!AdminTokenHelper.IsAuthorized(request)) return Results.Unauthorized();
         var safeLimit = Math.Clamp(limit, 1, 50);
-        var listenTypes = new HashSet<string> { "poi_enter", "qr_scan", "poi_listen" };
         var stats = analyticsEvents
-            .Where(e => listenTypes.Contains(e.EventType ?? "") && !string.IsNullOrWhiteSpace(e.PoiId))
+            .Where(e => e.EventType == "poi_listen" && !string.IsNullOrWhiteSpace(e.PoiId))
             .GroupBy(e => e.PoiId!)
             .Select(g =>
             {
@@ -402,12 +401,36 @@ static void MapDemoApi(WebApplication app)
     app.MapGet("/api/analytics/heatmap", IResult (HttpRequest request) =>
     {
         if (!AdminTokenHelper.IsAuthorized(request)) return Results.Unauthorized();
-        var points = analyticsEvents
-            .Where(e => e.Latitude.HasValue && e.Longitude.HasValue)
+        var rawPoints = analyticsEvents
+            .Select(e =>
+            {
+                if (e.Latitude.HasValue && e.Longitude.HasValue)
+                {
+                    return new { Lat = e.Latitude.Value, Lng = e.Longitude.Value };
+                }
+
+                var poi = !string.IsNullOrWhiteSpace(e.PoiId)
+                    ? demoPois.FirstOrDefault(p => p.Id == e.PoiId || p.QrCode == e.PoiId)
+                    : null;
+                return poi == null ? null : new { Lat = poi.Latitude, Lng = poi.Longitude };
+            })
+            .Where(p => p != null)
+            .Select(p => p!)
+            .ToList();
+
+        if (rawPoints.Count == 0)
+        {
+            rawPoints = demoPois
+                .Where(p => p.IsActive)
+                .Select(p => new { Lat = p.Latitude, Lng = p.Longitude })
+                .ToList();
+        }
+
+        var points = rawPoints
             .GroupBy(e => new
             {
-                Lat = Math.Round(e.Latitude!.Value, 4),
-                Lng = Math.Round(e.Longitude!.Value, 4)
+                Lat = Math.Round(e.Lat, 4),
+                Lng = Math.Round(e.Lng, 4)
             })
             .Select(g => new HeatmapPoint
             {
