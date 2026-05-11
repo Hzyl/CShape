@@ -11,8 +11,8 @@ Vĩnh Khánh Food Tour là một ứng dụng Web Tiến Bộ (Progressive Web A
 
 2. **🔊 Thuyết Minh Tự Động Đa Ngôn Ngữ & Dịch AI (Multilingual Audio Guide)**
    - Hỗ trợ **20 ngôn ngữ quốc tế** phổ biến (VI, EN, JA, ZH, KO, TH, FR, ES, DE, RU, PT, IT, ID...).
-   - **Tích hợp tính năng Dịch AI Tự Động**: Admin chỉ cần nhập văn bản nội dung quán ăn bằng Tiếng Việt hoặc Tiếng Anh. Hệ thống sẽ tự động gọi Google Translate API để dịch ẩn danh sang 18 ngôn ngữ còn lại khi du khách chọn.
-   - Phát âm thanh thuyết minh sử dụng Web Speech API (tự động fallback gọi Google Translate Audio Endpoint cho các thiết bị cũ không nhận diện giọng).
+   - **Tích hợp tính năng Dịch AI Tự Động**: Admin chỉ cần nhập văn bản nội dung quán ăn bằng Tiếng Việt hoặc Tiếng Anh. Hệ thống lazy-load bản dịch sang 18 ngôn ngữ còn lại khi du khách chọn, cache bằng RAM + `localStorage` và chống gọi trùng request.
+   - Phát âm thanh thuyết minh sử dụng Web Speech API; nếu thiết bị thiếu voice hoặc voice lỗi, frontend fallback qua `/api/tts` để lấy `audio/mpeg` từ Google Translate TTS proxy, có cache header và range processing ổn định hơn trên mobile/LAN.
 
 3. **📱 Hỗ Trợ Offline & Cài Đặt PWA (Offline Support & Service Worker)**
    - Khả năng "Cài đặt" trực tiếp app web xuống màn hình Home Screen của điện thoại nhanh chóng.
@@ -34,6 +34,7 @@ Vĩnh Khánh Food Tour là một ứng dụng Web Tiến Bộ (Progressive Web A
    - Bảng điều khiển (Dashboard) đăng nhập bằng token HMAC ký server-side; token gửi qua `Authorization: Bearer ...` cho các API quản trị.
    - Theo dõi số phiên truy cập, lưu vết (Log) sự kiện nghe Audio, quét QR tour và hoàn thành điểm đi.
    - Dashboard tải lại 5 giây/lần khi đang mở trang Dashboard: widget QR Scans lấy `qr_scan`, Top POIs chỉ xếp hạng theo `poi_listen`, Recent Activities lấy log mới nhất từ database, Heatmap dùng tọa độ analytics hoặc tọa độ POI fallback để demo LAN không bị trống.
+   - Admin CMS có trang `Online Users`: web app gửi heartbeat `/api/presence/heartbeat` mỗi 15 giây, admin xem danh sách phiên online qua `/api/admin/online-users` và có thể kick session đang sử dụng.
    - Quản lý POI toàn diện: Thêm, Sửa, Xóa, Xem báo cáo theo chuẩn REST API.
 
 ## 🛠️ Công Nghệ Sử Dụng (Tech Stack)
@@ -92,8 +93,9 @@ Luồng thực tế khi demo QR là dùng camera mặc định của điện tho
 ## 🎓 Ghi Chú Demo / Bảo Vệ
 
 - Mở `HUONG_DAN_BAO_VE_I18N_DEMO.md` để xem câu trả lời theo kiểu giảng viên hỏi sequence → method → code.
-- Mô hình đa ngôn ngữ: Admin chỉ nhập `vi/en`; 18 ngôn ngữ còn lại dịch runtime ở frontend, cache bằng `localStorage` + RAM.
-- Nút `record_voice_over` cạnh dropdown dùng để test nhanh TTS của ngôn ngữ đang chọn.
+- Mô hình đa ngôn ngữ: Admin chỉ nhập `vi/en`; 18 ngôn ngữ còn lại dịch runtime ở frontend, cache bằng `localStorage` + RAM, đổi ngôn ngữ render ngay bằng cache/source rồi warm-up bản dịch POI ở nền.
+- Nút `record_voice_over` cạnh dropdown dùng để test nhanh TTS của ngôn ngữ đang chọn; các mã như `zh-CN`, `pt-BR` được chuẩn hóa để fallback audio phát đúng.
+- Trang CMS `Online Users` dùng để demo số người đang online và nút `Kick`; khi bị kick, user app dừng audio/GPS và hiện màn hình "Phiên đã bị ngắt".
 - Nếu Google Translate/TTS hoặc MongoDB không khả dụng, app fallback về `vi/en`, demo API in-memory và dữ liệu demo để buổi bảo vệ không bị trắng màn hình.
 - QR là luồng thực tế nhất khi GPS trong phố nhỏ bị lệch; app có banner nhắc quét QR nếu GPS lỗi hoặc chưa bắt vị trí.
 - Demo cho giảng viên/điện thoại phải dùng `http://<IP-LAN>:5000`, không dùng QR chứa `localhost` vì `localhost` trên điện thoại là chính điện thoại chứ không phải laptop chạy server.

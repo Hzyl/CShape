@@ -8,9 +8,10 @@ window.APP_SESSION_ID = 'session_' + Date.now() + '_' + Math.random().toString(3
 
 // Auth token key
 const AUTH_TOKEN_KEY = 'vinhkhanh_token';
+const SUPPORTED_LANGUAGES = ['vi', 'en', 'ja', 'zh', 'ko', 'th', 'fr', 'es', 'de', 'ru', 'pt', 'it', 'id', 'hi', 'ar', 'ms', 'tl', 'nl', 'sv', 'pl'];
 
 const initialParams = new URLSearchParams(window.location.search);
-const initialLang = initialParams.get('lang') || localStorage.getItem('vinhkhanh_lang') || 'vi';
+const initialLang = normalizeAppLanguage(initialParams.get('lang') || localStorage.getItem('vinhkhanh_lang') || 'vi');
 console.log(`🌐 Initial language: [${initialLang}] (URL param: ${initialParams.get('lang')}, localStorage: ${localStorage.getItem('vinhkhanh_lang')})`);
 
 // State
@@ -24,6 +25,8 @@ const AppState = {
 
 // Managers
 let mapManager, geofenceManager, audioManager, qrScanner, offlineDB;
+let presenceHeartbeatTimer = null;
+let presenceStopped = false;
 
 // UI text đa ngôn ngữ (20+ ngôn ngữ, fallback sang EN nếu chưa dịch)
 const UI_TEXT = {
@@ -98,16 +101,24 @@ Object.assign(UI_TEXT.en, {
 const SOURCE_LANGUAGES = ['vi', 'en'];
 const SOURCE_LANGUAGE_PRIORITY = ['vi', 'en'];
 const TRANSLATION_CACHE_KEY = 'vinhkhanh_translation_cache_v1';
+const TRANSLATION_CACHE_LIMIT = 500;
 const UI_SOURCE_TEXT = {
     vi: UI_TEXT.vi,
     en: UI_TEXT.en
 };
 const runtimeTranslationCache = new Map();
+const pendingTranslationRequests = new Map();
+let translationCacheSaveTimer = null;
 
 loadPersistentTranslationCache();
 
 function isSourceLanguage(lang) {
     return SOURCE_LANGUAGES.includes(lang);
+}
+
+function normalizeAppLanguage(lang) {
+    const normalized = String(lang || 'vi').trim().toLowerCase().split('-')[0];
+    return SUPPORTED_LANGUAGES.includes(normalized) ? normalized : 'vi';
 }
 
 function getSourceLanguage(textMap) {
@@ -154,22 +165,35 @@ async function getUiText(key, lang = AppState.language) {
 }
 
 async function translateWithCache(scope, id, text, from, to) {
-    if (!text || from === to || isSourceLanguage(to) && from === to) return text;
+    from = normalizeAppLanguage(from);
+    to = normalizeAppLanguage(to);
+    if (!text || from === to || isSourceLanguage(to)) return text;
 
     const cacheKey = getTranslationCacheKey(scope, id, from, to);
     if (runtimeTranslationCache.has(cacheKey)) {
         return runtimeTranslationCache.get(cacheKey);
     }
 
-    try {
+    if (pendingTranslationRequests.has(cacheKey)) {
+        return await pendingTranslationRequests.get(cacheKey);
+    }
+
+    const request = (async () => {
         const translated = await translateText(text, from, to);
         const safeText = translated || text;
         runtimeTranslationCache.set(cacheKey, safeText);
-        savePersistentTranslationCache();
+        schedulePersistentTranslationCacheSave();
         return safeText;
+    })();
+
+    pendingTranslationRequests.set(cacheKey, request);
+    try {
+        return await request;
     } catch (error) {
         console.warn(`⚠️ Không dịch được [${scope}:${id}] từ ${from} sang ${to}:`, error);
         return text;
+    } finally {
+        pendingTranslationRequests.delete(cacheKey);
     }
 }
 
@@ -188,10 +212,39 @@ function loadPersistentTranslationCache() {
 
 function savePersistentTranslationCache() {
     try {
-        const entries = Array.from(runtimeTranslationCache.entries()).slice(-500);
+        const entries = Array.from(runtimeTranslationCache.entries()).slice(-TRANSLATION_CACHE_LIMIT);
         localStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(entries));
     } catch (error) {
         console.warn('⚠️ Không lưu được translation cache:', error);
+    }
+}
+
+function schedulePersistentTranslationCacheSave() {
+    clearTimeout(translationCacheSaveTimer);
+    translationCacheSaveTimer = setTimeout(savePersistentTranslationCache, 250);
+}
+
+function queuePoiTranslationWarmup(lang) {
+    lang = normalizeAppLanguage(lang);
+    if (isSourceLanguage(lang) || !AppState.pois.length) return;
+
+    const run = async () => {
+        for (const poi of AppState.pois) {
+            await getLocalizedPoiText(poi, 'name', lang);
+            await getLocalizedPoiText(poi, 'description', lang);
+        }
+        mapManager?.updateLanguage(AppState.pois, lang);
+        if (AppState.activeTour) {
+            renderTourPoiList();
+        } else {
+            renderPoiList(AppState.pois);
+        }
+    };
+
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => run(), { timeout: 1500 });
+    } else {
+        setTimeout(run, 0);
     }
 }
 
@@ -513,6 +566,70 @@ function showGpsTapToEnable(message) {
     gpsBar.addEventListener('click', tapHandler);
 }
 
+function startPresenceHeartbeat() {
+    if (presenceHeartbeatTimer) clearInterval(presenceHeartbeatTimer);
+    presenceStopped = false;
+    sendPresenceHeartbeat();
+    presenceHeartbeatTimer = setInterval(sendPresenceHeartbeat, 15000);
+    window.addEventListener('beforeunload', sendPresenceBeacon);
+}
+
+async function sendPresenceHeartbeat() {
+    if (presenceStopped) return;
+    try {
+        const res = await fetch('/api/presence/heartbeat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(getPresencePayload())
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.sessionId && data.sessionId !== window.APP_SESSION_ID) {
+            window.APP_SESSION_ID = data.sessionId;
+        }
+        if (data.kicked) {
+            handleSessionKicked();
+        }
+    } catch {
+        // Presence is a demo/admin feature; app should keep working if heartbeat fails.
+    }
+}
+
+function sendPresenceBeacon() {
+    if (!navigator.sendBeacon || presenceStopped) return;
+    const payload = JSON.stringify(getPresencePayload());
+    navigator.sendBeacon('/api/presence/heartbeat', new Blob([payload], { type: 'application/json' }));
+}
+
+function getPresencePayload() {
+    return {
+        sessionId: window.APP_SESSION_ID,
+        displayName: sessionStorage.getItem('vinhkhanh_user') || 'guest',
+        language: AppState.language,
+        currentPath: window.location.pathname + window.location.search
+    };
+}
+
+function handleSessionKicked() {
+    if (presenceStopped) return;
+    presenceStopped = true;
+    clearInterval(presenceHeartbeatTimer);
+    presenceHeartbeatTimer = null;
+    audioManager?.stop();
+    geofenceManager?.stopTracking?.();
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(11,13,19,.96);display:flex;align-items:center;justify-content:center;padding:24px;color:#F0EDE8;font-family:Inter,system-ui,sans-serif;text-align:center;';
+    overlay.innerHTML = `
+        <div style="max-width:360px">
+            <div class="material-icons-round" style="font-size:48px;color:#FF6B35;margin-bottom:12px">block</div>
+            <h2 style="font-size:22px;margin-bottom:8px">Phiên đã bị ngắt</h2>
+            <p style="color:#A8A3AD;line-height:1.5">Admin CMS đã kick phiên đang sử dụng trên thiết bị này.</p>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
 /** Khởi tạo toàn bộ app sau khi đăng nhập thành công */
 async function initApp() {
     audioManager = new AudioManager();
@@ -528,6 +645,7 @@ async function initApp() {
     window.addEventListener('online', updateNetworkStatus);
     window.addEventListener('offline', updateNetworkStatus);
     updateNetworkStatus();
+    startPresenceHeartbeat();
 
     // Wire up callbacks
     setupAudioCallbacks();
@@ -758,6 +876,10 @@ async function getPoiScript(poi, lang) {
  * @returns {Promise<string>} Văn bản đã dịch
  */
 async function translateText(text, from, to) {
+    from = normalizeAppLanguage(from);
+    to = normalizeAppLanguage(to);
+    if (!text || from === to || isSourceLanguage(to)) return text;
+
     // Chia nhỏ text nếu dài quá (Google giới hạn ~5000 ký tự/request)
     const maxLen = 4500;
     if (text.length <= maxLen) {
@@ -1316,6 +1438,7 @@ async function testCurrentLanguageVoice() {
 // ==================== UI FUNCTIONS ====================
 
 async function changeLanguage(lang) {
+    lang = normalizeAppLanguage(lang);
     AppState.language = lang;
     localStorage.setItem('vinhkhanh_lang', lang);
     showTranslationStatus(t('translating'));
@@ -1323,10 +1446,6 @@ async function changeLanguage(lang) {
         const select = document.getElementById('lang-select');
         if (select && select.value !== lang) select.value = lang;
         audioManager.setLanguage(lang);
-        await Promise.all(AppState.pois.map(async poi => {
-            await getLocalizedPoiText(poi, 'name', lang);
-            await getLocalizedPoiText(poi, 'description', lang);
-        }));
         mapManager.updateLanguage(AppState.pois, lang);
         if (AppState.activeTour) {
             renderTourPoiList();
@@ -1334,6 +1453,7 @@ async function changeLanguage(lang) {
             renderPoiList(AppState.pois);
         }
         await applyUILanguage(lang);
+        queuePoiTranslationWarmup(lang);
         if (AppState.activeTour) renderTourPoiList();
 
         // Re-sync audio player bar

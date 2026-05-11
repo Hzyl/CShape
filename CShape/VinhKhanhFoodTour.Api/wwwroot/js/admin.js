@@ -9,6 +9,7 @@ let adminTours = [];
 let heatmapMap = null;
 let heatmapLayers = [];
 let dashboardRefreshTimer = null;
+let onlineUsersRefreshTimer = null;
 const QR_ORIGIN_KEY = 'vinhkhanh_qr_origin';
 let qrNetworkInfo = null;
 let qrNetworkInfoPromise = null;
@@ -86,6 +87,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
 function logout() {
     stopDashboardRefresh();
+    stopOnlineUsersRefresh();
     adminToken = '';
     sessionStorage.removeItem('adminToken');
     sessionStorage.removeItem('adminUser');
@@ -298,6 +300,7 @@ function switchPage(page) {
         pois: 'Quản lý POI',
         tours: 'Quản lý Tour',
         analytics: 'Phân tích dữ liệu',
+        'online-users': 'Nguoi dung online',
         translations: 'Bản dịch'
     };
     document.getElementById('page-title').textContent = titles[page] || page;
@@ -308,6 +311,12 @@ function switchPage(page) {
         startDashboardRefresh();
     } else {
         stopDashboardRefresh();
+    }
+    if (page === 'online-users') {
+        loadOnlineUsers();
+        startOnlineUsersRefresh();
+    } else {
+        stopOnlineUsersRefresh();
     }
     if (page === 'pois') loadPoisTable();
     if (page === 'tours') loadTours();
@@ -335,6 +344,79 @@ function stopDashboardRefresh() {
         clearInterval(dashboardRefreshTimer);
         dashboardRefreshTimer = null;
     }
+}
+
+function startOnlineUsersRefresh() {
+    stopOnlineUsersRefresh();
+    onlineUsersRefreshTimer = setInterval(() => {
+        if (document.getElementById('page-online-users')?.classList.contains('active')) {
+            loadOnlineUsers({ silent: true });
+        }
+    }, 5000);
+}
+
+function stopOnlineUsersRefresh() {
+    if (onlineUsersRefreshTimer) {
+        clearInterval(onlineUsersRefreshTimer);
+        onlineUsersRefreshTimer = null;
+    }
+}
+
+async function loadOnlineUsers(options = {}) {
+    try {
+        const res = await apiFetch('/api/admin/online-users');
+        const data = await res.json();
+        const users = data.users || [];
+        const countEl = document.getElementById('online-users-count');
+        const body = document.getElementById('online-users-body');
+        if (countEl) countEl.textContent = data.count ?? users.length;
+        if (!body) return;
+
+        if (users.length === 0) {
+            body.innerHTML = '<tr><td colspan="7" class="empty-cell">Chua co nguoi dung online</td></tr>';
+            return;
+        }
+
+        body.innerHTML = users.map(user => {
+            const shortSession = (user.sessionId || '').slice(-8);
+            return `
+                <tr>
+                    <td><code title="${escapeHtml(user.sessionId)}">${escapeHtml(shortSession)}</code></td>
+                    <td>${escapeHtml(user.displayName || 'guest')}</td>
+                    <td>${escapeHtml(user.language || '-')}</td>
+                    <td title="${escapeHtml(user.currentPath || '-')}">${escapeHtml(user.currentPath || '-')}</td>
+                    <td>${escapeHtml(user.ipAddress || '-')}</td>
+                    <td>${formatRelativeTime(user.lastSeenAt)}</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="kickOnlineUser('${escapeHtml(user.sessionId)}')">
+                            <span class="material-icons-round">logout</span> Kick
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        if (!options.silent) console.error('Online users load error:', err);
+    }
+}
+
+async function kickOnlineUser(sessionId) {
+    if (!confirm('Kick user session nay?')) return;
+    try {
+        await apiFetch(`/api/admin/online-users/${encodeURIComponent(sessionId)}/kick`, { method: 'POST' });
+        await loadOnlineUsers();
+    } catch (err) {
+        alert('Khong kick duoc user: ' + err.message);
+    }
+}
+
+function formatRelativeTime(value) {
+    if (!value) return '-';
+    const seconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
+    if (seconds < 5) return 'vua xong';
+    if (seconds < 60) return `${seconds}s truoc`;
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes}p truoc`;
 }
 
 async function loadDashboardData(options = {}) {

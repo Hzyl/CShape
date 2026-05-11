@@ -50,24 +50,27 @@
 * **QR Code Scanner (High):** Quét mã QR Tour tại cổng → mở danh sách quán theo thứ tự → chuyển tiếp từng quán. Hiện prompt nghe để phát audio đúng chính sách trình duyệt mobile.
 * **CMS POI Management (High):** Quản lý Tên, tọa độ, mô tả thông tin quán.
 * **Analytics (Medium):** Ghi dấu behavior, đếm `qr_scan` realtime cho QR tour, xếp hạng Top POIs theo `poi_listen`, hiển thị Recent Activities từ log database và Heatmap từ tọa độ analytics/POI.
+* **Online Users Control (Medium):** Web app gửi heartbeat định kỳ; Admin CMS xem số người đang online, danh sách session và kick session đang sử dụng.
 
 ## 5. Technical Considerations
 * **Backend:** C# ASP.NET Core 10 (async), Architecture chuẩn REST.
 * **Database:** MongoDB Atlas (NoSQL Document Store).
 * **Frontend Mobile / Web CMS:** Progressive Web App (PWA) dùng Vanilla JS, CSS3, HTML5 thay cho React Native. Tận dụng Service Worker và IndexedDB lưu Offline.
 * **Bản đồ:** Leaflet.js sử dụng OpenStreetMap.
-* **Audio TTS Engine:** Client-side Window Web Speech API. Fallback sang Google Translate API Endpoint nếu thiết bị không có Voice pack.
-* **Dịch tự động (Auto-Translation):** Google Translate API (`translate.googleapis.com`) client-side. Admin chỉ cần nhập tiếng Việt hoặc tiếng Anh (có 1 trong 2 là đủ), hệ thống tự dịch sang 18 ngôn ngữ còn lại khi du khách chọn, kết quả được cache trong bộ nhớ.
+* **Audio TTS Engine:** Client-side Window Web Speech API. Fallback sang `/api/tts` proxy nếu thiết bị không có Voice pack hoặc Web Speech lỗi; proxy trả `audio/mpeg`, có cache header và range processing để phát ổn định trên mobile/LAN.
+* **Dịch tự động (Auto-Translation):** Google Translate API (`translate.googleapis.com`) client-side. Admin chỉ cần nhập tiếng Việt hoặc tiếng Anh (có 1 trong 2 là đủ), hệ thống lazy-load bản dịch sang 18 ngôn ngữ còn lại khi du khách chọn, cache trong RAM + `localStorage`, chống gọi trùng request.
 * **AAC Language Detection:** Bộ nhận diện ngôn ngữ tự viết dựa trên Unicode Range + Pattern Matching, hỗ trợ nhận diện tự động 50+ ngôn ngữ từ văn bản đầu vào.
 * **LAN Demo:** Backend bind `0.0.0.0:5000` (HTTP) và `0.0.0.0:5001` (HTTPS); máy chạy demo dùng `http://localhost:5000`, còn điện thoại/giảng viên cùng WiFi sẽ tự động được chuyển hướng sang `https://<IP-LAN-của-máy>:5001` để đảm bảo GPS và Audio hoạt động. Admin QR modal lấy `/api/system/network` để ưu tiên sinh QR bằng HTTPS LAN IP.
+* **Presence/Kick:** `UserPresenceService` là singleton in-memory để chạy được cả MongoDB thật và demo in-memory. User app gọi `/api/presence/heartbeat` mỗi 15 giây; CMS gọi `/api/admin/online-users` mỗi 5 giây và kick qua `/api/admin/online-users/{sessionId}/kick`.
 * **Bảo mật cấu hình:** Không lưu mật khẩu MongoDB trong `appsettings.json`; demo dùng `appsettings.Local.json` hoặc biến môi trường `MongoDB__ConnectionString`. Nếu chưa có MongoDB, backend chạy demo API in-memory để không trắng màn hình khi bảo vệ.
 
 ### 5.1 Language & Translation Strategy (Dễ giải thích khi demo)
 * **Ngôn ngữ nguồn cố định:** Admin/CMS chỉ cần nhập nội dung tiếng Việt (`vi`) hoặc tiếng Anh (`en`) cho `name`, `description`, `ttsScript`. Nếu có cả hai thì hệ thống ưu tiên `vi`; nếu thiếu `vi` thì dùng `en`.
 * **Ngôn ngữ hiển thị:** Dropdown vẫn hỗ trợ 20 ngôn ngữ cho du khách. `vi` và `en` hiển thị trực tiếp từ source text; 18 ngôn ngữ còn lại được dịch tự động ở Frontend khi user chọn.
-* **Runtime translation:** Frontend gọi Google Translate endpoint client-side để dịch UI label, tên/mô tả POI và script thuyết minh từ `vi/en` sang ngôn ngữ đích.
-* **Cache client-side:** Kết quả dịch được lưu trong bộ nhớ runtime và `localStorage` của trình duyệt để đổi qua lại ngôn ngữ nhanh hơn, hạn chế gọi dịch lặp khi reload demo.
-* **TTS:** Text sau khi chọn/dịch được đưa vào Web Speech API; nếu thiết bị không có voice phù hợp thì fallback sang Google Translate TTS audio.
+* **Runtime translation:** Frontend gọi Google Translate endpoint client-side qua `translateWithCache()` để dịch UI label, tên/mô tả POI và script thuyết minh từ `vi/en` sang ngôn ngữ đích.
+* **Cache client-side:** Kết quả dịch được lưu trong bộ nhớ runtime và `localStorage` của trình duyệt; cache ghi debounce 250ms, giữ 500 entry gần nhất và dùng `pendingTranslationRequests` để không gọi trùng cùng một key.
+* **Lazy loading:** `changeLanguage()` render UI ngay bằng source/cache sẵn có, sau đó `queuePoiTranslationWarmup()` dịch tên/mô tả POI ở nền bằng `requestIdleCallback` hoặc `setTimeout`.
+* **TTS:** Text sau khi chọn/dịch được đưa vào Web Speech API; nếu thiết bị không có voice phù hợp thì fallback sang Google Translate TTS audio qua `/api/tts`.
 * **Fallback khi lỗi mạng/dịch:** Nếu chưa dịch được, UI/POI không để trống mà fallback về source `vi/en` để demo vẫn chạy ổn định.
 
 ## 6. Business Rules
@@ -85,10 +88,12 @@
 | BR-10 | Nếu Google Translate/TTS không khả dụng, app fallback về source `vi/en` và thông báo trạng thái thay vì để giao diện rỗng. |
 | BR-11 | GPS/geofence là gợi ý tự động; khi GPS lỗi hoặc lệch, UI nhắc dùng QR tại điểm dừng vì đây là luồng ổn định hơn trong phố ẩm thực. |
 | BR-12 | Dashboard Admin tự refresh mỗi 5 giây khi trang Dashboard đang active; `QR Scans` lấy `qr_scan`, `Top POIs` chỉ lấy `poi_listen`, `Recent Activities` lấy log mới nhất, `Heatmap` dùng tọa độ event hoặc tọa độ POI fallback để demo LAN không trống dữ liệu. |
+| BR-13 | Đổi ngôn ngữ phải chuẩn hóa mã về 20 ngôn ngữ hỗ trợ; `vi/en` không gọi dịch, các ngôn ngữ khác render trước bằng source/cache rồi lazy-load bản dịch. Google TTS fallback giữ đúng mã đặc biệt như `zh-CN`, `pt-BR`. |
+| BR-14 | Một session được xem là online nếu heartbeat trong 45 giây gần nhất và chưa bị kick. Khi admin kick, heartbeat kế tiếp trả `kicked=true`, client dừng audio/GPS và khóa màn hình bằng thông báo phiên bị ngắt. |
 
 ## 6.1 Acceptance Criteria Cho Demo
 * Đổi `VI ↔ EN` phải cập nhật UI ngay, không gọi dịch.
-* Đổi sang `JA/KO/SV/PL` phải cập nhật label chính; nếu mạng/dịch lỗi thì fallback `VI/EN` nhưng app không crash.
+* Đổi sang `JA/KO/SV/PL` phải cập nhật label chính ngay bằng cache/source; bản dịch POI được warm-up ở nền, nếu mạng/dịch lỗi thì fallback `VI/EN` nhưng app không crash.
 * Nút test TTS cạnh dropdown phát câu mẫu theo ngôn ngữ đang chọn; riêng `SV` ưu tiên Google TTS fallback vì nhiều máy thiếu Swedish voice.
 * Mở app khi chưa cấu hình MongoDB vẫn có POI demo để trình bày bản đồ, danh sách, chi tiết, QR và audio.
 * README không chứa password thật; port demo thống nhất là `http://localhost:5000`.
@@ -107,6 +112,7 @@
 * **`analytics`**: `id`, `sessionId`, `eventType` (`poi_enter`, `poi_listen`, `poi_complete`, `qr_scan`, `location_update`), `poiId`, `language`, `duration`, `latitude`, `longitude`, `timestamp`.
 * **`tours`**: `id`, `name` (đa ngôn ngữ), `description` (đa ngôn ngữ), `poiIds` (danh sách POI theo thứ tự), `estimatedDuration` (phút), `estimatedDistance` (km), `isActive`, `createdAt`.
 * **`users`**: `id`, `username`, `passwordHash`, `role` (`admin`, `editor`), `createdAt`.
+* **`presenceSessions` (in-memory singleton):** `sessionId`, `displayName`, `language`, `currentPath`, `ipAddress`, `userAgent`, `connectedAt`, `lastSeenAt`, `isKicked`, `kickedAt`.
 
 ---
 
@@ -230,30 +236,32 @@ sequenceDiagram
     participant Proxy as /api/tts (Program.cs)
 
     User->>App: Chọn ngôn ngữ (vd: Korean)
-    App->>App: changeLanguage(lang)
+    App->>App: changeLanguage(lang)<br/>📍 app.js:1373<br/>normalizeAppLanguage() 📍 app.js:117
 
     alt vi hoặc en
         App->>App: Dùng trực tiếp source text
     else Ngôn ngữ khác
-        App->>GTranslate: translateText(text, src, target)
-        GTranslate-->>App: Text đã dịch → cache localStorage
+        App->>GTranslate: translateWithCache(scope,id,text,src,target)<br/>📍 app.js:165<br/>translateText() 📍 app.js:811
+        GTranslate-->>App: Text đã dịch → RAM cache + localStorage debounce
     end
 
-    App->>App: Render lại UI + POI list
+    App->>App: Render UI ngay bằng source/cache<br/>queuePoiTranslationWarmup() 📍 app.js:225
     User->>App: Bấm "Nghe thuyết minh"
-    App->>TTS: playDirect(poiId, script, name)
-    TTS->>TTS: _speak(text, lang) 📍:244
+    App->>App: getPoiScript(poi, lang)<br/>📍 app.js:784
+    App->>TTS: playDirect(poiId, script, name)<br/>📍 audio-manager.js:222
+    TTS->>TTS: _speak(text, lang)<br/>📍 audio-manager.js:252
 
     alt Có voice hệ thống
-        TTS->>TTS: _speakWithWebSpeech() 📍:276
+        TTS->>TTS: _speakWithWebSpeech()<br/>📍 audio-manager.js:286
         TTS-->>User: Phát audio
     else Không có voice
-        TTS->>Proxy: GET /api/tts?lang=ko&text=...
-        Proxy-->>TTS: audio/mpeg stream
+        TTS->>TTS: _speakWithGoogleTTS()<br/>📍 audio-manager.js:354<br/>_ensureGoogleAudio() 📍 audio-manager.js:423
+        TTS->>Proxy: GET /api/tts?lang=ko-KR&text=...
+        Proxy-->>TTS: audio/mpeg + cache/range headers<br/>📍 Program.cs:452
         TTS-->>User: Phát audio fallback
     end
 
-    TTS->>TTS: _trackListen(poiId) 📍:581
+    TTS->>TTS: _trackListen(poiId)<br/>📍 audio-manager.js:602
 ```
 
 ### 9.3 Luồng Bản Đồ và Geofencing
@@ -313,7 +321,41 @@ sequenceDiagram
     Web-->>Admin: Modal in QR
 ```
 
-### 9.5 Luồng AAC — "Nói giúp tôi"
+### 9.5 Luồng Online Users và Kick Session
+
+```mermaid
+sequenceDiagram
+    actor User as Du khách
+    actor Admin as Quản trị viên
+    participant App as app.js
+    participant CMS as admin.js
+    participant API as Program.cs
+    participant Presence as UserPresenceService
+
+    User->>App: Mở web app
+    App->>App: startPresenceHeartbeat()<br/>📍 app.js:569
+    loop Mỗi 15 giây
+        App->>API: sendPresenceHeartbeat()<br/>📍 app.js:577<br/>POST /api/presence/heartbeat
+        API->>Presence: Upsert(session)<br/>📍 UserPresenceService.cs:11
+        Presence-->>API: { sessionId, isKicked }
+        API-->>App: { sessionId, kicked }
+    end
+
+    Admin->>CMS: Mở trang Online Users
+    CMS->>API: loadOnlineUsers()<br/>📍 admin.js:365<br/>GET /api/admin/online-users
+    API->>Presence: GetOnlineSessions()<br/>online window 45s
+    API-->>CMS: { count, users[] }
+
+    Admin->>CMS: Bấm Kick
+    CMS->>API: kickOnlineUser(sessionId)<br/>📍 admin.js:403<br/>POST /api/admin/online-users/{sessionId}/kick
+    API->>Presence: Kick(sessionId)
+
+    App->>API: Heartbeat kế tiếp
+    API-->>App: { kicked: true }
+    App->>App: handleSessionKicked()<br/>📍 app.js:613<br/>Dừng audio/GPS + khóa màn hình
+```
+
+### 9.6 Luồng AAC — "Nói giúp tôi"
 
 ```mermaid
 sequenceDiagram

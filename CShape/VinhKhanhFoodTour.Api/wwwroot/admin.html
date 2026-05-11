@@ -62,6 +62,9 @@
                 <a class="nav-item" data-page="analytics" onclick="switchPage('analytics')">
                     <span class="material-icons-round">analytics</span> Phân tích
                 </a>
+                <a class="nav-item" data-page="online-users" onclick="switchPage('online-users')">
+                    <span class="material-icons-round">groups</span> Online Users
+                </a>
                 <a class="nav-item" data-page="translations" onclick="switchPage('translations')">
                     <span class="material-icons-round">translate</span> Bản dịch
                 </a>
@@ -222,6 +225,41 @@
                     </div>
                     <div class="card-body">
                         <div id="translations-list"></div>
+                    </div>
+                </div>
+            </section>
+            <!-- Online Users Page -->
+            <section class="page" id="page-online-users">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(76, 175, 80, 0.15); color: #4CAF50;">
+                            <span class="material-icons-round">groups</span>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="online-users-count">0</div>
+                            <div class="stat-label">Nguoi dang online</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3><span class="material-icons-round">groups</span> Nguoi dung dang truc tuyen</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="data-table" id="online-users-table">
+                            <thead>
+                                <tr>
+                                    <th>Session</th>
+                                    <th>Ten</th>
+                                    <th>Ngon ngu</th>
+                                    <th>Trang</th>
+                                    <th>IP</th>
+                                    <th>Last seen</th>
+                                    <th>Hanh dong</th>
+                                </tr>
+                            </thead>
+                            <tbody id="online-users-body"></tbody>
+                        </table>
                     </div>
                 </div>
             </section>

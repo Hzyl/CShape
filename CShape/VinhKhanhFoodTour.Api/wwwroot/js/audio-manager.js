@@ -30,6 +30,10 @@ class AudioManager {
             'id': 'id-ID', 'hi': 'hi-IN', 'ar': 'ar-SA', 'ms': 'ms-MY',
             'tl': 'tl-PH', 'nl': 'nl-NL', 'sv': 'sv-SE', 'pl': 'pl-PL'
         };
+        this.googleTtsLangMap = {
+            'zh': 'zh-CN',
+            'pt': 'pt-BR'
+        };
 
         // Một số browser báo có voice nhưng không phát ổn định; các ngôn ngữ này ưu tiên Google TTS fallback.
         this.preferGoogleTts = new Set(['sv']);
@@ -349,7 +353,7 @@ class AudioManager {
      */
     _speakWithGoogleTTS(text, lang) {
         const langCode = this.langMap[lang] || 'vi-VN';
-        const tl = langCode.split('-')[0]; // vi-VN → vi
+        const tl = this._getGoogleTtsLang(lang, langCode);
 
         // Chia text thành các đoạn ngắn (~190 ký tự, cắt theo câu)
         const chunks = this._splitTextForGoogleTTS(text, 190);
@@ -383,8 +387,10 @@ class AudioManager {
         const chunk = this._googleChunks[this._googleChunkIndex];
         const url = `/api/tts?lang=${encodeURIComponent(this._googleLang)}&text=${encodeURIComponent(chunk)}`;
 
+        this._ensureGoogleAudio();
         this._googleAudio.src = url;
         this._googleAudio.volume = 1.0;
+        this._googleAudio.preload = 'auto';
 
         this._googleAudio.onended = () => {
             this._googleChunkIndex++;
@@ -412,6 +418,17 @@ class AudioManager {
         }
         this._googleChunks = [];
         this._googleChunkIndex = 0;
+    }
+
+    _ensureGoogleAudio() {
+        if (!this._googleAudio) {
+            this._googleAudio = new Audio();
+        }
+        return this._googleAudio;
+    }
+
+    _getGoogleTtsLang(lang, langCode) {
+        return this.googleTtsLangMap[lang] || langCode || lang || 'vi';
     }
 
     /**
@@ -526,13 +543,12 @@ class AudioManager {
     unlockAudio() {
         if (this._audioUnlocked) return;
         this._audioUnlocked = true;
-        if (this._googleAudio) {
-            this._googleAudio.volume = 0;
-            this._googleAudio.play().catch(() => { });
-            this._googleAudio.pause();
-            this._googleAudio.volume = 1;
-            this._googleAudio.src = '';
-        }
+        const audio = this._ensureGoogleAudio();
+        audio.volume = 0;
+        audio.play().catch(() => { });
+        audio.pause();
+        audio.volume = 1;
+        audio.src = '';
     }
 
     /**

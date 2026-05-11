@@ -39,6 +39,8 @@ if (hasMongoConnection)
 }
 
 // Register Services
+builder.Services.AddSingleton<UserPresenceService>();
+
 if (hasMongoConnection)
 {
     builder.Services.AddScoped<PoiService>();
@@ -123,6 +125,40 @@ app.MapGet("/api/system/network", (HttpRequest request) =>
         httpsPort,
         note = "⚠️ Điện thoại PHẢI dùng HTTPS (https://...) để GPS hoạt động. Nếu trình duyệt cảnh báo chứng chỉ, bấm 'Advanced' → 'Proceed'."
     });
+});
+
+app.MapPost("/api/presence/heartbeat", IResult (HttpRequest request, UserPresenceService presence, PresenceHeartbeatRequest body) =>
+{
+    var session = presence.Upsert(
+        body,
+        request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+        request.Headers.UserAgent.ToString());
+
+    return Results.Ok(new
+    {
+        sessionId = session.SessionId,
+        kicked = session.IsKicked,
+        kickedAt = session.KickedAt
+    });
+});
+
+app.MapGet("/api/admin/online-users", IResult (HttpRequest request, UserPresenceService presence) =>
+{
+    if (!AdminTokenHelper.IsAuthorized(request)) return Results.Unauthorized();
+    return Results.Ok(new
+    {
+        count = presence.GetOnlineSessions().Count,
+        users = presence.GetOnlineSessions(),
+        generatedAt = DateTime.UtcNow
+    });
+});
+
+app.MapPost("/api/admin/online-users/{sessionId}/kick", IResult (HttpRequest request, UserPresenceService presence, string sessionId) =>
+{
+    if (!AdminTokenHelper.IsAuthorized(request)) return Results.Unauthorized();
+    return presence.Kick(sessionId)
+        ? Results.Ok(new { sessionId, kicked = true })
+        : Results.NotFound(new { message = "Session not found" });
 });
 
 if (hasMongoConnection)
@@ -449,19 +485,26 @@ static void MapDemoApi(WebApplication app)
     });
 
     // === TTS Proxy — giải quyết CORS trên mobile ===
-    app.MapGet("/api/tts", async (string text, string lang) =>
+    app.MapGet("/api/tts", async (HttpContext context, string text, string lang) =>
     {
         if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(lang))
             return Results.BadRequest("Missing text or lang");
 
         // Giới hạn text 500 ký tự để tránh lạm dụng
         var safeText = text.Length > 500 ? text[..500] : text;
-        var tl = lang.Length > 2 ? lang[..2] : lang;
+        var safeLang = new string(lang.Trim().Where(c => char.IsLetter(c) || c == '-').ToArray());
+        var tl = safeLang.ToLowerInvariant() switch
+        {
+            "zh" or "zh-cn" => "zh-CN",
+            "pt" or "pt-br" => "pt-BR",
+            _ => safeLang.Length > 0 ? safeLang : "vi"
+        };
         var url = $"https://translate.google.com/translate_tts?ie=UTF-8&tl={tl}&client=tw-ob&q={Uri.EscapeDataString(safeText)}";
 
-        using var http = new HttpClient();
-        http.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0");
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0");
         http.DefaultRequestHeaders.Add("Referer", "https://translate.google.com/");
+        http.DefaultRequestHeaders.Accept.ParseAdd("audio/mpeg");
 
         try
         {
@@ -470,7 +513,10 @@ static void MapDemoApi(WebApplication app)
                 return Results.StatusCode((int)response.StatusCode);
 
             var audioBytes = await response.Content.ReadAsByteArrayAsync();
-            return Results.File(audioBytes, "audio/mpeg");
+            context.Response.Headers.CacheControl = "public, max-age=86400";
+            context.Response.Headers.AcceptRanges = "bytes";
+            context.Response.Headers.XContentTypeOptions = "nosniff";
+            return Results.File(audioBytes, "audio/mpeg", enableRangeProcessing: true);
         }
         catch (Exception ex)
         {
