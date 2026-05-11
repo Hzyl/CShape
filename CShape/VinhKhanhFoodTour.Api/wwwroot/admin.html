@@ -25,17 +25,17 @@
             </div>
             <form id="login-form">
                 <div class="form-group">
-                    <label>Tên đăng nhập</label>
-                    <input type="text" id="login-username" value="admin" required>
+                    <label for="login-username">Tên đăng nhập</label>
+                    <input type="text" id="login-username" placeholder="Ví dụ: admin" required>
                 </div>
                 <div class="form-group">
-                    <label>Mật khẩu</label>
-                    <input type="password" id="login-password" value="admin123" required>
+                    <label for="login-password">Mật khẩu</label>
+                    <input type="password" id="login-password" placeholder="Nhập mật khẩu admin" required>
                 </div>
                 <button type="submit" class="btn btn-primary btn-full" id="login-btn">
                     <span class="material-icons-round">login</span> Đăng nhập
                 </button>
-                <!-- <p class="login-hint">Mặc định: admin / admin123</p> -->
+                <p class="login-hint">Demo mặc định dùng tài khoản admin đã seed bằng password hash.</p>
             </form>
         </div>
     </div>
@@ -321,7 +321,10 @@
                                 <option value="landmark">🏛️ Địa danh</option>
                             </select>
                         </div>
-                        
+                        <div class="form-group">
+                            <label for="poi-qrcode">Mã QR/ID điểm</label>
+                            <input type="text" id="poi-qrcode" readonly>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Địa chỉ</label>
@@ -358,6 +361,71 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-ghost" onclick="closePoiModal()">Hủy</button>
                     <button type="submit" class="btn btn-primary">💾 Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tour Edit Modal -->
+    <div class="modal hidden" id="tour-modal">
+        <div class="modal-backdrop" onclick="closeTourModal()"></div>
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2 id="tour-modal-title">Thêm Tour mới</h2>
+                <button class="icon-btn" onclick="closeTourModal()">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <form id="tour-form" onsubmit="saveTour(event)">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tour-name-vi">Tên Tour (VI) *</label>
+                            <input type="text" id="tour-name-vi" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tour-name-en">Tên Tour (EN)</label>
+                            <input type="text" id="tour-name-en">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="tour-qrcode">Mã QR Tour</label>
+                        <input type="text" id="tour-qrcode" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="tour-desc-vi">Mô tả Tour (VI)</label>
+                        <textarea id="tour-desc-vi" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="tour-desc-en">Mô tả Tour (EN)</label>
+                        <textarea id="tour-desc-en" rows="3"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tour-duration">Thời lượng (phút)</label>
+                            <input type="number" id="tour-duration" min="1" value="45">
+                        </div>
+                        <div class="form-group">
+                            <label for="tour-distance">Khoảng cách (km)</label>
+                            <input type="number" id="tour-distance" min="0" step="0.1" value="0.8">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label style="display:flex;align-items:center;gap:8px;">
+                            <input type="checkbox" id="tour-active" checked>
+                            Tour đang hoạt động
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Danh sách điểm trong Tour *</label>
+                        <p style="font-size:12px;color:var(--text-muted);margin:6px 0 10px;">Chọn thứ tự bằng cách tick các điểm theo cấu hình hiện có. Khi lưu, tour sẽ giữ đúng thứ tự trong danh sách bên dưới.</p>
+                        <div id="tour-poi-list" style="display:grid;gap:8px;max-height:240px;overflow:auto;"></div>
+                    </div>
+                    <input type="hidden" id="tour-edit-id">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" onclick="closeTourModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">💾 Lưu Tour</button>
                 </div>
             </form>
         </div>

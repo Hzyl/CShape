@@ -13,6 +13,7 @@ let onlineUsersRefreshTimer = null;
 const QR_ORIGIN_KEY = 'vinhkhanh_qr_origin';
 let qrNetworkInfo = null;
 let qrNetworkInfoPromise = null;
+const DEFAULT_TOUR_QR_PREFIX = 'VK-TOUR-';
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -37,7 +38,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ==================== LOGIN ====================
 
-document.getElementById('login-form').addEventListener('submit', async (e) => {
+document.getElementById('login-form').addEventListener('submit', loginAdmin);
+
+async function loginAdmin(e) {
     e.preventDefault();
     const username = document.getElementById('login-username').value;
     const password = document.getElementById('login-password').value;
@@ -83,7 +86,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         btn.disabled = false;
         btn.innerHTML = '<span class="material-icons-round">login</span> Đăng nhập';
     }
-});
+}
 
 function logout() {
     stopDashboardRefresh();
@@ -233,7 +236,8 @@ async function renderQrForCurrentModal() {
     const appOrigin = getQrAppOrigin();
     const selectedLang = document.getElementById('qr-lang-select')?.value;
     const langParam = selectedLang ? `&lang=${selectedLang}` : '';
-    const appUrl = `${appOrigin}/index.html?tour=${encodeURIComponent(qrCode)}${langParam}`;
+    const kind = modal.dataset.qrKind === 'poi' ? 'qr' : 'tour';
+    const appUrl = `${appOrigin}/index.html?${kind}=${encodeURIComponent(qrCode)}${langParam}`;
     document.getElementById('qr-poi-code').textContent = 'Đường dẫn: ' + appUrl;
     modal.dataset.qrUrl = appUrl;
     updateQrOriginPanel(appOrigin);
@@ -339,6 +343,34 @@ function startDashboardRefresh() {
     }, 5000);
 }
 
+function generatePoiQrCode() {
+    return `VK-POI-${String(Date.now()).slice(-4)}${String(Math.floor(Math.random() * 900) + 100)}`;
+}
+
+function generateTourQrCode() {
+    return `${DEFAULT_TOUR_QR_PREFIX}${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+}
+
+function normalizePoiPayload(poi) {
+    return {
+        ...poi,
+        id: poi.id || poi._id,
+        name: poi.name || {},
+        description: poi.description || {},
+        ttsScript: poi.ttsScript || {}
+    };
+}
+
+function normalizeTourPayload(tour) {
+    return {
+        ...tour,
+        id: tour.id || tour._id,
+        name: tour.name || {},
+        description: tour.description || {},
+        poiIds: Array.isArray(tour.poiIds) ? tour.poiIds : []
+    };
+}
+
 function stopDashboardRefresh() {
     if (dashboardRefreshTimer) {
         clearInterval(dashboardRefreshTimer);
@@ -432,8 +464,7 @@ async function loadDashboardData(options = {}) {
         const stats = await statsRes.json();
         const topPois = await topPoisRes.json();
         const recentEvents = await recentRes.json();
-        adminPois = await poisRes.json();
-        adminPois = adminPois.map(p => ({ ...p, id: p.id || p._id }));
+        adminPois = (await poisRes.json()).map(normalizePoiPayload);
 
         // Update stat cards
         document.getElementById('stat-pois').textContent = adminPois.length;
@@ -568,8 +599,7 @@ async function loadPoisTable() {
             apiFetch('/api/poi/all'),
             apiFetch('/api/analytics/top-pois?limit=50')
         ]);
-        adminPois = await poisRes.json();
-        adminPois = adminPois.map(p => ({ ...p, id: p.id || p._id }));
+        adminPois = (await poisRes.json()).map(normalizePoiPayload);
 
         // Gắn lượt nghe thực tế từ analytics
         let listenMap = new Map();
@@ -611,6 +641,9 @@ async function loadPoisTable() {
                     <button class="btn btn-ghost btn-sm" onclick="editPoi('${poi.id}')" title="Sửa">
                         <span class="material-icons-round" style="font-size: 16px">edit</span>
                     </button>
+                    <button class="btn btn-ghost btn-sm" onclick="viewQr('${poi.id}')" title="Xem QR điểm">
+                        <span class="material-icons-round" style="font-size: 16px">qr_code_2</span>
+                    </button>
                     <button class="btn btn-ghost btn-sm" onclick="togglePoiStatus('${poi.id}')" title="${poi.isActive ? 'Khóa (Ẩn)' : 'Mở khóa (Hiện)'}">
                         <span class="material-icons-round" style="font-size: 16px; color: ${poi.isActive ? 'var(--warning)' : 'var(--success)'}">${poi.isActive ? 'lock' : 'lock_open'}</span>
                     </button>
@@ -620,7 +653,6 @@ async function loadPoisTable() {
                 </td>
             </tr>
         `}).join('');
-        tbody.querySelectorAll('button[onclick^="viewQr"]').forEach(btn => btn.remove());
     } catch (err) {
         console.error('Load POIs error:', err);
     }
@@ -647,17 +679,14 @@ function openPoiModal(poi = null) {
         document.getElementById('poi-desc-en').value = poi.description?.en || '';
         document.getElementById('poi-tts-vi').value = poi.ttsScript?.vi || '';
         document.getElementById('poi-tts-en').value = poi.ttsScript?.en || '';
+        document.getElementById('poi-qrcode').value = poi.qrCode || poi.id || '';
     } else {
         document.getElementById('poi-form').reset();
         document.getElementById('poi-edit-id').value = '';
         document.getElementById('poi-radius').value = 50;
         document.getElementById('poi-priority').value = 5;
-        // Tự sinh mã QR: VK-POI-XXX
-        document.getElementById('poi-qrcode').value = `VK-POI-${String(Date.now()).slice(-4)}${String(Math.floor(Math.random() * 900) + 100)}`;
+        document.getElementById('poi-qrcode').value = generatePoiQrCode();
     }
-
-    // QR là readonly — admin không cần nhập tay
-    
 }
 
 function closePoiModal() {
@@ -691,7 +720,7 @@ async function savePoi(e) {
         radius: parseInt(document.getElementById('poi-radius').value),
         priority: parseInt(document.getElementById('poi-priority').value),
         category: document.getElementById('poi-category').value,
-        
+        qrCode: document.getElementById('poi-qrcode').value,
         address: document.getElementById('poi-address').value,
         openingHours: document.getElementById('poi-hours').value,
         priceRange: document.getElementById('poi-price').value,
@@ -768,9 +797,13 @@ async function togglePoiStatus(poiId) {
 
 async function loadTours() {
     try {
+        if (adminPois.length === 0) {
+            const poiRes = await apiFetch('/api/poi/all');
+            adminPois = (await poiRes.json()).map(normalizePoiPayload);
+        }
+
         const res = await apiFetch('/api/tour');
-        adminTours = await res.json();
-        adminTours = adminTours.map(t => ({ ...t, id: t.id || t._id }));
+        adminTours = (await res.json()).map(normalizeTourPayload);
 
         const container = document.getElementById('tours-list');
 
@@ -788,6 +821,9 @@ async function loadTours() {
                     <p>📏 ${tour.estimatedDistance || 0} km</p>
                 </div>
                 <div style="margin-top: 12px; display: flex; gap: 8px;">
+                    <button class="btn btn-ghost btn-sm" onclick="editTour('${tour.id}')">
+                        <span class="material-icons-round" style="font-size: 14px">edit</span> Sửa
+                    </button>
                     <button class="btn btn-primary btn-sm" onclick="viewTourQr('${tour.id}')">
                         <span class="material-icons-round" style="font-size: 14px">qr_code_2</span> QR Tour
                     </button>
@@ -802,8 +838,105 @@ async function loadTours() {
     }
 }
 
-function openTourModal() {
-    alert('Chức năng thêm tour sẽ được cập nhật trong phiên bản tiếp theo.');
+function renderTourPoiOptions(selectedPoiIds = []) {
+    const list = document.getElementById('tour-poi-list');
+    if (!list) return;
+
+    const selected = new Set(selectedPoiIds);
+    list.innerHTML = adminPois.map((poi, index) => `
+        <label style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-input);">
+            <input type="checkbox" value="${escapeHtml(poi.id)}" ${selected.has(poi.id) ? 'checked' : ''} style="margin-top:3px;">
+            <span style="display:block;">
+                <strong>${index + 1}. ${escapeHtml(poi.name?.vi || poi.name?.en || poi.id)}</strong><br>
+                <span style="font-size:12px;color:var(--text-muted);">${escapeHtml(poi.category || 'poi')} • ${escapeHtml(poi.qrCode || '')}</span>
+            </span>
+        </label>
+    `).join('');
+}
+
+function openTourModal(tour = null) {
+    document.getElementById('tour-modal').classList.remove('hidden');
+    document.getElementById('tour-modal-title').textContent = tour ? 'Sửa Tour' : 'Thêm Tour mới';
+
+    if (tour) {
+        document.getElementById('tour-edit-id').value = tour.id;
+        document.getElementById('tour-name-vi').value = tour.name?.vi || '';
+        document.getElementById('tour-name-en').value = tour.name?.en || '';
+        document.getElementById('tour-qrcode').value = tour.qrCode || tour.id || '';
+        document.getElementById('tour-desc-vi').value = tour.description?.vi || '';
+        document.getElementById('tour-desc-en').value = tour.description?.en || '';
+        document.getElementById('tour-duration').value = tour.estimatedDuration || 45;
+        document.getElementById('tour-distance').value = tour.estimatedDistance || 0.8;
+        document.getElementById('tour-active').checked = tour.isActive !== false;
+        renderTourPoiOptions(tour.poiIds || []);
+        return;
+    }
+
+    document.getElementById('tour-form').reset();
+    document.getElementById('tour-edit-id').value = '';
+    document.getElementById('tour-qrcode').value = generateTourQrCode();
+    document.getElementById('tour-duration').value = 45;
+    document.getElementById('tour-distance').value = 0.8;
+    document.getElementById('tour-active').checked = true;
+    renderTourPoiOptions([]);
+}
+
+function closeTourModal() {
+    document.getElementById('tour-modal').classList.add('hidden');
+}
+
+function editTour(tourId) {
+    const tour = adminTours.find(t => t.id === tourId);
+    if (tour) openTourModal(tour);
+}
+
+async function saveTour(e) {
+    e.preventDefault();
+
+    const editId = document.getElementById('tour-edit-id').value;
+    const poiIds = Array.from(document.querySelectorAll('#tour-poi-list input[type="checkbox"]:checked'))
+        .map(input => input.value);
+
+    if (poiIds.length === 0) {
+        alert('Hãy chọn ít nhất 1 điểm thuyết minh cho tour.');
+        return;
+    }
+
+    const tour = {
+        name: {
+            vi: document.getElementById('tour-name-vi').value.trim(),
+            en: document.getElementById('tour-name-en').value.trim()
+        },
+        description: {
+            vi: document.getElementById('tour-desc-vi').value.trim(),
+            en: document.getElementById('tour-desc-en').value.trim()
+        },
+        qrCode: document.getElementById('tour-qrcode').value.trim(),
+        poiIds,
+        estimatedDuration: parseInt(document.getElementById('tour-duration').value || '45', 10),
+        estimatedDistance: parseFloat(document.getElementById('tour-distance').value || '0.8'),
+        isActive: document.getElementById('tour-active').checked
+    };
+
+    try {
+        const url = editId ? `/api/tour/${editId}` : '/api/tour';
+        const method = editId ? 'PUT' : 'POST';
+        const res = await apiFetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(tour)
+        });
+
+        if (res.ok || res.status === 204) {
+            closeTourModal();
+            await loadTours();
+            alert(editId ? 'Đã cập nhật Tour!' : 'Đã thêm Tour mới!');
+        } else {
+            alert('Lỗi khi lưu Tour');
+        }
+    } catch (err) {
+        alert('Lỗi: ' + err.message);
+    }
 }
 
 async function deleteTour(tourId) {
@@ -897,8 +1030,7 @@ async function loadTranslations() {
     if (adminPois.length === 0) {
         try {
             const res = await apiFetch('/api/poi/all');
-            adminPois = await res.json();
-            adminPois = adminPois.map(p => ({ ...p, id: p.id || p._id }));
+            adminPois = (await res.json()).map(normalizePoiPayload);
         } catch (e) { }
     }
 

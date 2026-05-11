@@ -312,19 +312,20 @@ static void MapDemoApi(WebApplication app)
 {
     var demoPois = CreateDemoPois();
     var demoTours = CreateDemoTours(demoPois);
-    var analyticsEvents = new List<AnalyticsEvent>();
+    var analyticsEvents = CreateDemoAnalyticsEvents(demoPois);
 
     app.MapPost("/api/auth/login", IResult (LoginRequest request) =>
     {
-        if (!string.Equals(request.Username, "admin", StringComparison.OrdinalIgnoreCase) || request.Password != "admin123")
+        if (!string.Equals(request.Username, AuthService.DefaultAdminUsername, StringComparison.OrdinalIgnoreCase)
+            || !AuthService.VerifyPassword(request.Password, AuthService.DefaultAdminPasswordHash))
         {
-            return Results.Unauthorized();
+            return Results.Json(new { message = "Sai tên đăng nhập hoặc mật khẩu" }, statusCode: StatusCodes.Status401Unauthorized);
         }
 
         return Results.Ok(new LoginResponse
         {
-            Token = AdminTokenHelper.CreateToken("admin", "admin"),
-            Username = "admin",
+            Token = AdminTokenHelper.CreateToken(AuthService.DefaultAdminUsername, "admin"),
+            Username = AuthService.DefaultAdminUsername,
             Role = "admin"
         });
     });
@@ -392,6 +393,32 @@ static void MapDemoApi(WebApplication app)
     {
         if (!AdminTokenHelper.IsAuthorized(request)) return Results.Unauthorized();
         return demoTours.FirstOrDefault(t => t.Id == id) is { } tour ? Results.Ok(tour) : Results.NotFound();
+    });
+    app.MapPost("/api/tour", IResult (HttpRequest request, Tour tour) =>
+    {
+        if (!AdminTokenHelper.IsAuthorized(request)) return Results.Unauthorized();
+        tour.Id = string.IsNullOrWhiteSpace(tour.Id) ? Guid.NewGuid().ToString("N") : tour.Id;
+        tour.QrCode = string.IsNullOrWhiteSpace(tour.QrCode) ? $"VK-TOUR-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}" : tour.QrCode;
+        tour.CreatedAt = DateTime.UtcNow;
+        demoTours.Add(tour);
+        return Results.Created($"/api/tour/{tour.Id}", tour);
+    });
+    app.MapPut("/api/tour/{id}", IResult (HttpRequest request, string id, Tour tour) =>
+    {
+        if (!AdminTokenHelper.IsAuthorized(request)) return Results.Unauthorized();
+        var index = demoTours.FindIndex(t => t.Id == id);
+        if (index < 0) return Results.NotFound();
+        tour.Id = id;
+        tour.QrCode = string.IsNullOrWhiteSpace(tour.QrCode) ? demoTours[index].QrCode ?? $"VK-TOUR-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}" : tour.QrCode;
+        tour.CreatedAt = demoTours[index].CreatedAt == default ? DateTime.UtcNow : demoTours[index].CreatedAt;
+        demoTours[index] = tour;
+        return Results.NoContent();
+    });
+    app.MapDelete("/api/tour/{id}", IResult (HttpRequest request, string id) =>
+    {
+        if (!AdminTokenHelper.IsAuthorized(request)) return Results.Unauthorized();
+        var removed = demoTours.RemoveAll(t => t.Id == id);
+        return removed > 0 ? Results.NoContent() : Results.NotFound();
     });
 
     app.MapPost("/api/analytics/event", IResult (AnalyticsEvent ev) =>
@@ -551,6 +578,78 @@ static List<Tour> CreateDemoTours(List<Poi> demoPois) =>
         IsActive = true
     }
 ];
+
+static List<AnalyticsEvent> CreateDemoAnalyticsEvents(List<Poi> demoPois)
+{
+    var now = DateTime.UtcNow;
+    var firstPoi = demoPois.FirstOrDefault();
+    var secondPoi = demoPois.Skip(1).FirstOrDefault() ?? firstPoi;
+
+    if (firstPoi == null)
+    {
+        return [];
+    }
+
+    return
+    [
+        new AnalyticsEvent
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            EventType = "qr_scan",
+            SessionId = "demo-session-001",
+            PoiId = null,
+            Latitude = firstPoi.Latitude,
+            Longitude = firstPoi.Longitude,
+            Timestamp = now.AddMinutes(-12)
+        },
+        new AnalyticsEvent
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            EventType = "poi_enter",
+            SessionId = "demo-session-001",
+            PoiId = firstPoi.Id,
+            Latitude = firstPoi.Latitude,
+            Longitude = firstPoi.Longitude,
+            Timestamp = now.AddMinutes(-11)
+        },
+        new AnalyticsEvent
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            EventType = "poi_listen",
+            SessionId = "demo-session-001",
+            PoiId = firstPoi.Id,
+            Duration = 32,
+            Language = "vi",
+            Latitude = firstPoi.Latitude,
+            Longitude = firstPoi.Longitude,
+            Timestamp = now.AddMinutes(-10)
+        },
+        new AnalyticsEvent
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            EventType = "poi_listen",
+            SessionId = "demo-session-002",
+            PoiId = firstPoi.Id,
+            Duration = 45,
+            Language = "en",
+            Latitude = firstPoi.Latitude,
+            Longitude = firstPoi.Longitude,
+            Timestamp = now.AddMinutes(-7)
+        },
+        new AnalyticsEvent
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            EventType = "poi_listen",
+            SessionId = "demo-session-003",
+            PoiId = secondPoi?.Id,
+            Duration = 26,
+            Language = "ko",
+            Latitude = secondPoi?.Latitude,
+            Longitude = secondPoi?.Longitude,
+            Timestamp = now.AddMinutes(-5)
+        }
+    ];
+}
 
 static List<Poi> CreateDemoPois() =>
 [

@@ -1,401 +1,456 @@
-# PRD: Ứng dụng Thuyết minh Đa ngôn ngữ Phố Ẩm thực Vĩnh Khánh 
+# PRD: Ứng dụng Thuyết minh Đa ngôn ngữ Phố Ẩm thực Vĩnh Khánh
 
 | Trường | Nội dung |
 |---|---|
 | Tên dự án | Ứng dụng Thuyết minh Đa ngôn ngữ Phố Ẩm thực Vĩnh Khánh |
-| Phiên bản | 1.0 — MVP |
-| Trạng thái | Final |
-| Phạm vi hệ thống | Progressive Web App (Vanilla JS/HTML5/CSS3) + Web CMS (Admin) + Backend API (ASP.NET Core 10) + Database (MongoDB Atlas) |
+| Phiên bản | 1.1 - Demo ổn định |
+| Trạng thái | Final for Demo |
+| Phạm vi | PWA du khách + CMS Admin + Backend ASP.NET Core 10 + MongoDB/demo in-memory |
 | Địa bàn | Phố Vĩnh Khánh, Quận 4, TP.HCM |
-| Ngôn ngữ hỗ trợ | 20 ngôn ngữ: VI, EN, JA, ZH, KO, TH, FR, ES, DE, RU, PT, IT, ID, HI, AR, MS, TL, NL, SV, PL — Admin chỉ nhập VI hoặc EN, 18 ngôn ngữ còn lại dịch tự động |
-| Mục tiêu học thuật | Đồ án môn học / Tài liệu lưu trữ dự án |
+| Ngôn ngữ hỗ trợ | 20 ngôn ngữ: `vi`, `en`, `ja`, `zh`, `ko`, `th`, `fr`, `es`, `de`, `ru`, `pt`, `it`, `id`, `hi`, `ar`, `ms`, `tl`, `nl`, `sv`, `pl` |
+| Mục tiêu học thuật | Demo đồ án ổn định, dễ giải thích theo hàm, endpoint, service và dữ liệu |
 
 ---
 
 ## 1. TL;DR
-Ứng dụng di động dạng web (PWA) hướng tới du khách tại Phố Vĩnh Khánh (Q4, TPHCM), tự động phát âm thanh thuyết minh đa ngôn ngữ khi đến gần điểm tham quan (POI) qua GPS hoặc quét QR code. Hỗ trợ **20 ngôn ngữ** — Admin chỉ cần nhập nội dung **tiếng Việt hoặc tiếng Anh**, hệ thống tự động dịch sang 18 ngôn ngữ còn lại bằng Google Translate API. Tính năng AAC "Nói giúp tôi" tích hợp AI nhận diện **50+ ngôn ngữ** qua Unicode.
+Ứng dụng là một PWA phục vụ du khách tại phố ẩm thực Vĩnh Khánh. Người dùng mở bản đồ, đi gần điểm POI hoặc quét QR Tour để xem danh sách quán theo thứ tự và nghe thuyết minh. Admin dùng CMS để đăng nhập, quản lý POI/Tour, xem dashboard analytics, theo dõi người dùng online và kick session khi cần.
+
+Điểm quan trọng của bản này:
+- Tài khoản admin được seed bằng **password hash**, không lưu plaintext trong database seed hoặc demo seed.
+- QR Tour tại cổng mở đúng danh sách quán theo thứ tự tour.
+- Dashboard có đủ `stats`, `top-pois`, `recent`, `heatmap`; demo mode có seed analytics để không trắng dữ liệu.
+- File này có truy vết hàm thật để trả lời được câu hỏi kiểu “bấm nút này thì gọi hàm nào, endpoint nào, service nào”.
+
+---
 
 ## 2. Goals
-### Business Goals
-* Đảm bảo POI được mở trong vòng ≤3 giây khi kích hoạt qua GPS hoặc QR code; audio phát ngay sau user gesture nếu mobile browser chặn autoplay.
-* Hỗ trợ đầy đủ ngôn ngữ với hệ thống fallback qua Google Translate TTS nếu thiết bị không có sẵn giọng đọc.
-* CMS quản lý POI, audio, analytics không cần kỹ năng lập trình cho admin.
-* Báo cáo heatmap, bảng xếp hạng POI phổ biến.
 
-### User Goals
-* Trải nghiệm nghe thuyết minh tự động, không thao tác thủ công.
-* Linh hoạt chọn/đổi ngôn ngữ, dễ dàng gọi người hỗ trợ giao tiếp qua tiếng bản địa.
-* Quét QR khi định vị GPS kém ổn định.
-* Hỗ trợ lưu trữ offline dữ liệu.
+### 2.1 Business Goals
+- Demo được đầy đủ luồng chính: đăng nhập admin, QR Tour, audio đa ngôn ngữ, dashboard analytics, online users.
+- Không phụ thuộc hoàn toàn MongoDB; nếu chưa có DB thật thì demo mode vẫn trình bày được chức năng.
+- Khi giảng viên chỉ vào chức năng bất kỳ, có thể truy ngay từ màn hình -> hàm frontend -> API -> controller/service -> dữ liệu.
 
-### Non-Goals
-* Không tích hợp thanh toán hoặc mua bán trong phiên bản này.
-* Không gửi push notification cho người dùng cuối qua server.
-* Không yêu cầu tạo tài khoản cho người dùng cuối (du khách).
-* Không cam kết dịch máy chính xác 100% như biên dịch viên; bản dịch runtime dùng để hỗ trợ trải nghiệm MVP.
-* Không cam kết GPS chính xác tuyệt đối trong hẻm/phố đông nhà cao tầng; QR là luồng kích hoạt ổn định hơn khi GPS sai lệch.
+### 2.2 User Goals
+- Du khách xem bản đồ, nghe thuyết minh, quét QR, đổi ngôn ngữ và dùng AAC “Nói giúp tôi”.
+- Admin đăng nhập dễ dàng, sửa POI/Tour, in QR Tour, xem số liệu nghe và QR scan, theo dõi session online.
 
-## 3. User Stories (Câu chuyện người dùng)
-**Persona 1 — Du khách (End User)**
-* Xem bản đồ các quán ăn (POI), tự động nghe audio thuyết minh khi đi gần quán, chọn ngôn ngữ, play/pause/seek, quét mã QR.
-* Sử dụng bảng AAC "Nói giúp tôi" để giao tiếp bằng tiếng bản địa với chủ quán.
+### 2.3 Non-Goals
+- Không làm security nâng cao như refresh token, CSRF, rate limit, phân quyền phức tạp.
+- Không tích hợp thanh toán, push notification, hay tài khoản du khách.
+- Không biến dashboard thành BI production; chỉ cần số liệu đủ demo và dễ giải thích.
 
-**Persona 2 — Admin (Quản trị viên)**
-* Đăng nhập CMS bằng Bearer token ký HMAC server-side.
-* Quản lý CRUD thông tin POI, tạo mã QR, theo dõi Analytics tải heatmap và danh sách quán hot.
+---
 
-## 4. Functional Requirements
-* **Authentication & Authorization (High):** Admin đăng nhập nhận Bearer token ký HMAC; API quản trị kiểm tra token trước CRUD/Analytics.
-* **Geofencing/GPS (High):** Bắt GPS liên tục. Overlapping POI: chọn ưu tiên khoảng cách gần.
-* **QR Code Scanner (High):** Quét mã QR Tour tại cổng → mở danh sách quán theo thứ tự → chuyển tiếp từng quán. Hiện prompt nghe để phát audio đúng chính sách trình duyệt mobile.
-* **CMS POI Management (High):** Quản lý Tên, tọa độ, mô tả thông tin quán.
-* **Analytics (Medium):** Ghi dấu behavior, đếm `qr_scan` realtime cho QR tour, xếp hạng Top POIs theo `poi_listen`, hiển thị Recent Activities từ log database và Heatmap từ tọa độ analytics/POI.
-* **Online Users Control (Medium):** Web app gửi heartbeat định kỳ; Admin CMS xem số người đang online, danh sách session và kick session đang sử dụng.
+## 3. Kiến trúc hệ thống
 
-## 5. Technical Considerations
-* **Backend:** C# ASP.NET Core 10 (async), Architecture chuẩn REST.
-* **Database:** MongoDB Atlas (NoSQL Document Store).
-* **Frontend Mobile / Web CMS:** Progressive Web App (PWA) dùng Vanilla JS, CSS3, HTML5 thay cho React Native. Tận dụng Service Worker và IndexedDB lưu Offline.
-* **Bản đồ:** Leaflet.js sử dụng OpenStreetMap.
-* **Audio TTS Engine:** Client-side Window Web Speech API. Fallback sang `/api/tts` proxy nếu thiết bị không có Voice pack hoặc Web Speech lỗi; proxy trả `audio/mpeg`, có cache header và range processing để phát ổn định trên mobile/LAN.
-* **Dịch tự động (Auto-Translation):** Google Translate API (`translate.googleapis.com`) client-side. Admin chỉ cần nhập tiếng Việt hoặc tiếng Anh (có 1 trong 2 là đủ), hệ thống lazy-load bản dịch sang 18 ngôn ngữ còn lại khi du khách chọn, cache trong RAM + `localStorage`, chống gọi trùng request.
-* **AAC Language Detection:** Bộ nhận diện ngôn ngữ tự viết dựa trên Unicode Range + Pattern Matching, hỗ trợ nhận diện tự động 50+ ngôn ngữ từ văn bản đầu vào.
-* **LAN Demo:** Backend bind `0.0.0.0:5000` (HTTP) và `0.0.0.0:5001` (HTTPS); máy chạy demo dùng `http://localhost:5000`, còn điện thoại/giảng viên cùng WiFi sẽ tự động được chuyển hướng sang `https://<IP-LAN-của-máy>:5001` để đảm bảo GPS và Audio hoạt động. Admin QR modal lấy `/api/system/network` để ưu tiên sinh QR bằng HTTPS LAN IP.
-* **Presence/Kick:** `UserPresenceService` là singleton in-memory để chạy được cả MongoDB thật và demo in-memory. User app gọi `/api/presence/heartbeat` mỗi 15 giây; CMS gọi `/api/admin/online-users` mỗi 5 giây và kick qua `/api/admin/online-users/{sessionId}/kick`.
-* **Bảo mật cấu hình:** Không lưu mật khẩu MongoDB trong `appsettings.json`; demo dùng `appsettings.Local.json` hoặc biến môi trường `MongoDB__ConnectionString`. Nếu chưa có MongoDB, backend chạy demo API in-memory để không trắng màn hình khi bảo vệ.
+### 3.1 Frontend
+- `CShape/VinhKhanhFoodTour.Api/wwwroot/index.html`: giao diện PWA cho du khách.
+- `CShape/VinhKhanhFoodTour.Api/wwwroot/admin.html`: giao diện CMS Admin.
+- `CShape/VinhKhanhFoodTour.Api/wwwroot/js/app.js`: điều phối map, QR, i18n, presence, offline, AAC.
+- `CShape/VinhKhanhFoodTour.Api/wwwroot/js/audio-manager.js`: xử lý audio Web Speech + Google TTS fallback.
+- `CShape/VinhKhanhFoodTour.Api/wwwroot/js/geofence.js`: GPS/geofence + track location.
+- `CShape/VinhKhanhFoodTour.Api/wwwroot/js/admin.js`: login admin, dashboard, CRUD POI/Tour, QR viewer, online users.
+- `CShape/VinhKhanhFoodTour.Api/wwwroot/sw.js`: service worker cho shell offline.
+- `CShape/VinhKhanhFoodTour.Api/wwwroot/js/offline-db.js`: IndexedDB cache POI.
 
-### 5.1 Language & Translation Strategy (Dễ giải thích khi demo)
-* **Ngôn ngữ nguồn cố định:** Admin/CMS chỉ cần nhập nội dung tiếng Việt (`vi`) hoặc tiếng Anh (`en`) cho `name`, `description`, `ttsScript`. Nếu có cả hai thì hệ thống ưu tiên `vi`; nếu thiếu `vi` thì dùng `en`.
-* **Ngôn ngữ hiển thị:** Dropdown vẫn hỗ trợ 20 ngôn ngữ cho du khách. `vi` và `en` hiển thị trực tiếp từ source text; 18 ngôn ngữ còn lại được dịch tự động ở Frontend khi user chọn.
-* **Runtime translation:** Frontend gọi Google Translate endpoint client-side qua `translateWithCache()` để dịch UI label, tên/mô tả POI và script thuyết minh từ `vi/en` sang ngôn ngữ đích.
-* **Cache client-side:** Kết quả dịch được lưu trong bộ nhớ runtime và `localStorage` của trình duyệt; cache ghi debounce 250ms, giữ 500 entry gần nhất và dùng `pendingTranslationRequests` để không gọi trùng cùng một key.
-* **Lazy loading:** `changeLanguage()` render UI ngay bằng source/cache sẵn có, sau đó `queuePoiTranslationWarmup()` dịch tên/mô tả POI ở nền bằng `requestIdleCallback` hoặc `setTimeout`.
-* **TTS:** Text sau khi chọn/dịch được đưa vào Web Speech API; nếu thiết bị không có voice phù hợp thì fallback sang Google Translate TTS audio qua `/api/tts`.
-* **Fallback khi lỗi mạng/dịch:** Nếu chưa dịch được, UI/POI không để trống mà fallback về source `vi/en` để demo vẫn chạy ổn định.
+### 3.2 Backend
+- `Program.cs`: bootstrap app, route minimal API cho demo mode, `/api/tts`, `/api/presence`, `/api/admin/online-users`, seed demo analytics.
+- `Controllers/AuthController.cs:20`: login admin trong MongoDB mode.
+- `Controllers/PoiController.cs:55`: CRUD POI.
+- `Controllers/TourController.cs:19`: QR Tour + CRUD Tour.
+- `Controllers/AnalyticsController.cs:27`: dashboard analytics.
 
-## 6. Business Rules
-| Rule | Diễn giải |
+### 3.3 Services
+- `Services/AuthService.cs:21`: login bằng hash.
+- `Services/PoiService.cs:27`: tạo/sửa/xóa POI và seed POI mẫu.
+- `Services/TourService.cs:24`: resolve QR Tour, sắp đúng thứ tự POI, CRUD Tour.
+- `Services/AnalyticsService.cs:18`: track event, thống kê top POI, heatmap, recent, unique sessions.
+- `Services/UserPresenceService.cs:11`: heartbeat online, window 45 giây, kick session.
+
+### 3.4 Data
+- MongoDB mode dùng các collection: `pois`, `tours`, `analytics`, `users`.
+- Demo mode dùng in-memory:
+  - `demoPois`
+  - `demoTours`
+  - `analyticsEvents` seed từ `CreateDemoAnalyticsEvents()` tại `Program.cs:582`
+
+---
+
+## 4. Business Rules
+
+| Mã | Rule |
 |---|---|
-| BR-01 | Nếu user khoảng cách ≤ radius -> Quét vùng nhập, tự động kích hoạt Audio. |
-| BR-02 | Không spam audio nếu người dùng bấm Dừng (Stop) hoặc thoát vùng nhanh. |
-| BR-03 | Chỉ Track lượt nghe (Analytics) khi audio phát END hoặc khi người dùng tác động nút STOP. |
-| BR-04 | Quét mã QR Tour tại cổng → mở danh sách quán theo thứ tự tour → chuyển tiếp từng quán. |
-| BR-05 | Client-side TTS: Âm thanh không được tạo dưới backend để tránh sập máy chủ. Text sẽ được Frontend gửi thẳng ra các API âm thanh. |
-| BR-06 | Khi du khách chọn ngôn ngữ không phải `vi/en` (vd: Tiếng Hàn) → hệ thống lấy source `vi`, nếu thiếu thì lấy `en` → dịch qua Google Translate API → cache kết quả → render UI/POI và phát audio bằng ngôn ngữ đã chọn. |
-| BR-07 | AAC "Nói giúp tôi" sử dụng AI nhận biết tự động hệ ngôn ngữ từ ký tự Unicode mà không cần chọn thủ công. |
-| BR-08 | QR dùng trong demo LAN phải encode URL đầy đủ dạng `https://<IP-LAN>:5001/index.html?tour=<TOUR_CODE>`; kết nối từ HTTPS là bắt buộc để Mobile không chặn GPS. |
-| BR-09 | Nếu MongoDB/API chưa sẵn sàng khi demo, frontend dùng dữ liệu POI mẫu để vẫn trình bày được bản đồ, đổi ngôn ngữ, QR và TTS. |
-| BR-10 | Nếu Google Translate/TTS không khả dụng, app fallback về source `vi/en` và thông báo trạng thái thay vì để giao diện rỗng. |
-| BR-11 | GPS/geofence là gợi ý tự động; khi GPS lỗi hoặc lệch, UI nhắc dùng QR tại điểm dừng vì đây là luồng ổn định hơn trong phố ẩm thực. |
-| BR-12 | Dashboard Admin tự refresh mỗi 5 giây khi trang Dashboard đang active; `QR Scans` lấy `qr_scan`, `Top POIs` chỉ lấy `poi_listen`, `Recent Activities` lấy log mới nhất, `Heatmap` dùng tọa độ event hoặc tọa độ POI fallback để demo LAN không trống dữ liệu. |
-| BR-13 | Đổi ngôn ngữ phải chuẩn hóa mã về 20 ngôn ngữ hỗ trợ; `vi/en` không gọi dịch, các ngôn ngữ khác render trước bằng source/cache rồi lazy-load bản dịch. Google TTS fallback giữ đúng mã đặc biệt như `zh-CN`, `pt-BR`. |
-| BR-14 | Một session được xem là online nếu heartbeat trong 45 giây gần nhất và chưa bị kick. Khi admin kick, heartbeat kế tiếp trả `kicked=true`, client dừng audio/GPS và khóa màn hình bằng thông báo phiên bị ngắt. |
-
-## 6.1 Acceptance Criteria Cho Demo
-* Đổi `VI ↔ EN` phải cập nhật UI ngay, không gọi dịch.
-* Đổi sang `JA/KO/SV/PL` phải cập nhật label chính ngay bằng cache/source; bản dịch POI được warm-up ở nền, nếu mạng/dịch lỗi thì fallback `VI/EN` nhưng app không crash.
-* Nút test TTS cạnh dropdown phát câu mẫu theo ngôn ngữ đang chọn; riêng `SV` ưu tiên Google TTS fallback vì nhiều máy thiếu Swedish voice.
-* Mở app khi chưa cấu hình MongoDB vẫn có POI demo để trình bày bản đồ, danh sách, chi tiết, QR và audio.
-* README không chứa password thật; port demo thống nhất là `http://localhost:5000`.
-
-## 6.2 Giới Hạn MVP & Hướng Nâng Cấp
-* Google Translate/TTS client-side phù hợp demo học thuật; triển khai production nên dùng API chính thức hoặc backend proxy để kiểm soát quota, log lỗi và bảo mật.
-* GPS/geofence chỉ nên xem là gợi ý tự động; QR dán tại quán là luồng thực tế nhất cho phố ẩm thực.
-* Mobile browser chặn autoplay audio; app cần prompt/nút nghe để có user gesture.
-* AAC Unicode detection là heuristic theo hệ chữ, không phải mô hình AI đảm bảo phân loại chính xác mọi ngôn ngữ Latin.
-* Nâng cấp tiếp theo: translation cache IndexedDB, dashboard chart analytics, xuất QR PDF để in, HTTPS/public hosting, và biên tập nội dung thuyết minh thật cho từng quán.
+| BR-01 | Nếu user vào vùng geofence của POI thì hiển thị gợi ý nghe và queue audio. |
+| BR-02 | QR chính để demo là **QR Tour tại cổng**, mở danh sách quán theo thứ tự tour. |
+| BR-03 | `poi_listen` được ghi khi audio kết thúc hoặc khi người dùng dừng phát. |
+| BR-04 | Admin login dùng password hash: hash đầu vào rồi so sánh hash đã seed/lưu. |
+| BR-05 | Demo mode phải có sẵn ít nhất một ít analytics để dashboard không trắng dữ liệu. |
+| BR-06 | Online user được tính online nếu heartbeat trong 45 giây gần nhất và chưa bị kick. |
+| BR-07 | Nếu thiết bị thiếu voice phù hợp, audio fallback sang `/api/tts`. |
+| BR-08 | Nếu API/DB lỗi, app du khách vẫn fallback POI demo/offline cache thay vì crash. |
 
 ---
 
-## 7. Dữ Liệu Lịch Sử (Data Schema MongoDB — 4 Collections)
-* **`pois`**: `id`, `name` (`vi/en` source, có thể còn seed fallback), `description` (`vi/en` source), `category`, `latitude`, `longitude`, `radius`, `priority`, `ttsScript` (`vi/en` source), `qrCode`, `address`, `openingHours`, `priceRange`, `isActive`, `createdAt`.
-* **`analytics`**: `id`, `sessionId`, `eventType` (`poi_enter`, `poi_listen`, `poi_complete`, `qr_scan`, `location_update`), `poiId`, `language`, `duration`, `latitude`, `longitude`, `timestamp`.
-* **`tours`**: `id`, `name` (đa ngôn ngữ), `description` (đa ngôn ngữ), `poiIds` (danh sách POI theo thứ tự), `estimatedDuration` (phút), `estimatedDistance` (km), `isActive`, `createdAt`.
-* **`users`**: `id`, `username`, `passwordHash`, `role` (`admin`, `editor`), `createdAt`.
-* **`presenceSessions` (in-memory singleton):** `sessionId`, `displayName`, `language`, `currentPath`, `ipAddress`, `userAgent`, `connectedAt`, `lastSeenAt`, `isKicked`, `kickedAt`.
+## 5. Acceptance Criteria cho demo
+
+- Đăng nhập admin hoạt động ở cả MongoDB mode (`AuthController` + `AuthService`) và demo mode (`Program.cs:317`).
+- Password admin không lưu plaintext trong seed user; source dùng hash cố định tại `AuthService.cs:11`.
+- Bấm “Thêm POI” và “Thêm Tour” không lỗi runtime.
+- Quét QR Tour tại cổng mở đúng tour và hiển thị các quán theo thứ tự.
+- Dashboard hiển thị được `QR Scans`, `Top POIs`, `Recent Activities`, `Heatmap`.
+- Online Users có danh sách session và kick được.
+- Đổi ngôn ngữ không crash; audio có fallback nếu dịch/TTS lỗi.
 
 ---
 
-## 8. Sơ Đồ Kiến Trúc Hệ Thống (System Architecture Diagram)
+## 6. Requirement Traceability Matrix
 
-```mermaid
-graph TD
-    subgraph Client [Tầng Client - Frontend PWA & Web Admin]
-        UI[Giao diện Dùng chung HTML/CSS]
-        SW[Service Worker - Offline Cache]
-        AppJS[Logic Khách hàng - app.js]
-        AdminJS[Logic Admin - admin.js]
-        Map[Bản đồ Map Leaflet.js]
-        Audio[Bộ xử lý Audio Engine TTS]
-        QRScanner[Trình Quét Hình QR]
-        AI[AI Language/Unicode Detector]
-    end
-
-    subgraph External [Dịch vụ Bên Thứ 3 - 3rd Party API]
-        OSM[OpenStreetMap]
-        Translate[Google Translate API]
-        QRGen[QR Server Fallback]
-    end
-
-    subgraph Backend [Tầng Backend - ASP.NET Core 10]
-        API_Auth[Auth Controller]
-        API_POI[POI Controller]
-        API_Analytics[Analytics Controller]
-        API_Tour[Tour Controller]
-    end
-
-    subgraph Database [Tầng Dữ liệu Data]
-        Mongo[(MongoDB Atlas Cloud)]
-    end
-
-    %% Mối liên kết Client - External
-    Map -->|Load Tile Map| OSM
-    Audio -->|Dịch & Fallback Giọng Đọc Google| Translate
-    AdminJS -->|Tạo QR local bằng thư viện qrcode; lỗi mới fallback| QRGen
-    
-    %% Gọi API
-    AppJS -->|Tương Tác API Rest| Backend
-    AdminJS -->|Admin Quản Trị JSON API| Backend
-    
-    %% Mối liên kết nội bộ thiết bị
-    UI --> AppJS
-    UI --> AdminJS
-    UI --> SW
-    AppJS --> AI
-    AppJS --> Audio
-    AppJS --> QRScanner
-
-    %% Mối liên kết Backend - DB
-    API_Auth --> Mongo
-    API_POI --> Mongo
-    API_Analytics --> Mongo
-    API_Tour --> Mongo
-```
+| ID | Requirement | Loại | Ưu tiên | Trạng thái |
+|---|---|---|---|---|
+| FR-01 | Admin login bằng token và password hash | Backend, Frontend | High | Implemented |
+| FR-02 | QR Tour mở đúng danh sách quán theo thứ tự | Frontend, Backend, Integration | High | Implemented |
+| FR-03 | Dashboard analytics hiển thị stats/top/recent/heatmap | Backend, Frontend | High | Implemented |
+| FR-04 | Audio đa ngôn ngữ + fallback TTS | Frontend, Integration | High | Implemented |
+| FR-05 | Online users + kick session | Backend, Frontend | Medium | Implemented |
+| FR-06 | CRUD POI | Backend, Frontend, Data | High | Implemented |
+| FR-07 | CRUD Tour mức đủ demo | Backend, Frontend, Data | Medium | Implemented |
+| FR-08 | Offline cache POI + service worker | Frontend | Medium | Implemented |
+| FR-09 | AAC phát hiện ngôn ngữ từ Unicode | Frontend | Medium | Implemented |
 
 ---
 
-## 9. Sơ Đồ Chuỗi Xử Lý (Sequence Diagrams)
+## 7. Truy vết chi tiết theo Functional Requirement
 
-### 9.1 Luồng Quét QR Tour Tại Cổng (Quét 1 lần → Mở danh sách quán → Chuyển tiếp)
+### FR-01. Admin Login + Password Hash
 
+| Trường | Nội dung |
+|---|---|
+| Màn hình/chức năng | Form đăng nhập CMS Admin |
+| User thao tác gì | Nhập username/password, bấm Đăng nhập |
+| File frontend | `wwwroot/admin.html`, `wwwroot/js/admin.js` |
+| Hàm frontend được gọi | `loginAdmin()` tại `admin.js:43` |
+| API endpoint | `POST /api/auth/login` |
+| File backend/controller/service | `Controllers/AuthController.cs:20`, `Services/AuthService.cs:21`, demo mode ở `Program.cs:317` |
+| Hàm backend/service được gọi | `AuthController.Login()` -> `AuthService.LoginAsync()`; demo mode dùng `AuthService.VerifyPassword()` |
+| Dữ liệu MongoDB/demo data liên quan | `users.passwordHash`; hash mặc định tại `AuthService.cs:11` |
+| Cách demo nhanh | Đăng nhập tài khoản `admin`, backend trả token, frontend lưu `sessionStorage.adminToken` |
+
+### FR-02. QR Tour tại cổng
+
+| Trường | Nội dung |
+|---|---|
+| Màn hình/chức năng | Nút quét QR trong app du khách hoặc camera điện thoại quét QR in từ CMS |
+| User thao tác gì | Quét QR Tour tại cổng |
+| File frontend | `wwwroot/js/qr-scanner.js`, `wwwroot/js/app.js` |
+| Hàm frontend được gọi | `QRScannerManager._onScanSuccess()` -> `handleQrCode()` `app.js:1085` -> `handleTourQrCode()` `app.js:1103` -> `resolveTourByQrCode()` `app.js:1137` -> `openTourFromQr()` `app.js:1176` -> `renderTourPoiList()` `app.js:1492` -> `showPoiDetail()` -> `trackTourQrScan()` |
+| API endpoint | `GET /api/tour/qr/{qrCode}` |
+| File backend/controller/service | `Controllers/TourController.cs:19`, `Services/TourService.cs:24`, demo mode `Program.cs:376` |
+| Hàm backend/service được gọi | `TourController.GetByQrCode()` -> `TourService.GetActiveByQrCodeAsync()` -> `TourService.GetOrderedPoisAsync()` |
+| Dữ liệu MongoDB/demo data liên quan | `tours.qrCode`, `tours.poiIds`, `pois`; demo seed `CreateDemoTours()` ở `Program.cs:555` |
+| Cách demo nhanh | Mở CMS -> Quản lý Tour -> QR Tour -> in hoặc quét QR -> app mở danh sách quán theo thứ tự |
+
+### FR-03. Dashboard Analytics
+
+| Trường | Nội dung |
+|---|---|
+| Màn hình/chức năng | Dashboard CMS |
+| User thao tác gì | Mở trang Dashboard hoặc refresh định kỳ 5 giây |
+| File frontend | `wwwroot/js/admin.js` |
+| Hàm frontend được gọi | `loadDashboardData()` `admin.js:454` -> `renderTopPoisChart()` `admin.js:490` -> `renderRecentEvents()` `admin.js:515` -> `initHeatmap()` `admin.js:544` |
+| API endpoint | `GET /api/analytics/stats`, `GET /api/analytics/top-pois`, `GET /api/analytics/recent`, `GET /api/analytics/heatmap`, `GET /api/poi/all` |
+| File backend/controller/service | `Controllers/AnalyticsController.cs:27/36/45/61`, `Services/AnalyticsService.cs:26/45/93/106/112`, demo mode `Program.cs:431/441/464/507` |
+| Hàm backend/service được gọi | `GetEventCountsAsync()`, `GetUniqueSessionsAsync()`, `GetTopPoiStatsAsync()`, `GetHeatmapDataAsync()`, `GetRecentEventsAsync()` |
+| Dữ liệu MongoDB/demo data liên quan | `analytics`, `pois`; demo seed `CreateDemoAnalyticsEvents()` ở `Program.cs:582` |
+| Cách demo nhanh | Đăng nhập CMS -> Dashboard -> chỉ vào `QR Scans`, `Top POIs`, `Recent`, `Heatmap` |
+
+### FR-04. Audio + Dịch ngôn ngữ
+
+| Trường | Nội dung |
+|---|---|
+| Màn hình/chức năng | Dropdown ngôn ngữ + nút nghe thuyết minh |
+| User thao tác gì | Đổi ngôn ngữ, bấm nghe |
+| File frontend | `wwwroot/js/app.js`, `wwwroot/js/audio-manager.js` |
+| Hàm frontend được gọi | `changeLanguage()` `app.js:1440` -> `translateWithCache()` `app.js:167` -> `translateText()` `app.js:878` -> `queuePoiTranslationWarmup()` `app.js:227` -> `getPoiScript()` `app.js:851` -> `AudioManager.playDirect()` `audio-manager.js:222` -> `_speak()` `audio-manager.js:252` -> `_speakWithWebSpeech()` `audio-manager.js:286` hoặc `_speakWithGoogleTTS()` `audio-manager.js:354` |
+| API endpoint | `GET /api/tts` |
+| File backend/controller/service | demo/minimal API tại `Program.cs:515` |
+| Hàm backend/service được gọi | TTS proxy trong `Program.cs` |
+| Dữ liệu MongoDB/demo data liên quan | `pois.name`, `pois.description`, `pois.ttsScript` |
+| Cách demo nhanh | Đổi `VI` -> `EN` -> một ngôn ngữ khác như `KO`; bấm nút nghe hoặc nút test TTS |
+
+### FR-05. Online Users + Kick
+
+| Trường | Nội dung |
+|---|---|
+| Màn hình/chức năng | Trang Online Users trong CMS |
+| User thao tác gì | Mở app du khách để heartbeat, CMS mở Online Users, bấm Kick |
+| File frontend | `wwwroot/js/app.js`, `wwwroot/js/admin.js` |
+| Hàm frontend được gọi | `startPresenceHeartbeat()` `app.js:569` -> `sendPresenceHeartbeat()` `app.js:577`; admin dùng `loadOnlineUsers()` `admin.js:397` và `kickOnlineUser()` `admin.js:435`; client nhận kick ở `handleSessionKicked()` `app.js:613` |
+| API endpoint | `POST /api/presence/heartbeat`, `GET /api/admin/online-users`, `POST /api/admin/online-users/{sessionId}/kick` |
+| File backend/controller/service | `Program.cs:130/145/156`, `Services/UserPresenceService.cs:11/58` |
+| Hàm backend/service được gọi | `UserPresenceService.Upsert()`, `UserPresenceService.GetOnlineSessions()`, `UserPresenceService.Kick()` |
+| Dữ liệu MongoDB/demo data liên quan | `presenceSessions` in-memory singleton |
+| Cách demo nhanh | Mở app trên điện thoại/laptop khác -> vào CMS -> Online Users -> Kick -> app hiện màn hình “Phiên đã bị ngắt” |
+
+### FR-06. CRUD POI
+
+| Trường | Nội dung |
+|---|---|
+| Màn hình/chức năng | Quản lý POIs |
+| User thao tác gì | Thêm, sửa, ẩn/hiện, xóa, xem QR điểm |
+| File frontend | `wwwroot/admin.html`, `wwwroot/js/admin.js` |
+| Hàm frontend được gọi | `savePoi()` `admin.js:701`, `editPoi()`, `togglePoiStatus()`, `deletePoi()`, `viewQr()` `admin.js:1117` |
+| API endpoint | `GET /api/poi/all`, `POST /api/poi`, `PUT /api/poi/{id}`, `DELETE /api/poi/{id}` |
+| File backend/controller/service | `Controllers/PoiController.cs:19/54/63/74`, `Services/PoiService.cs:27/35/42`, demo mode `Program.cs:333/337/343/353/364` |
+| Hàm backend/service được gọi | `PoiService.CreateAsync()`, `UpdateAsync()`, `DeleteAsync()` |
+| Dữ liệu MongoDB/demo data liên quan | `pois` / `demoPois` |
+| Cách demo nhanh | Vào POIs -> Thêm POI mới -> lưu -> xem ngay ở bảng và QR |
+
+### FR-07. CRUD Tour mức đủ demo
+
+| Trường | Nội dung |
+|---|---|
+| Màn hình/chức năng | Quản lý Tours |
+| User thao tác gì | Thêm, sửa, xóa, xem QR Tour |
+| File frontend | `wwwroot/admin.html`, `wwwroot/js/admin.js` |
+| Hàm frontend được gọi | `loadTours()` `admin.js:798`, `openTourModal()` `admin.js:857`, `saveTour()` `admin.js:893`, `editTour()`, `deleteTour()`, `viewTourQr()` `admin.js:1097` |
+| API endpoint | `GET /api/tour`, `POST /api/tour`, `PUT /api/tour/{id}`, `DELETE /api/tour/{id}` |
+| File backend/controller/service | `Controllers/TourController.cs:46/54/64`, `Services/TourService.cs:61/72/78`, demo mode `Program.cs:397/406/417` |
+| Hàm backend/service được gọi | `TourService.CreateAsync()`, `UpdateAsync()`, `DeleteAsync()` |
+| Dữ liệu MongoDB/demo data liên quan | `tours.qrCode`, `tours.poiIds`; demo `demoTours` |
+| Cách demo nhanh | Vào Tours -> Thêm Tour -> tick 2-3 POI -> lưu -> mở QR Tour |
+
+### FR-08. Offline cache PWA
+
+| Trường | Nội dung |
+|---|---|
+| Màn hình/chức năng | App du khách khi mất mạng |
+| User thao tác gì | Mở app, rồi ngắt mạng |
+| File frontend | `wwwroot/sw.js`, `wwwroot/js/offline-db.js`, `wwwroot/js/app.js`, `wwwroot/index.html` |
+| Hàm frontend được gọi | `navigator.serviceWorker.register()` `index.html:379`; `offlineDB.savePois()` `app.js:727`; `offlineDB.loadPois()` `app.js:740` |
+| API endpoint | `GET /api/poi` khi online |
+| File backend/controller/service | `Controllers/PoiController.cs:19`, demo mode `Program.cs:333` |
+| Hàm backend/service được gọi | `PoiService.GetActiveAsync()` |
+| Dữ liệu MongoDB/demo data liên quan | `pois` hoặc fallback `getDemoPois()` `app.js:780` |
+| Cách demo nhanh | Mở app lần đầu có mạng -> tắt mạng -> refresh -> app vẫn có dữ liệu POI cache |
+
+### FR-09. AAC “Nói giúp tôi”
+
+| Trường | Nội dung |
+|---|---|
+| Màn hình/chức năng | Modal AAC |
+| User thao tác gì | Nhập câu hoặc chọn câu mẫu, bấm phát |
+| File frontend | `wwwroot/js/app.js` |
+| Hàm frontend được gọi | `aacSpeak()` -> `detectLanguage()` `app.js:2074` -> `_aacGoogleTTS()` `app.js:2025` khi thiếu voice |
+| API endpoint | Dùng trực tiếp Google TTS ở luồng AAC fallback |
+| File backend/controller/service | Không qua backend ở luồng AAC fallback hiện tại |
+| Hàm backend/service được gọi | Không có |
+| Dữ liệu MongoDB/demo data liên quan | Câu mẫu trong frontend |
+| Cách demo nhanh | Mở modal “Nói giúp tôi” -> nhập câu tiếng Việt/Hàn/Nhật -> bấm phát |
+
+---
+
+## 8. Sequence Flows theo hàm thật
+
+### 8.1 QR Tour
 ```mermaid
 sequenceDiagram
     actor User as Du khách
-    participant Scanner as Html5-Qrcode<br/>(qr-scanner.js)
-    participant App as Frontend PWA<br/>(app.js)
-    participant API as Backend<br/>(Program.cs)
-    participant DB as MongoDB Atlas
+    participant Scanner as "QRScannerManager._onScanSuccess()"
+    participant App as "app.js"
+    participant API as "GET /api/tour/qr/{qrCode}"
+    participant Backend as "TourController / Program.cs"
+    participant Service as "TourService"
 
-    User->>Scanner: Quét QR tại cổng tour
-    Scanner->>Scanner: _onScanSuccess(decodedText)<br/>📍 qr-scanner.js:65
-    Scanner->>App: Callback onQRDetected(decodedText)
-
-    App->>App: handleQrCode(rawQrCode)<br/>📍 app.js:963
-    App->>App: handleTourQrCode(rawQrCode)<br/>📍 app.js:981
-
-    Note over App: Bước 1 — Tách mã QR
-    App->>App: extractTourQrCode(rawQrCode)<br/>📍 app.js:993<br/>Trích ?tour= hoặc ?qr= từ URL
-
-    Note over App: Bước 2 — Gọi API lấy tour
-    App->>API: resolveTourByQrCode(qrCode)<br/>📍 app.js:1015<br/>GET /api/tour/qr/{qrCode}
-    API->>API: MapGet("/api/tour/qr/{qrCode}")<br/>📍 Program.cs:339
-    API->>DB: Tìm tour → lấy POI theo thứ tự
-    DB-->>API: { tour, pois[] }
-    API-->>App: JSON { tour, pois[] }
-
-    alt API lỗi hoặc offline
-        App->>App: getFallbackTourByQrCode(qrCode)<br/>📍 app.js:1029<br/>Dùng POI demo trong bộ nhớ
-    end
-
-    Note over App: Bước 3 — Mở tour & hiện danh sách quán
-    App->>App: openTourFromQr(payload, qrCode)<br/>📍 app.js:1054
-    App->>App: normalizeTourPayload(payload)<br/>📍 app.js:1004
-    App->>App: AppState.activeTour = {tour, pois, currentIndex: 0}
-    App->>App: renderTourPoiList()<br/>📍 app.js:1372
-    App->>App: showPoiDetail(firstPoi)<br/>📍 app.js:1438 — Hiện quán đầu tiên
-    App-->>User: Hiện danh sách quán + nút Trước/Tiếp
-
-    Note over App: Bước 4 — Ghi thống kê
-    App->>API: trackTourQrScan()<br/>📍 app.js:1094<br/>POST /api/analytics/event {eventType: "qr_scan"}
-
-    Note over User,App: Chuyển tiếp giữa các quán
-    User->>App: Bấm "Tiếp theo" hoặc "Trước"
-    App->>App: goToTourStop(delta)<br/>📍 app.js:1525
-    App->>App: showPoiDetail(nextPoi)<br/>Hiện quán kế tiếp + phát audio
-    App->>App: renderTourNavigation(poi)<br/>📍 app.js:1487<br/>Cập nhật "Điểm 2/5"
+    User->>Scanner: Quét QR Tour tại cổng
+    Scanner->>App: handleQrCode()
+    App->>App: handleTourQrCode()
+    App->>App: extractTourQrCode()
+    App->>App: resolveTourByQrCode()
+    App->>API: GET /api/tour/qr/{qrCode}
+    API->>Backend: TourController.GetByQrCode() hoặc demo route Program.cs
+    Backend->>Service: GetActiveByQrCodeAsync()
+    Service->>Service: GetOrderedPoisAsync()
+    Service-->>Backend: tour + pois[]
+    Backend-->>App: JSON payload
+    App->>App: openTourFromQr()
+    App->>App: renderTourPoiList()
+    App->>App: showPoiDetail()
+    App->>App: trackTourQrScan()
 ```
 
-### 9.2 Luồng Đổi Ngôn Ngữ và Phát Thuyết Minh (TTS)
-
+### 8.2 Dashboard
 ```mermaid
 sequenceDiagram
-    actor User as Người dùng
-    participant App as app.js
-    participant GTranslate as Google Translate
-    participant TTS as audio-manager.js
-    participant Proxy as /api/tts (Program.cs)
+    actor Admin as Admin CMS
+    participant Frontend as "admin.js: loadDashboardData()"
+    participant Stats as "GET /api/analytics/stats"
+    participant TopPois as "GET /api/analytics/top-pois"
+    participant Recent as "GET /api/analytics/recent"
+    participant PoiAll as "GET /api/poi/all"
+    participant Heatmap as "GET /api/analytics/heatmap"
 
-    User->>App: Chọn ngôn ngữ (vd: Korean)
-    App->>App: changeLanguage(lang)<br/>📍 app.js:1373<br/>normalizeAppLanguage() 📍 app.js:117
-
-    alt vi hoặc en
-        App->>App: Dùng trực tiếp source text
-    else Ngôn ngữ khác
-        App->>GTranslate: translateWithCache(scope,id,text,src,target)<br/>📍 app.js:165<br/>translateText() 📍 app.js:811
-        GTranslate-->>App: Text đã dịch → RAM cache + localStorage debounce
-    end
-
-    App->>App: Render UI ngay bằng source/cache<br/>queuePoiTranslationWarmup() 📍 app.js:225
-    User->>App: Bấm "Nghe thuyết minh"
-    App->>App: getPoiScript(poi, lang)<br/>📍 app.js:784
-    App->>TTS: playDirect(poiId, script, name)<br/>📍 audio-manager.js:222
-    TTS->>TTS: _speak(text, lang)<br/>📍 audio-manager.js:252
-
-    alt Có voice hệ thống
-        TTS->>TTS: _speakWithWebSpeech()<br/>📍 audio-manager.js:286
-        TTS-->>User: Phát audio
-    else Không có voice
-        TTS->>TTS: _speakWithGoogleTTS()<br/>📍 audio-manager.js:354<br/>_ensureGoogleAudio() 📍 audio-manager.js:423
-        TTS->>Proxy: GET /api/tts?lang=ko-KR&text=...
-        Proxy-->>TTS: audio/mpeg + cache/range headers<br/>📍 Program.cs:452
-        TTS-->>User: Phát audio fallback
-    end
-
-    TTS->>TTS: _trackListen(poiId)<br/>📍 audio-manager.js:602
+    Admin->>Frontend: Mở trang Dashboard
+    Frontend->>Stats: lấy stats
+    Frontend->>TopPois: lấy top POI
+    Frontend->>Recent: lấy recent events
+    Frontend->>PoiAll: lấy danh sách POI
+    Stats-->>Frontend: eventCounts + uniqueSessions
+    TopPois-->>Frontend: topPois[]
+    Recent-->>Frontend: recentEvents[]
+    PoiAll-->>Frontend: adminPois[]
+    Frontend->>Frontend: renderTopPoisChart()
+    Frontend->>Frontend: renderRecentEvents()
+    Frontend->>Frontend: initHeatmap()
+    Frontend->>Heatmap: lấy heatmap points
+    Heatmap-->>Frontend: points[]
 ```
 
-### 9.3 Luồng Bản Đồ và Geofencing
-
-```mermaid
-sequenceDiagram
-    actor User as Người dùng
-    participant App as app.js
-    participant Map as map.js
-    participant Geo as geofence.js
-    participant API as Backend
-
-    User->>App: Mở ứng dụng → initApp()
-    App->>API: GET /api/poi
-    API-->>App: JSON POI[]
-    App->>Map: addPois(pois) — vẽ markers
-    App->>Geo: start() → watchPosition()
-
-    loop Khách di chuyển
-        Geo->>Geo: checkGeofences(lat, lng) — Haversine
-        alt Khoảng cách < bán kính POI
-            Geo->>App: onEnter(poi)
-            App-->>User: Popup + nút Nghe
-        end
-    end
-```
-
-### 9.4 Luồng Xác Thực và Quản Trị (CMS Admin)
-
-```mermaid
-sequenceDiagram
-    actor Admin as Quản trị viên
-    participant Web as admin.js
-    participant API as Backend
-    participant DB as MongoDB
-
-    Admin->>Web: Đăng nhập (username/password)
-    Web->>API: POST /api/auth/login
-    API->>DB: Kiểm tra hash password
-    API-->>Web: Bearer token HMAC → sessionStorage
-
-    Web->>API: loadDashboardData() 📍 admin.js:340<br/>GET /api/analytics/stats + top-pois + recent + poi/all
-    API-->>Web: Dữ liệu thống kê
-    Web->>Web: renderTopPoisChart() 📍 admin.js:377<br/>renderRecentEvents() 📍 admin.js:402
-    Web->>API: initHeatmap() 📍 admin.js:431<br/>GET /api/analytics/heatmap
-    Web->>Web: startDashboardRefresh() 📍 admin.js:324<br/>poll lại mỗi 5 giây khi Dashboard active
-    Web-->>Admin: Hiện QR scans realtime, Top POIs nghe nhiều, Recent Activities, Heatmap
-
-    Admin->>Web: Thêm/Sửa/Xóa POI
-    Web->>API: POST/PUT/DELETE /api/poi (Auth Bearer)
-    API->>DB: CRUD document
-    API-->>Web: Status OK
-
-    Admin->>Web: Xem QR Tour
-    Web->>API: GET /api/system/network → lấy IP LAN
-    Web->>Web: QRCode.js tạo QR từ URL tour
-    Web-->>Admin: Modal in QR
-```
-
-### 9.5 Luồng Online Users và Kick Session
-
+### 8.3 Audio và ngôn ngữ
 ```mermaid
 sequenceDiagram
     actor User as Du khách
-    actor Admin as Quản trị viên
-    participant App as app.js
-    participant CMS as admin.js
-    participant API as Program.cs
-    participant Presence as UserPresenceService
+    participant App as "app.js"
+    participant Audio as "AudioManager"
+    participant TTS as "/api/tts"
 
-    User->>App: Mở web app
-    App->>App: startPresenceHeartbeat()<br/>📍 app.js:569
+    User->>App: Đổi ngôn ngữ
+    App->>App: changeLanguage()
+    App->>App: normalizeAppLanguage()
+    App->>App: applyUILanguage()
+    App->>App: translateWithCache()
+    App->>App: translateText()
+    App->>App: queuePoiTranslationWarmup()
+
+    User->>App: Bấm nghe thuyết minh
+    App->>App: getPoiScript()
+    App->>Audio: playDirect()
+    Audio->>Audio: _speak()
+    alt Có Web Speech phù hợp
+        Audio->>Audio: _speakWithWebSpeech()
+    else Thiếu voice hoặc lỗi
+        Audio->>Audio: _speakWithGoogleTTS()
+        Audio->>TTS: GET /api/tts
+        TTS-->>Audio: audio/mpeg
+    end
+```
+
+### 8.4 Online Users + Kick
+```mermaid
+sequenceDiagram
+    actor User as Du khách
+    actor Admin as Admin CMS
+    participant Client as "app.js"
+    participant CMS as "admin.js"
+    participant API as "Program.cs"
+    participant Presence as "UserPresenceService"
+
+    User->>Client: Mở app
+    Client->>Client: startPresenceHeartbeat()
     loop Mỗi 15 giây
-        App->>API: sendPresenceHeartbeat()<br/>📍 app.js:577<br/>POST /api/presence/heartbeat
-        API->>Presence: Upsert(session)<br/>📍 UserPresenceService.cs:11
-        Presence-->>API: { sessionId, isKicked }
-        API-->>App: { sessionId, kicked }
+        Client->>Client: sendPresenceHeartbeat()
+        Client->>API: POST /api/presence/heartbeat
+        API->>Presence: Upsert()
+        Presence-->>API: session + kicked
+        API-->>Client: JSON heartbeat
     end
 
     Admin->>CMS: Mở trang Online Users
-    CMS->>API: loadOnlineUsers()<br/>📍 admin.js:365<br/>GET /api/admin/online-users
-    API->>Presence: GetOnlineSessions()<br/>online window 45s
-    API-->>CMS: { count, users[] }
+    CMS->>CMS: loadOnlineUsers()
+    CMS->>API: GET /api/admin/online-users
+    API->>Presence: GetOnlineSessions()
+    Presence-->>API: users[]
+    API-->>CMS: users[]
 
     Admin->>CMS: Bấm Kick
-    CMS->>API: kickOnlineUser(sessionId)<br/>📍 admin.js:403<br/>POST /api/admin/online-users/{sessionId}/kick
-    API->>Presence: Kick(sessionId)
+    CMS->>CMS: kickOnlineUser()
+    CMS->>API: POST /api/admin/online-users/{sessionId}/kick
+    API->>Presence: Kick()
+    Presence-->>API: kicked = true
+    API-->>CMS: OK
 
-    App->>API: Heartbeat kế tiếp
-    API-->>App: { kicked: true }
-    App->>App: handleSessionKicked()<br/>📍 app.js:613<br/>Dừng audio/GPS + khóa màn hình
+    Client->>Client: handleSessionKicked()
 ```
 
-### 9.6 Luồng AAC — "Nói giúp tôi"
-
+### 8.5 Auth Admin
 ```mermaid
 sequenceDiagram
-    actor User as Du khách
-    participant App as app.js
-    participant AI as detectLanguage()
-    participant TTS as audio-manager.js
+    actor Admin as Admin
+    participant CMS as "admin.js: loginAdmin()"
+    participant API as "POST /api/auth/login"
+    participant AuthController as "AuthController"
+    participant AuthService as "AuthService"
+    participant DemoMode as "Program.cs demo login"
 
-    User->>App: Chọn câu mẫu hoặc nhập text
-    App->>AI: detectLanguage(text) — Unicode Range + Regex
-    AI-->>App: Mã BCP47 (ko, ja, th, ru...)
-    App->>TTS: _speak(text, lang) 📍:244
-
-    alt Có Voice OS
-        TTS-->>User: Phát loa ngoài
-    else Không có Voice
-        TTS->>TTS: GET /api/tts fallback
-        TTS-->>User: Phát audio Google TTS
+    Admin->>CMS: Submit form login
+    CMS->>API: POST /api/auth/login
+    alt MongoDB mode
+        API->>AuthController: Login()
+        AuthController->>AuthService: LoginAsync()
+        AuthService->>AuthService: ComputePasswordHash()
+        AuthService-->>AuthController: LoginResponse
+        AuthController-->>CMS: token + username + role
+    else Demo mode
+        API->>DemoMode: app.MapPost("/api/auth/login")
+        DemoMode->>AuthService: VerifyPassword()
+        DemoMode-->>CMS: token + username + role
     end
 ```
 
-### 9.6 Luồng PWA Offline
-
+### 8.6 CRUD POI/Tour
 ```mermaid
-sequenceDiagram
-    actor User as Du khách
-    participant SW as sw.js
-    participant Cache as Cache Storage
-    participant IDB as offline-db.js
-    participant Server as Backend
-
-    Note over User,Server: Lần đầu (có mạng)
-    SW->>Server: Fetch file tĩnh (HTML/CSS/JS)
-    SW->>Cache: Lưu offline
-    Server-->>IDB: GET /api/poi → savePois()
-
-    Note over User,Server: Khi mất mạng
-    SW->>Server: Ping API
-    Server--xSW: Timeout
-    SW->>Cache: Lấy file tĩnh cached
-    IDB-->>User: POI[] từ IndexedDB
-    Note over User: App vẫn chạy + badge "Offline"
+flowchart TD
+    A["Admin sửa POI/Tour trên CMS"] --> B["admin.js: savePoi() hoặc saveTour()"]
+    B --> C["POST/PUT /api/poi hoặc /api/tour"]
+    C --> D["PoiController hoặc TourController"]
+    D --> E["PoiService.CreateAsync()/UpdateAsync()"]
+    D --> F["TourService.CreateAsync()/UpdateAsync()"]
+    C --> G["Demo mode Program.cs routes nếu không có MongoDB"]
+    E --> H["Collection pois hoặc demoPois"]
+    F --> I["Collection tours hoặc demoTours"]
+    G --> H
+    G --> I
 ```
+
+---
+
+## 9. Dữ liệu MongoDB / Demo Data
+
+### 9.1 Collections MongoDB
+- `pois`
+- `tours`
+- `analytics`
+- `users`
+
+### 9.2 Demo Mode
+- `demoPois`: `Program.cs:313`
+- `demoTours`: `Program.cs:314`
+- `analyticsEvents`: `Program.cs:315`, seed bằng `CreateDemoAnalyticsEvents()` `Program.cs:582`
+
+### 9.3 Tài khoản admin mặc định
+- Username mặc định: `AuthService.DefaultAdminUsername`
+- Password hash mặc định: `AuthService.DefaultAdminPasswordHash` tại `AuthService.cs:11`
+- Login không so sánh plaintext trong DB seed; input được băm rồi so sánh hash.
+
+---
+
+## 10. Rủi ro và ghi chú demo
+
+- Nếu không có MongoDB, backend chạy demo mode và vẫn có QR Tour, dashboard, POI mẫu, analytics mẫu.
+- Dashboard demo mode có seed event để tránh “trắng biểu đồ”.
+- QR demo chính là QR Tour; QR điểm đơn lẻ chỉ giữ lại để tương thích cũ.
+- AAC là heuristic Unicode detection, không phải mô hình AI huấn luyện đầy đủ.
+- TTS phụ thuộc browser voice; fallback `/api/tts` giúp demo ổn định hơn trên điện thoại.
+
+---
+
+## 11. Lệnh kiểm tra sau sửa
+
+```bash
+node --check CShape/VinhKhanhFoodTour.Api/wwwroot/js/app.js
+node --check CShape/VinhKhanhFoodTour.Api/wwwroot/js/admin.js
+dotnet build CShape/VinhKhanhFoodTour.Api/VinhKhanhFoodTour.Api.csproj
+```
+
+Kỳ vọng:
+- `node --check` không báo lỗi cú pháp.
+- `dotnet build` thành công.

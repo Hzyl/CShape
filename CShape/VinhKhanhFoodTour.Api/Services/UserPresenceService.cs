@@ -30,6 +30,14 @@ namespace VinhKhanhFoodTour.Api.Services
                 },
                 (_, existing) =>
                 {
+                    if (existing.IsKicked)
+                    {
+                        existing.LastSeenAt = now;
+                        existing.IpAddress = ipAddress ?? existing.IpAddress;
+                        existing.UserAgent = userAgent ?? existing.UserAgent;
+                        return existing;
+                    }
+
                     existing.DisplayName = NormalizeDisplayName(request.DisplayName);
                     existing.Language = request.Language;
                     existing.CurrentPath = request.CurrentPath;

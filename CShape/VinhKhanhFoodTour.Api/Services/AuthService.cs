@@ -7,6 +7,9 @@ namespace VinhKhanhFoodTour.Api.Services
 {
     public class AuthService
     {
+        public const string DefaultAdminUsername = "admin";
+        public const string DefaultAdminPasswordHash = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9";
+
         private readonly IMongoCollection<User> _users;
 
         public AuthService(IMongoDatabase database)
@@ -17,7 +20,7 @@ namespace VinhKhanhFoodTour.Api.Services
         /// <summary>Đăng nhập admin</summary>
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
         {
-            var passwordHash = HashPassword(request.Password);
+            var passwordHash = ComputePasswordHash(request.Password);
             var user = await _users
                 .Find(u => u.Username == request.Username && u.PasswordHash == passwordHash)
                 .FirstOrDefaultAsync();
@@ -35,11 +38,14 @@ namespace VinhKhanhFoodTour.Api.Services
         }
 
         /// <summary>Hash mật khẩu bằng SHA256</summary>
-        private static string HashPassword(string password)
+        public static string ComputePasswordHash(string password)
         {
             var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
             return Convert.ToHexString(bytes).ToLowerInvariant();
         }
+
+        public static bool VerifyPassword(string password, string expectedHash) =>
+            string.Equals(ComputePasswordHash(password), expectedHash, StringComparison.OrdinalIgnoreCase);
 
         /// <summary>Seed tài khoản admin mặc định</summary>
         public async Task SeedDataAsync()
@@ -49,8 +55,8 @@ namespace VinhKhanhFoodTour.Api.Services
 
             var admin = new User
             {
-                Username = "admin",
-                PasswordHash = HashPassword("admin123"),
+                Username = DefaultAdminUsername,
+                PasswordHash = DefaultAdminPasswordHash,
                 Role = "admin"
             };
 
