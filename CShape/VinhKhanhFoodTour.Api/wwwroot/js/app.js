@@ -692,7 +692,7 @@ async function initApp() {
         }
     });
 
-    // Xử lý URL param ?qr= (khi mở app bằng cách quét QR code)
+    // Xử lý URL param ?tour= (vẫn nhận ?qr= để tương thích QR cũ)
     handleQrUrlParam();
 
     // Kéo bottom sheet lên/xuống
@@ -829,9 +829,9 @@ function getDemoPois() {
 // ==================== QR URL HANDLER ====================
 
 /**
- * Xử lý khi mở app bằng cách quét QR Code tại cửa hàng.
- * URL: /index.html?qr=VK-POI-001
- * Tự động tìm POI, mở chi tiết và hiện nút nghe để đúng chính sách mobile autoplay.
+ * Xử lý khi mở app bằng QR Tour tại cổng.
+ * URL chính: /index.html?tour=VK-DEMO-TOUR-GATE
+ * Vẫn nhận ?qr= để tương thích các QR cũ đã sinh trước đó.
  */
 function handleQrUrlParam() {
     const params = new URLSearchParams(window.location.search);
@@ -1581,10 +1581,9 @@ async function showPoiDetail(poi) {
     const distance = geofenceManager.getDistanceTo(poi.latitude, poi.longitude);
     document.getElementById('detail-distance-text').textContent = GeofenceManager.formatDistance(distance);
 
-    // Set QR code ngay trong bottom sheet
-    // QR encode URL → khi du khách quét bằng camera sẽ mở app và tự phát thuyết minh
+    // Set QR Tour ngay trong bottom sheet khi user đang ở trong tour.
     const tourQrCode = AppState.activeTour?.tour?.qrCode || AppState.activeTour?.tour?.id;
-    const qrUrl = tourQrCode ? `${window.location.origin}/index.html?qr=${encodeURIComponent(tourQrCode)}&lang=${AppState.language}` : '';
+    const qrUrl = tourQrCode ? `${window.location.origin}/index.html?tour=${encodeURIComponent(tourQrCode)}&lang=${AppState.language}` : '';
     const qrImg = document.getElementById('detail-qr-img');
     const qrBtn = document.getElementById('btn-qr-thumb');
     if (qrImg) {
@@ -1750,19 +1749,18 @@ function closeQRModal() {
     document.getElementById('qr-modal').classList.add('hidden');
 }
 
-// ==================== POI QR DISPLAY ====================
+// ==================== TOUR QR DISPLAY ====================
 
 /**
- * Hiển thị QR Code của POI để nhân viên/du khách quét.
- * QR encode URL app → khi quét tự mở app và phát thuyết minh.
+ * Hook cũ: hiện chỉ dùng QR Tour. Nếu chưa mở tour thì không sinh QR điểm lẻ.
  */
 async function showPoiQr(poi) {
+    if (!AppState.activeTour?.tour) return;
     const lang = AppState.language;
-    const name = await getLocalizedPoiText(poi, 'name', lang);
-    const qrCode = poi.qrCode || poi.id;
+    const name = getLocalizedTextMapSync(AppState.activeTour.tour.name, lang) || t('tourQrTitle');
+    const qrCode = AppState.activeTour.tour.qrCode || AppState.activeTour.tour.id;
 
-    // URL mà QR sẽ encode: mở app và tự phát thuyết minh
-    const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
+    const appUrl = `${window.location.origin}/index.html?tour=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
 
     document.getElementById('poi-qr-name').textContent = name;
     setQrImage(document.getElementById('poi-qr-img'), appUrl, 400);
@@ -1842,7 +1840,7 @@ async function openQrLightbox() {
         const tour = AppState.activeTour.tour;
         const name = getLocalizedTextMapSync(tour.name) || t('tourQrTitle');
         const qrCode = tour.qrCode || tour.id;
-        const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
+        const appUrl = `${window.location.origin}/index.html?tour=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
 
         document.getElementById('qr-lightbox-name').textContent = name;
         setQrImage(document.getElementById('qr-lightbox-img'), appUrl, 480);
@@ -1854,18 +1852,7 @@ async function openQrLightbox() {
         return;
     }
 
-    const poi = AppState.selectedPoi;
-    if (!poi) return;
-
-    const lang = AppState.language;
-    const name = await getLocalizedPoiText(poi, 'name', lang);
-    const qrCode = poi.qrCode || poi.id;
-    const appUrl = `${window.location.origin}/index.html?qr=${encodeURIComponent(qrCode)}&lang=${AppState.language}`;
-
-    document.getElementById('qr-lightbox-name').textContent = name;
-    setQrImage(document.getElementById('qr-lightbox-img'), appUrl, 480);
-
-    document.getElementById('qr-lightbox').classList.remove('hidden');
+    showAppMessage(t('tourQrTitle'), t('tourQrHint'), 'route', 4500);
 }
 
 function closeQrLightbox() {

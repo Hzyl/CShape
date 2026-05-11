@@ -233,7 +233,7 @@ async function renderQrForCurrentModal() {
     const appOrigin = getQrAppOrigin();
     const selectedLang = document.getElementById('qr-lang-select')?.value;
     const langParam = selectedLang ? `&lang=${selectedLang}` : '';
-    const appUrl = `${appOrigin}/index.html?qr=${encodeURIComponent(qrCode)}${langParam}`;
+    const appUrl = `${appOrigin}/index.html?tour=${encodeURIComponent(qrCode)}${langParam}`;
     document.getElementById('qr-poi-code').textContent = 'Đường dẫn: ' + appUrl;
     modal.dataset.qrUrl = appUrl;
     updateQrOriginPanel(appOrigin);
@@ -992,7 +992,7 @@ async function viewQr(poiId) {
     const name = poi.name?.vi || 'Điểm Thuyết Minh';
     const modal = document.getElementById('qr-view-modal');
 
-    document.querySelector('#qr-view-modal .modal-header h2').textContent = 'Ma QR Diem';
+    document.querySelector('#qr-view-modal .modal-header h2').textContent = 'Ma QR Diem (legacy)';
     document.getElementById('qr-poi-name').textContent = name;
 
     // Lưu để dùng khi in
@@ -1015,7 +1015,7 @@ function printQr() {
     const isTourQr = document.getElementById('qr-view-modal').dataset.qrKind === 'tour';
     const printHint = isTourQr
         ? 'Quet ma QR nay tai cong de mo danh sach quan trong tour.'
-        : 'Quet ma QR nay de mo diem thuyet minh.';
+        : 'QR diem le chi de tuong thich cu; demo chinh dung QR Tour tai cong.';
 
     const printWindow = window.open('', '', 'height=600,width=800');
     // Mở một cửa sổ mới để in
