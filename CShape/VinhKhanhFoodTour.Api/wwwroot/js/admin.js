@@ -470,9 +470,9 @@ async function loadDashboardData(options = {}) {
         document.getElementById('stat-pois').textContent = adminPois.length;
         document.getElementById('stat-sessions').textContent = stats.uniqueSessions || 0;
         const activeEl = document.getElementById('stat-active');
-        if (activeEl) activeEl.textContent = stats.activeNow || 0;
+        if (activeEl) activeEl.textContent = (stats.activeNow || 0);
         document.getElementById('stat-listens').textContent = stats.eventCounts?.poi_listen || 0;
-        document.getElementById('stat-qr').textContent = stats.eventCounts?.qr_scan || 0;
+        document.getElementById('stat-qr').textContent = (stats.eventCounts?.qr_scan || 0);
 
         // Render top POIs chart
         renderTopPoisChart(topPois);
@@ -495,7 +495,6 @@ function renderTopPoisChart(topPois) {
     }
 
     const maxCount = Math.max(1, ...topPois.map(p => p.listenCount || 0));
-
     container.innerHTML = `<div class="bar-chart">${topPois.map(p => {
         const poi = adminPois.find(ap => ap.id === p.poiId);
         const name = p.poiName || poi?.name?.vi || poi?.name?.en || p.poiId;
@@ -671,7 +670,7 @@ function openPoiModal(poi = null) {
         document.getElementById('poi-radius').value = poi.radius;
         document.getElementById('poi-priority').value = poi.priority;
         document.getElementById('poi-category').value = poi.category;
-        
+
         document.getElementById('poi-address').value = poi.address || '';
         document.getElementById('poi-hours').value = poi.openingHours || '';
         document.getElementById('poi-price').value = poi.priceRange || '';
